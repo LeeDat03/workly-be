@@ -1,0 +1,39 @@
+_format_version: "3.0"
+
+services:
+    - name: user-company-service
+      url: http://host.docker.internal:8003
+
+    - name: post-hire-service
+      url: http://host.docker.internal:8004
+
+    - name: chat-notification-service
+      url: http://host.docker.internal:8005
+
+routes:
+    - name: route-for-user-company
+      service: user-company-service
+      paths:
+          - /auth
+          - /users
+          - /companies
+
+    - name: route-for-post-hire
+      service: post-hire-service
+      paths:
+          - /posts
+          - /jobs
+          - /feed
+
+    - name: route-for-chat-notification
+      service: chat-notification-service
+      paths:
+          - /chat
+          - /notifications
+
+          #   TODO: JWT, CORS, RATE LIMIT
+# consumers:
+#     - username: social-network-user
+#       jwt_secrets:
+#           - key: my-app-key
+#             secret: change-this-to-a-very-strong-secret-key-in-production

@@ -1,0 +1,30 @@
+# Environment files
+.env.local
+.env.production
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+logs/
+*.log
+
+# Build outputs
+!server.js
+!**/server.js
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+tmp/
+temp/
+
