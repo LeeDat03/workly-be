@@ -21,9 +21,9 @@ routes:
     - name: route-for-post-hire
       service: post-hire-service
       paths:
-          - /posts
-          - /jobs
-          - /feed
+          - /api/v1/posts
+          - /api/v1/jobs
+          - /api/v1/feed
 
     - name: route-for-chat-notification
       service: chat-notification-service
