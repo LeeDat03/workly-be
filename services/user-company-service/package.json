@@ -1,12 +1,55 @@
 {
-  "name": "user-company-service",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+	"name": "user-company-service",
+	"version": "1.0.0",
+	"description": "User-Company Service Backend with Node.js, Express, TypeScript, and Neo4j",
+	"main": "dist/server.js",
+	"scripts": {
+		"dev": "nodemon",
+		"build": "tsc",
+		"start": "node dist/server.js",
+		"start:dev": "ts-node src/server.ts",
+		"lint": "eslint src/**/*.ts",
+		"lint:fix": "eslint src/**/*.ts --fix",
+		"format": "prettier --write \"src/**/*.ts\"",
+		"format:check": "prettier --check \"src/**/*.ts\"",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [
+		"nodejs",
+		"express",
+		"typescript",
+		"neo4j",
+		"microservice"
+	],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"compression": "^1.8.1",
+		"cors": "^2.8.5",
+		"dotenv": "^17.2.3",
+		"express": "^5.1.0",
+		"helmet": "^8.1.0",
+		"morgan": "^1.10.1",
+		"neo4j-driver": "^6.0.0",
+		"neogma": "^1.15.1",
+		"winston": "^3.16.0",
+		"zod": "^4.1.12"
+	},
+	"devDependencies": {
+		"@types/compression": "^1.8.1",
+		"@types/cors": "^2.8.19",
+		"@types/express": "^5.0.4",
+		"@types/morgan": "^1.9.10",
+		"@types/node": "^24.9.1",
+		"@typescript-eslint/eslint-plugin": "^8.46.2",
+		"@typescript-eslint/parser": "^8.46.2",
+		"eslint": "^9.38.0",
+		"eslint-config-prettier": "^10.1.8",
+		"eslint-plugin-prettier": "^5.5.4",
+		"nodemon": "^3.1.10",
+		"prettier": "^3.6.2",
+		"rimraf": "^6.0.1",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.9.3"
+	}
 }

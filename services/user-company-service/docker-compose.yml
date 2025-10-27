@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+    neo4j:
+        image: neo4j:latest
+        container_name: neo4j-local
+        restart: unless-stopped
+
+        ports:
+            - "7474:7474"
+            - "7687:7687"
+
+        environment:
+            - NEO4J_AUTH=neo4j/12345678 # username: neo4j / password: test123
+            - NEO4J_PLUGINS=["apoc"]
+            - NEO4J_dbms_memory_heap_max__size=1G
+            - NEO4J_dbms_memory_pagecache_size=512M
+
+        volumes:
+            - ./neo4j-local/data:/data
+            - ./neo4j-local/logs:/logs
+            - ./neo4j-local/import:/import
+            - ./neo4j-local/plugins:/plugins
