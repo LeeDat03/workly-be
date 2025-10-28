@@ -1,69 +1,67 @@
-import { ModelFactory, NeogmaInstance } from "neogma";
+import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
+import { v4 as uuidv4 } from "uuid";
+
 import { database } from "../config/database";
+import { IndustryModel, UserModel } from ".";
 
 export interface CompanyProperties {
 	companyId: string;
 	name: string;
 	description?: string;
+	foundedYear?: number;
 	website?: string;
-	industry?: string;
-	size?: string;
 	logoUrl?: string;
-	createdAt: string; // Stored as ISO string in Neo4j
-	updatedAt: string; // Stored as ISO string in Neo4j
-	[key: string]: any; // Index signature for Neo4j compatibility
+	// TODO: move location to new table
+	location?: string;
+	[key: string]: any;
 }
 
 export type CompanyInstance = NeogmaInstance<CompanyProperties, {}>;
 
-const getCompanyModel = () => {
-	const neogma = database.getNeogma();
+let CompanyModel: ReturnType<typeof ModelFactory<CompanyProperties>>;
 
-	return ModelFactory<CompanyProperties>(
+export const getCompanyModel = (neogma: Neogma) => {
+	if (CompanyModel) {
+		console.log("runnnn");
+		return CompanyModel;
+	}
+
+	CompanyModel = ModelFactory<CompanyProperties>(
 		{
 			label: "Company",
 			schema: {
 				companyId: {
 					type: "string",
 					required: true,
+					uniqueItems: true,
+					default: () => uuidv4(),
 				},
 				name: {
 					type: "string",
 					required: true,
 				},
-				description: {
-					type: "string",
-					required: false,
-				},
-				website: {
-					type: "string",
-					required: false,
-				},
-				industry: {
-					type: "string",
-					required: false,
-				},
-				size: {
-					type: "string",
-					required: false,
-				},
-				logoUrl: {
-					type: "string",
-					required: false,
-				},
-				createdAt: {
-					type: "string",
-					required: true,
-				},
-				updatedAt: {
-					type: "string",
-					required: true,
-				},
+				description: { type: "string" },
+				foundedYear: { type: "number" },
+				website: { type: "string" },
+				logoUrl: { type: "string" },
+				location: { type: "string" },
 			},
 			primaryKeyField: "companyId",
 		},
 		neogma,
 	);
-};
+	CompanyModel.addRelationships({
+		owner: {
+			model: () => UserModel,
+			direction: "in",
+			name: "OWNS",
+		},
+		industry: {
+			model: () => IndustryModel,
+			direction: "out",
+			name: "BELONGS_TO",
+		},
+	});
 
-export { getCompanyModel };
+	return CompanyModel;
+};

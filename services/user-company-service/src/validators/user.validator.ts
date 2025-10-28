@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserRole } from "../models";
+import { UserRole } from "../models/user.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;

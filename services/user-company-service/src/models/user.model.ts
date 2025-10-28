@@ -1,4 +1,4 @@
-import { ModelFactory, NeogmaInstance } from "neogma";
+import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
 import { database } from "../config/database";
 import { v4 as uuidv4 } from "uuid";
 
@@ -25,10 +25,15 @@ export interface UserProperties {
 
 export type UserInstance = NeogmaInstance<UserProperties, {}>;
 
-const getUserModel = () => {
-	const neogma = database.getNeogma();
+let UserModel: ReturnType<typeof ModelFactory<UserProperties>>;
 
-	const User = ModelFactory<UserProperties>(
+export const getUserModel = (neogma: Neogma) => {
+	if (UserModel) {
+		console.log("runnnn");
+		return UserModel;
+	}
+
+	UserModel = ModelFactory<UserProperties>(
 		{
 			label: "User",
 			schema: {
@@ -73,17 +78,10 @@ const getUserModel = () => {
 		},
 		neogma,
 	);
-	User.beforeCreate = (instance) => {
+	UserModel.beforeCreate = (instance) => {
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
 	};
 
-	// TODO:
-	// User.setBeforeSave((instance) => {
-	// 	instance.updatedAt = new Date().toISOString();
-	// });
-
-	return User;
+	return UserModel;
 };
-
-export { getUserModel };
