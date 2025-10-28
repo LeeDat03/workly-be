@@ -1,7 +1,11 @@
 import { ModelFactory, NeogmaInstance } from "neogma";
 import { database } from "../config/database";
+import { v4 as uuidv4 } from "uuid";
 
-export type UserRole = "ADMIN" | "USER";
+export enum UserRole {
+	ADMIN = "ADMIN",
+	USER = "USER",
+}
 
 export interface UserProperties {
 	userId: string;
@@ -10,13 +14,13 @@ export interface UserProperties {
 	name: string;
 	bio?: string;
 	headline?: string;
-	avartarUrl?: string;
+	avatarUrl?: string;
 	bgCoverUrl?: string;
-	dateOfBirth?: string; // Stored as ISO string in Neo4j
+	dateOfBirth?: string;
 	role: UserRole;
-	createdAt: string; // Stored as ISO string in Neo4j
-	updatedAt: string; // Stored as ISO string in Neo4j
-	[key: string]: any; // Index signature for Neo4j compatibility
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: any;
 }
 
 export type UserInstance = NeogmaInstance<UserProperties, {}>;
@@ -24,17 +28,19 @@ export type UserInstance = NeogmaInstance<UserProperties, {}>;
 const getUserModel = () => {
 	const neogma = database.getNeogma();
 
-	return ModelFactory<UserProperties>(
+	const User = ModelFactory<UserProperties>(
 		{
 			label: "User",
 			schema: {
 				userId: {
 					type: "string",
-					required: true,
+					uniqueItems: true,
+					default: () => uuidv4(),
 				},
 				email: {
 					type: "string",
 					required: true,
+					uniqueItems: true,
 				},
 				password: {
 					type: "string",
@@ -44,43 +50,40 @@ const getUserModel = () => {
 					type: "string",
 					required: true,
 				},
-				bio: {
-					type: "string",
-					required: false,
-				},
-				headline: {
-					type: "string",
-					required: false,
-				},
-				avartarUrl: {
-					type: "string",
-					required: false,
-				},
-				bgCoverUrl: {
-					type: "string",
-					required: false,
-				},
-				dateOfBirth: {
-					type: "string",
-					required: false,
-				},
+				bio: { type: "string" },
+				headline: { type: "string" },
+				avatarUrl: { type: "string" },
+				bgCoverUrl: { type: "string" },
+				dateOfBirth: { type: "string" },
 				role: {
 					type: "string",
-					required: true,
+					enum: Object.values(UserRole),
+					default: UserRole.USER,
 				},
 				createdAt: {
 					type: "string",
-					required: true,
+					default: () => new Date().toISOString(),
 				},
 				updatedAt: {
 					type: "string",
-					required: true,
+					default: () => new Date().toISOString(),
 				},
 			},
 			primaryKeyField: "userId",
 		},
 		neogma,
 	);
+	User.beforeCreate = (instance) => {
+		instance.createdAt = new Date().toISOString();
+		instance.updatedAt = new Date().toISOString();
+	};
+
+	// TODO:
+	// User.setBeforeSave((instance) => {
+	// 	instance.updatedAt = new Date().toISOString();
+	// });
+
+	return User;
 };
 
 export { getUserModel };

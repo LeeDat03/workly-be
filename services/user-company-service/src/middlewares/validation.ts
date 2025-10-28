@@ -6,15 +6,11 @@ export const validate =
 	(schema: ZodSchema) =>
 	async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			console.log(req.body);
-			await schema.parseAsync({
-				body: req.body,
-				query: req.query,
-				params: req.params,
-			});
+			await schema.parseAsync(req.body);
 			next();
 		} catch (error) {
 			// TODO: handle validation error
+			console.log(error);
 			if (error instanceof ZodError) {
 				const errorMessages = error.issues.map((issue) => ({
 					path: issue.path.join("."),

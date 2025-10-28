@@ -14,14 +14,8 @@ class Neo4jDatabase {
 					password: config.neo4j.password,
 				},
 				{
-					logger: (level: string, message: string) => {
-						if (level === "error") {
-							logger.error(message);
-						} else if (level === "warn") {
-							logger.warn(message);
-						} else {
-							logger.debug(message);
-						}
+					logger: (message: string) => {
+						logger.debug(message);
 					},
 				},
 			);
@@ -29,6 +23,8 @@ class Neo4jDatabase {
 			// Verify connectivity
 			await this.neogma.verifyConnectivity();
 			logger.info("Successfully connected to Neo4j database via Neogma");
+
+			await this.setupConstraints();
 		} catch (error) {
 			logger.error("Failed to connect to Neo4j database:", error);
 			throw error;
@@ -39,6 +35,26 @@ class Neo4jDatabase {
 		if (this.neogma) {
 			await this.neogma.driver.close();
 			logger.info("Disconnected from Neo4j database");
+		}
+	}
+
+	async setupConstraints(): Promise<void> {
+		if (!this.neogma) {
+			throw new Error("Neogma not initialized.");
+		}
+
+		const queryRunner = this.neogma.queryRunner;
+
+		try {
+			await queryRunner.run(`
+				CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+				FOR (u:User)
+				REQUIRE u.userId IS UNIQUE
+			`);
+			logger.info("✅ Neo4j constraints successfully set up.");
+		} catch (error) {
+			logger.error("⚠️ Error setting up Neo4j constraints:", error);
+			throw error;
 		}
 	}
 
