@@ -1,11 +1,13 @@
 import app from "./app";
 import { config } from "./config";
 import { database } from "./config/database";
+import { initModels } from "./models";
 import logger from "./utils/logger";
 
 const startServer = async () => {
 	try {
 		await database.connect();
+		await initModels(database.getNeogma());
 
 		const server = app.listen(config.port, () => {
 			logger.info(`Server started on http://localhost:${config.port}`);
