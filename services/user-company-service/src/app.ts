@@ -3,6 +3,7 @@ import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
 import morgan from "morgan";
+import cookieParser from "cookie-parser";
 import { config } from "./config";
 import routes from "./routes";
 import { errorHandler, notFoundHandler } from "./middlewares";
@@ -20,19 +21,21 @@ class App {
 	}
 
 	private initializeMiddlewares(): void {
-		this.app.use(helmet());
+		this.app.use((req, res, next) => {
+			next();
+		});
 
+		this.app.use(helmet());
 		this.app.use(
 			cors({
 				origin: config.cors.origin,
 				credentials: true,
 			}),
 		);
-
 		this.app.use(compression());
-
 		this.app.use(express.json());
 		this.app.use(express.urlencoded({ extended: true }));
+		this.app.use(cookieParser());
 
 		if (config.env === "development") {
 			this.app.use(morgan("dev"));
@@ -42,7 +45,13 @@ class App {
 	}
 
 	private initializeRoutes(): void {
-		this.app.use(routes);
+		this.app.use(
+			"/api/v1",
+			(req, res, next) => {
+				next();
+			},
+			routes,
+		);
 
 		this.app.get("/", (req, res) => {
 			res.json({
