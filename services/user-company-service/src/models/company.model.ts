@@ -1,8 +1,14 @@
-import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
+import {
+	ModelFactory,
+	ModelRelatedNodesI,
+	Neogma,
+	NeogmaInstance,
+} from "neogma";
 import { v4 as uuidv4 } from "uuid";
 
-import { database } from "../config/database";
 import { IndustryModel, UserModel } from ".";
+import { UserInstance } from "./user.model";
+import { IndustryInstance } from "./industry.model";
 
 export interface CompanyProperties {
 	companyId: string;
@@ -16,17 +22,31 @@ export interface CompanyProperties {
 	[key: string]: any;
 }
 
-export type CompanyInstance = NeogmaInstance<CompanyProperties, {}>;
+interface ICompanyRelatedNodes {
+	Owner: ModelRelatedNodesI<typeof UserModel, UserInstance, {}, {}>;
+	Industry: ModelRelatedNodesI<
+		typeof IndustryModel,
+		IndustryInstance,
+		{},
+		{}
+	>;
+}
 
-let CompanyModel: ReturnType<typeof ModelFactory<CompanyProperties>>;
+export type CompanyInstance = NeogmaInstance<
+	CompanyProperties,
+	ICompanyRelatedNodes
+>;
+
+let CompanyModel: ReturnType<
+	typeof ModelFactory<CompanyProperties, ICompanyRelatedNodes>
+>;
 
 export const getCompanyModel = (neogma: Neogma) => {
 	if (CompanyModel) {
-		console.log("runnnn");
 		return CompanyModel;
 	}
 
-	CompanyModel = ModelFactory<CompanyProperties>(
+	CompanyModel = ModelFactory<CompanyProperties, ICompanyRelatedNodes>(
 		{
 			label: "Company",
 			schema: {
@@ -34,11 +54,11 @@ export const getCompanyModel = (neogma: Neogma) => {
 					type: "string",
 					required: true,
 					uniqueItems: true,
-					default: () => uuidv4(),
 				},
 				name: {
 					type: "string",
 					required: true,
+					uniqueItems: true,
 				},
 				description: { type: "string" },
 				foundedYear: { type: "number" },
@@ -47,21 +67,25 @@ export const getCompanyModel = (neogma: Neogma) => {
 				location: { type: "string" },
 			},
 			primaryKeyField: "companyId",
+			relationships: {
+				Owner: {
+					model: UserModel,
+					direction: "in",
+					name: "OWNS",
+				},
+				Industry: {
+					model: IndustryModel,
+					direction: "out",
+					name: "IN",
+				},
+			},
 		},
 		neogma,
 	);
-	CompanyModel.addRelationships({
-		owner: {
-			model: () => UserModel,
-			direction: "in",
-			name: "OWNS",
-		},
-		industry: {
-			model: () => IndustryModel,
-			direction: "out",
-			name: "BELONGS_TO",
-		},
-	});
+
+	CompanyModel.beforeCreate = (instance) => {
+		instance.companyId = uuidv4();
+	};
 
 	return CompanyModel;
 };
