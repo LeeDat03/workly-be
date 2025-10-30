@@ -46,8 +46,8 @@ export type CreateCompanySchema = z.infer<typeof createCompanySchema>;
 
 export const toCompanyProfileDTO = (
 	company: CompanyProperties,
-	owner: UserProperties,
-	industry: IndustryProperties,
+	owner?: UserProperties,
+	industry?: IndustryProperties,
 ) => {
 	return {
 		company: {
@@ -55,15 +55,22 @@ export const toCompanyProfileDTO = (
 			name: company.name,
 			description: company.description,
 			website: company.website,
-			owner: {
-				userId: owner.userId,
-				email: owner.email,
-				name: owner.name,
-			},
-			industry: {
-				industryId: industry.industryId,
-				name: industry.name,
-			},
+			foundedYear: company.foundedYear,
+			logoUrl: company.logoUrl,
+			location: company.location,
+			owner: owner
+				? {
+						userId: owner.userId,
+						email: owner.email,
+						name: owner.name,
+					}
+				: undefined,
+			industry: industry
+				? {
+						industryId: industry.industryId,
+						name: industry.name,
+					}
+				: undefined,
 		},
 	};
 };

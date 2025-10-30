@@ -73,12 +73,11 @@ const createCompany = async (
 			} as unknown as CompanyProperties,
 			{ merge: true },
 		);
+		const companyProfile = toCompanyProfileDTO(newCompany.dataValues);
 
 		res.status(200).json({
 			status: "success",
-			data: {
-				company: newCompany.dataValues,
-			},
+			data: companyProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -188,10 +187,11 @@ const updateCompany = async (
 				return: true,
 			},
 		);
+		const companyProfile = toCompanyProfileDTO(result[0][0].dataValues);
 
 		res.status(200).json({
 			status: "success",
-			data: result[0][0].dataValues,
+			data: companyProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -221,7 +221,7 @@ const deleteCompany = async (
 			detach: true,
 		});
 
-		return res.status(204).json({
+		return res.status(200).json({
 			status: "success",
 			data: {
 				message: "Company deleted successfully",
