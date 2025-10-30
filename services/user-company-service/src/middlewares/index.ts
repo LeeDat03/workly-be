@@ -1,2 +1,3 @@
-export { errorHandler, notFoundHandler, AppError } from './errorHandler';
-export { validate } from './validation';
+export { errorHandler, notFoundHandler, AppError } from "./errorHandler";
+export { validate } from "./validation";
+export * from "./isAuthenticated";

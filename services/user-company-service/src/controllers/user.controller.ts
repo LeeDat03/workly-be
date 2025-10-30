@@ -3,6 +3,7 @@ import { ApiResponse } from "../types";
 import { UserProperties, UserRole } from "../models/user.model";
 import { CreateUserSchema } from "../validators";
 import { UserModel } from "../models";
+import { get } from "http";
 
 const createUser = async (req: Request, res: Response, next: NextFunction) => {
 	try {
@@ -25,6 +26,29 @@ const createUser = async (req: Request, res: Response, next: NextFunction) => {
 	}
 };
 
+export const getAllUsers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const users = await UserModel.findMany();
+
+		const usersWithoutPasswords = users.map((user) => {
+			const { password, ...userSafe } = user;
+			return userSafe;
+		});
+
+		res.status(200).json({
+			success: true,
+			data: usersWithoutPasswords,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	createUser,
+	getAllUsers,
 };

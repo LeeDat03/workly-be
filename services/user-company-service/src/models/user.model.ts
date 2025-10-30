@@ -39,13 +39,13 @@ export const getUserModel = (neogma: Neogma) => {
 			schema: {
 				userId: {
 					type: "string",
-					uniqueItems: true,
+					unique: true,
 					default: () => uuidv4(),
 				},
 				email: {
 					type: "string",
 					required: true,
-					uniqueItems: true,
+					unique: true,
 				},
 				password: {
 					type: "string",
