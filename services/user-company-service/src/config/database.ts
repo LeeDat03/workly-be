@@ -51,11 +51,6 @@ class Neo4jDatabase {
 				FOR (u:User)
 				REQUIRE u.userId IS UNIQUE
 			`);
-			await queryRunner.run(`
-				CREATE CONSTRAINT comapany_id_unique IF NOT EXISTS
-				FOR (c:Company)
-				REQUIRE c.companyId IS UNIQUE
-			`);
 
 			logger.info("✅ Neo4j constraints successfully set up.");
 		} catch (error) {

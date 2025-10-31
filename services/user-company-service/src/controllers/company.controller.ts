@@ -66,6 +66,7 @@ const createCompany = async (
 					where: {
 						merge: true,
 						params: {
+							// TODO: get user from jwt
 							email: "user1@gmail.com",
 						},
 					},
@@ -77,6 +78,7 @@ const createCompany = async (
 
 		res.status(200).json({
 			status: "success",
+			message: "Company created successfully",
 			data: companyProfile,
 		});
 	} catch (error) {
@@ -91,9 +93,13 @@ const getAllCompanies = async (
 	next: NextFunction,
 ) => {
 	try {
-		const companies = await CompanyModel.findMany({
-			plain: true,
+		const companies = await CompanyModel.findMany({});
+
+		const companyProfiles = companies.map((company) => {
+			return company.id;
 		});
+		console.log(companyProfiles);
+
 		res.status(200).json({
 			status: "success",
 			data: companies,
@@ -191,6 +197,7 @@ const updateCompany = async (
 
 		res.status(200).json({
 			status: "success",
+			message: "Company updated successfully",
 			data: companyProfile,
 		});
 	} catch (error) {

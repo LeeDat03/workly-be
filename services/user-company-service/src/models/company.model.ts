@@ -4,7 +4,7 @@ import {
 	Neogma,
 	NeogmaInstance,
 } from "neogma";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "nanoid";
 
 import { IndustryModel, UserModel } from ".";
 import { UserInstance } from "./user.model";
@@ -17,7 +17,6 @@ export interface CompanyProperties {
 	foundedYear?: number;
 	website?: string;
 	logoUrl?: string;
-	// TODO: move location to new table
 	location?: string;
 	[key: string]: any;
 }
@@ -53,12 +52,10 @@ export const getCompanyModel = (neogma: Neogma) => {
 				companyId: {
 					type: "string",
 					required: true,
-					uniqueItems: true,
 				},
 				name: {
 					type: "string",
 					required: true,
-					uniqueItems: true,
 				},
 				description: { type: "string" },
 				foundedYear: { type: "number" },
@@ -84,8 +81,18 @@ export const getCompanyModel = (neogma: Neogma) => {
 	);
 
 	CompanyModel.beforeCreate = (instance) => {
-		instance.companyId = uuidv4();
+		instance.companyId = nanoid(12);
 	};
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT comapany_id_unique IF NOT EXISTS
+		FOR (c:Company)
+		REQUIRE c.companyId IS UNIQUE
+	`);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT company_name_unique IF NOT EXISTS
+		FOR (c:Company)
+		REQUIRE c.name IS UNIQUE
+	`);
 
 	return CompanyModel;
 };
