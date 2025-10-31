@@ -3,8 +3,6 @@ import * as authController from "../controllers/auth.controller";
 import { validate } from "../middlewares";
 import { createUserSchema, signinSchema } from "../validators";
 
-console.log("[ROUTER] File auth.routes.ts đang được nạp...");
-
 const router = Router();
 
 router.use((req, res, next) => {

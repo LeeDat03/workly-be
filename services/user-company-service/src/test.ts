@@ -21,6 +21,10 @@ class App {
 	}
 
 	private initializeMiddlewares(): void {
+		this.app.use((req, res, next) => {
+			next();
+		});
+
 		this.app.use(helmet());
 		this.app.use(
 			cors({
@@ -41,12 +45,18 @@ class App {
 	}
 
 	private initializeRoutes(): void {
-		this.app.use(routes);
+		this.app.use(
+			"/api/v1",
+			(req, res, next) => {
+				next();
+			},
+			routes,
+		);
 
 		this.app.get("/", (req, res) => {
 			res.json({
 				success: true,
-				message: "User-Company Service API is healthy",
+				message: "User-Company Service API",
 				version: "1.0.0",
 			});
 		});

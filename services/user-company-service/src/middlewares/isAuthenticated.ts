@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { Jwt } from "jsonwebtoken";
 import { config } from "../config";
 import { ApiError } from "../utils/ApiError";
 import { UserModel } from "../models";
 import { UserProperties } from "../models/user.model";
+import { JwtPayload, verifyToken } from "../utils/jwt";
 
 declare global {
 	namespace Express {
@@ -37,13 +38,7 @@ export const isAuthenticated = async (
 	}
 
 	try {
-		console.log("Token received: ", token);
-		const decoded = jwt.verify(token, config.jwt.secret) as {
-			id: string;
-			iat: number;
-			exp: number;
-		};
-		console.log("Decoded token:", decoded);
+		const decoded: JwtPayload = verifyToken(token);
 
 		const currentUser = await UserModel.findOne({
 			where: { userId: decoded.id },
@@ -68,7 +63,6 @@ export const isAuthenticated = async (
 
 		return next();
 	} catch (error) {
-		console.error("Token verify failed:", error);
 		return next(new ApiError(401, "Invalid token. Please log in again."));
 	}
 };
