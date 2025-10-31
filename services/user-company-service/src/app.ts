@@ -21,10 +21,6 @@ class App {
 	}
 
 	private initializeMiddlewares(): void {
-		this.app.use((req, res, next) => {
-			next();
-		});
-
 		this.app.use(helmet());
 		this.app.use(
 			cors({
@@ -45,13 +41,7 @@ class App {
 	}
 
 	private initializeRoutes(): void {
-		this.app.use(
-			"/api/v1",
-			(req, res, next) => {
-				next();
-			},
-			routes,
-		);
+		this.app.use(routes);
 
 		this.app.get("/", (req, res) => {
 			res.json({

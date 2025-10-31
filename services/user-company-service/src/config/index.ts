@@ -8,16 +8,6 @@ const envSchema = z.object({
 	JWT_EXPIRES_IN: z.string().default("90d"),
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
-
-if (!parsedEnv.success) {
-	console.error(
-		"❌ Invalid environment variables:",
-		parsedEnv.error.format(),
-	);
-	throw new Error("Invalid environment variables");
-}
-
 export const config = {
 	env: process.env.NODE_ENV || "development",
 	port: parseInt(process.env.PORT || "8003", 10),
@@ -34,7 +24,7 @@ export const config = {
 	},
 
 	jwt: {
-		secret: parsedEnv.data.JWT_SECRET || "fallback_secret",
-		expiresIn: parsedEnv.data.JWT_EXPIRES_IN || "90d",
+		secret: process.env.JWT_SECRET || "fallback_secret",
+		expiresIn: process.env.JWT_EXPIRES_IN || "90d",
 	},
 } as const;
