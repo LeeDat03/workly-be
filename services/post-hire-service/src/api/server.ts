@@ -6,7 +6,8 @@ import helmet from 'helmet';
 import { RateLimiterMiddleware } from "@/api/middlewares/ratelimit.middleware";
 import { NODE_ENV } from "@/common/enviroment";
 import logger from "@/common/logger";
-import routes from "@/api/router";
+import { createPostRoutes } from "./routes/post.routes";
+import { ResponseMiddleware } from "./middlewares/response.middleware";
 
 export class ExpressServer {
     private server?: Express;
@@ -17,6 +18,7 @@ export class ExpressServer {
         this.setupStandardMiddlewares(server);
         this.setupSecurityMiddlewares(server);
         this.configureRoutes(server);
+        this.setupErrorHandlers(server);
         this.httpServer = this.listen(server, port);
         this.server = server;
         return this.server;
@@ -85,6 +87,17 @@ export class ExpressServer {
         server.use(bodyParser.urlencoded({ extended: true }));
     }
     private configureRoutes(server: Express) {
+        const routes = createPostRoutes();
         server.use(routes)
+    }
+    private setupErrorHandlers(server: Express) {
+        // // if error is not an instanceOf APIError, convert it.
+        // server.use(ResponseMiddleware.converter);
+
+        // // catch 404 and forward to error handler
+        // server.use(ResponseMiddleware.notFound);
+
+        // error handler, send stacktrace only during development
+        server.use(ResponseMiddleware.handler);
     }
 }

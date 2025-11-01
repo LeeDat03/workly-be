@@ -1,9 +1,20 @@
+import '@/common/extensions/express.extension';
 import { ExpressServer } from "@/api/server";
 import { PORT } from "@/common/enviroment";
 import logger from "@/common/logger";
+import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
+import { ContainerManager } from "./api/container";
+import { initializeIndexModel } from './api/model/model';
 
 export class Application {
+
+    private static databaseInstance = DatabaseAdapter.getInstance();
+
+
     public static async createApplication(): Promise<ExpressServer> {
+        await this.databaseInstance.connect();
+        await ContainerManager.initializeAll();
+        await initializeIndexModel();
         const expressServer = new ExpressServer();
         await expressServer.setup(Number(PORT));
         Application.handleExit(expressServer);

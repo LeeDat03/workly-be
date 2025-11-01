@@ -26,6 +26,10 @@
         "types": [
             "node",
             "express"
+        ],
+        "lib": [
+            "ES2020",
+            "ESNext"
         ]
     },
     "include": [

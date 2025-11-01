@@ -41,6 +41,7 @@ export class ResponseMiddleware {
         if (NODE_ENV !== 'development') {
             delete response.stack;
         }
+
         res.status(status);
         res.json(response);
         res.end();
