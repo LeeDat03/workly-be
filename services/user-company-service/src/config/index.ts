@@ -16,4 +16,9 @@ export const config = {
 	cors: {
 		origin: process.env.CORS_ORIGIN || "http://localhost:3000",
 	},
+
+	jwt: {
+		secret: process.env.JWT_SECRET || "fallback_secret",
+		expiresIn: process.env.JWT_EXPIRES_IN || "90d",
+	},
 } as const;
