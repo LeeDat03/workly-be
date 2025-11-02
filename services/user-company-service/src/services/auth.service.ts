@@ -3,21 +3,20 @@ import jwt, { SignOptions } from "jsonwebtoken";
 import { CreateUserSchema } from "../validators";
 import { UserModel } from "../models";
 import { config } from "../config";
-import { ApiError } from "../utils/ApiError";
-import { UserProperties } from "../models/user.model";
+import { UserProperties, UserRole } from "../models/user.model";
+import { ConflictError, UnauthorizedError } from "../utils/appError";
 
 /**
  * Hàm tạo JWT token
  * @param userId - ID của user
  * @returns {string} - JWT token
  */
-const generateToken = (userId: string): string => {
+const generateToken = (userId: string, role: UserRole): string => {
 	const options: SignOptions = {
-		expiresIn: config.jwt
-			.expiresIn as unknown as jwt.SignOptions["expiresIn"],
+		expiresIn: config.jwt.expiresIn as jwt.SignOptions["expiresIn"],
 	};
 
-	return jwt.sign({ id: userId }, config.jwt.secret, options);
+	return jwt.sign({ id: userId, role }, config.jwt.secret, options);
 };
 
 /**
@@ -30,7 +29,7 @@ export const signup = async (userData: CreateUserSchema) => {
 		where: { email: userData.email },
 	});
 	if (existingUser) {
-		throw new ApiError(409, "Email already exists");
+		throw new ConflictError("Email already in use");
 	}
 
 	const hashedPassword = await bcrypt.hash(userData.password, 10);
@@ -40,9 +39,14 @@ export const signup = async (userData: CreateUserSchema) => {
 		password: hashedPassword,
 	} as unknown as UserProperties);
 
-	const { password, ...userWithoutPassword } = newUserProperties;
+	const token = generateToken(
+		newUserProperties.dataValues.userId,
+		newUserProperties.dataValues.role,
+	);
 
-	return userWithoutPassword;
+	const { password, ...userWithoutPassword } = newUserProperties.dataValues;
+
+	return { user: userWithoutPassword, token };
 };
 
 /**
@@ -54,18 +58,17 @@ export const signup = async (userData: CreateUserSchema) => {
 export const signin = async (email: string, pass: string) => {
 	const user = await UserModel.findOne({ where: { email } });
 	if (!user) {
-		throw new ApiError(401, "Invalid email or password");
+		throw new UnauthorizedError("Invalid email");
 	}
 
 	const isPasswordMatch = await bcrypt.compare(pass, user.password);
 	if (!isPasswordMatch) {
-		throw new ApiError(401, "Invalid email or password");
+		throw new UnauthorizedError("Invalid password");
 	}
 
-	const token = generateToken(user.userId);
-	console.log("Generated Token:", token);
+	const token = generateToken(user.userId, user.role);
 
-	const { password, ...userWithoutPassword } = user;
+	const { password, ...userWithoutPassword } = user.dataValues;
 
 	return { user: userWithoutPassword, token };
 };

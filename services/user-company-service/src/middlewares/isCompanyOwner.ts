@@ -7,19 +7,16 @@ import {
 } from "../utils/appError";
 import { OwnerCompanyRequest } from "../types";
 
-export const checkCompanyOwner = async (
+export const isCompanyOwner = async (
 	req: OwnerCompanyRequest,
 	res: Response,
 	next: NextFunction,
 ) => {
 	try {
-		// TODO: Check if user is authenticated
-		// if (!req.user || !req.user.userId) {
-		// 	throw new UnauthorizedError("Authentication required");
-		// }
-		// const userId = req.user.userId;
-
-		const userId = req.body.userId;
+		if (!req.user || !req.user.userId) {
+			throw new UnauthorizedError("Authentication required");
+		}
+		const userId = req.user.userId;
 		const companyId = req.params.id;
 		if (!companyId) {
 			throw new NotFoundError("Company ID is required");

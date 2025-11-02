@@ -1,5 +1,6 @@
 import { Request } from "express";
 import { CompanyInstance } from "../models/company.model";
+import { UserInstance, UserRole } from "../models/user.model";
 
 export interface ApiError extends Error {
 	statusCode?: number;
@@ -13,10 +14,17 @@ export interface ApiResponse<T = any> {
 	error?: string;
 }
 
-export interface CustomRequest extends Request {
-	user?: any; // You can replace 'any' with your User type later
+interface LoggedInUserPayload {
+	userId: string;
+	email: string;
+	name: string;
+	role: UserRole;
 }
 
-export interface OwnerCompanyRequest extends CustomRequest {
+export interface LoggedInUserRequest extends Request {
+	user?: LoggedInUserPayload;
+}
+
+export interface OwnerCompanyRequest extends LoggedInUserRequest {
 	company?: CompanyInstance;
 }

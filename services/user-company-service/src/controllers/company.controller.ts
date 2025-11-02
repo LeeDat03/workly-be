@@ -1,20 +1,60 @@
 import { NextFunction, Request, Response } from "express";
 import { CompanyModel, IndustryModel } from "../models";
-import { CompanyProperties } from "../models/company.model";
+import {
+	CompanyProperties,
+	CompanyRoleRequestStatus,
+} from "../models/company.model";
 import {
 	CreateCompanySchema,
 	toCompanyProfileDTO,
 	UpdateCompanySchema,
 } from "../validators";
-import { BadRequestError, NotFoundError } from "../utils/appError";
 import { Op } from "neogma";
+import {
+	BadRequestError,
+	ForbiddenError,
+	NotFoundError,
+} from "../utils/appError";
+import { LoggedInUserRequest } from "../types";
+import { database } from "../config/database";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
 };
 
+const checkCompanyAccess = async (userId: string, companyId: string) => {
+	const neogma = database.getNeogma();
+
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (c:Company {companyId: $companyId})
+		OPTIONAL MATCH (owner:User {userId: $userId})-[:OWNS]->(c)
+		OPTIONAL MATCH (admin:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c)
+		RETURN 
+			owner IS NOT NULL as isOwner,
+			(r IS NOT NULL AND r.status = $approvedStatus) as isAdmin
+		LIMIT 1
+		`,
+		{
+			companyId,
+			userId,
+			approvedStatus: CompanyRoleRequestStatus.APPROVED,
+		},
+	);
+
+	if (result.records.length === 0) {
+		return { isOwner: false, isAdmin: false };
+	}
+
+	const record = result.records[0];
+	return {
+		isOwner: record.get("isOwner") || false,
+		isAdmin: record.get("isAdmin") || false,
+	};
+};
+
 const createCompany = async (
-	req: Request,
+	req: LoggedInUserRequest,
 	res: Response,
 	next: NextFunction,
 ) => {
@@ -65,8 +105,7 @@ const createCompany = async (
 					where: {
 						merge: true,
 						params: {
-							// TODO: get user from jwt
-							email: "user3@gmail.com",
+							userId: req.user!.userId,
 						},
 					},
 				},
@@ -159,7 +198,7 @@ const getCompanyById = async (
 };
 
 const updateCompany = async (
-	req: Request,
+	req: LoggedInUserRequest,
 	res: Response,
 	next: NextFunction,
 ) => {
@@ -177,6 +216,17 @@ const updateCompany = async (
 		if (!company) {
 			throw new NotFoundError("Company not found");
 		}
+
+		const { isOwner, isAdmin } = await checkCompanyAccess(
+			req.user!.userId,
+			companyId,
+		);
+		if (!isOwner && !isAdmin) {
+			throw new ForbiddenError(
+				"You must be the owner or an admin of this company to perform this action",
+			);
+		}
+
 		if (data.name && data.name !== company.name) {
 			const existCompany = await CompanyModel.findOne({
 				where: {
