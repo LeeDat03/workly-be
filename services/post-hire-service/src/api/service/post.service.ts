@@ -5,12 +5,15 @@ import path from "path";
 import { FileUtil } from "@/util/fileUtil";
 import { APIError } from "@/common/error/api.error";
 import { StatusCode } from "@/common/errors";
+import { IPaginationInput, PagingList } from "../model/comment.model";
+import { log } from "console";
 
 export interface IPostService {
     createPost(post: CreatePostDTO): Promise<InsertOneResult>
     getAllFileMedia(): Promise<string[]>
     updatePost(post: UpdatePostDTO, id: ObjectId): Promise<UpdateResult>
     getPostDetail(id: ObjectId): Promise<PostResponse>
+    getAllPost(input: IPaginationInput): Promise<PagingList<PostResponse>>
 }
 
 export class PostService implements IPostService {
@@ -59,6 +62,17 @@ export class PostService implements IPostService {
         }
 
         return mapToPostResponse(post)
+    }
+
+    public getAllPost = async (input: IPaginationInput): Promise<PagingList<PostResponse>> => {
+        const result = await this.postRepository.getPagingPost(input);
+        const mappedData = result.data.map(item => {
+            return mapToPostResponse(item)
+        });
+        return {
+            ...result,
+            data: mappedData
+        };
     }
 
     public getAllFileMedia = async (): Promise<string[]> => {

@@ -1,12 +1,21 @@
 export interface IPaginationInput {
     page?: number;
     size?: number;
-    args?: IFilterArgs;
-}
-
-export interface IFilterArgs {
-    id?: number[];
+    startIndex?: number;
+    sortField?: string;
+    sortOrder?: number; //0: asc, 1: desc
     startAt?: DateString;
     endAt?: DateString;
-    keyword?: string;
+}
+
+export interface PaginationInfo {
+    page: number;
+    size: number;
+    total: number;
+    totalPages: number;
+}
+
+export interface PagingList<T> {
+    data: T[];
+    pagination: PaginationInfo;
 }

@@ -12,6 +12,7 @@ build/
 *.js.map
 !jest.config.js
 !commitlint.config.js
+C:\DA\workly-be\services\post-hire-service\uploads
 
 # Environment variables
 .env

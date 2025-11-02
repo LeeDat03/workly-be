@@ -1,12 +1,14 @@
-import { CreatePostDTO, Post, UpdatePostDTO } from "@/api/model/post.model";
+import { CreatePostDTO, Post, PostResponse, UpdatePostDTO } from "@/api/model/post.model";
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { Document, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
+import { IPaginationInput, PagingList } from "../model/comment.model";
 
 export interface IPostRepository {
     createPost(post: CreatePostDTO): Promise<InsertOneResult>
     getAll(): Promise<any[]>
     updatePost(post: UpdatePostDTO, id: ObjectId): Promise<UpdateResult>
     getPostDetail(id: ObjectId): Promise<WithId<Document> | null>
+    getPagingPost(input: IPaginationInput): Promise<PagingList<WithId<Document>>>
 }
 
 export class PostRepository implements IPostRepository {
@@ -77,5 +79,24 @@ export class PostRepository implements IPostRepository {
     public async getAll(): Promise<any[]> {
         const result = await this.postCollection.post.find().toArray();
         return result
+    }
+
+    public async getPagingPost(input: IPaginationInput): Promise<PagingList<WithId<Document>>> {
+        const page = input.page ?? 1;
+        const size = input.size ?? 10;
+        const skip = (page - 1) * size;
+        const [data, total] = await Promise.all([
+            this.postCollection.post.find().skip(skip).limit(size).toArray(),
+            this.postCollection.post.countDocuments(),
+        ]);
+        return {
+            data,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
     }
 }

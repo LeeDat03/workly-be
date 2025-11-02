@@ -17,6 +17,7 @@ export function createPostRoutes(): Router {
 
     router.get('/read/:id', postController.getPostDetail)
 
+    router.get('/', postController.getAll)
     // router.get("/video/:filename", postController.getStreamVideo)
 
     return router;

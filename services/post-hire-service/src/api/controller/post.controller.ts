@@ -3,6 +3,7 @@ import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
 import { CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
+import { IPaginationInput } from "../model/comment.model";
 
 export class PostController {
     private postService: IPostService
@@ -93,8 +94,15 @@ export class PostController {
     //     fileStream.pipe(res);
     // }
 
-    public getPosts = async (req: Request, res: Response, next: NextFunction) => {
-
+    public getAll = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const input = req.query as IPaginationInput
+            const data = await this.postService.getAllPost(input)
+            res.sendJson(data)
+        } catch (error) {
+            logger.error(`PostController.getAll: `, error);
+            next(error);
+        }
     }
 
     public deletePost = async (req: Request, res: Response, next: NextFunction) => {
