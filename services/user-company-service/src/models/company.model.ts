@@ -10,6 +10,12 @@ import { IndustryModel, UserModel } from ".";
 import { UserInstance } from "./user.model";
 import { IndustryInstance } from "./industry.model";
 
+export enum CompanyRoleRequestStatus {
+	PENDING = "PENDING",
+	APPROVED = "APPROVED",
+	REJECTED = "REJECTED",
+}
+
 export interface CompanyProperties {
 	companyId: string;
 	name: string;
@@ -28,6 +34,18 @@ interface ICompanyRelatedNodes {
 		IndustryInstance,
 		{},
 		{}
+	>;
+	CompanyRoleRequest: ModelRelatedNodesI<
+		typeof UserModel,
+		UserInstance,
+		{
+			Status: CompanyRoleRequestStatus;
+			RequestedAt: string;
+		},
+		{
+			status: string;
+			requestedAt: string;
+		}
 	>;
 }
 
@@ -74,6 +92,28 @@ export const getCompanyModel = (neogma: Neogma) => {
 					model: IndustryModel,
 					direction: "out",
 					name: "IN",
+				},
+				CompanyRoleRequest: {
+					model: UserModel,
+					direction: "in",
+					name: "REQUESTS_COMPANY_ROLE",
+					properties: {
+						Status: {
+							property: "status",
+							schema: {
+								type: "string",
+								required: true,
+								enum: Object.values(CompanyRoleRequestStatus),
+							},
+						},
+						RequestedAt: {
+							property: "requestedAt",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+					},
 				},
 			},
 		},

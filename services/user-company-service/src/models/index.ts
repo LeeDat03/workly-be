@@ -1,8 +1,8 @@
 import { Neogma } from "neogma";
+import { logger } from "../utils";
 import { getUserModel } from "./user.model";
 import { getIndustryModel } from "./industry.model";
 import { getCompanyModel } from "./company.model";
-import { logger } from "../utils";
 
 let UserModel: ReturnType<typeof getUserModel>;
 let IndustryModel: ReturnType<typeof getIndustryModel>;

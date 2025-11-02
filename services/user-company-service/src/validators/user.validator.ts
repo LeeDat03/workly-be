@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UserRole } from "../models/user.model";
+import { UserProperties, UserRole } from "../models/user.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -23,3 +23,11 @@ export const createUserSchema = z.object({
 });
 
 export type CreateUserSchema = z.infer<typeof createUserSchema>;
+
+export const toUserBasicDTO = (user: UserProperties) => {
+	return {
+		userId: user.userId,
+		email: user.email,
+		name: user.name,
+	};
+};

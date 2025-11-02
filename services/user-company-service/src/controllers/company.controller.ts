@@ -1,14 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { CompanyModel, IndustryModel } from "../models";
 import { CompanyProperties } from "../models/company.model";
-import { IndustryProperties } from "../models/industry.model";
-import { UserProperties } from "../models/user.model";
 import {
 	CreateCompanySchema,
 	toCompanyProfileDTO,
 	UpdateCompanySchema,
 } from "../validators";
 import { BadRequestError, NotFoundError } from "../utils/appError";
+import { Op } from "neogma";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
@@ -67,7 +66,7 @@ const createCompany = async (
 						merge: true,
 						params: {
 							// TODO: get user from jwt
-							email: "user1@gmail.com",
+							email: "user3@gmail.com",
 						},
 					},
 				},
@@ -86,19 +85,28 @@ const createCompany = async (
 	}
 };
 
-// TODO: not complete
+// TODO: CUSTOMIZE FOR EACH USER
 const getAllCompanies = async (
 	req: Request,
 	res: Response,
 	next: NextFunction,
 ) => {
 	try {
-		const companies = await CompanyModel.findMany({});
+		const page = Number(req.query.page) || 1;
+		const limit = Math.min(Number(req.query.limit) || 20, 20);
+		const offset = (page - 1) * limit;
+		const search = String(req.query.search || "");
 
-		const companyProfiles = companies.map((company) => {
-			return company.id;
+		const companies = await CompanyModel.findMany({
+			where: {
+				name: {
+					[Op.contains]: search,
+				},
+			},
+			limit,
+			skip: offset,
+			plain: true,
 		});
-		console.log(companyProfiles);
 
 		res.status(200).json({
 			status: "success",

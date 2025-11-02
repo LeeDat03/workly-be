@@ -79,6 +79,7 @@ export const getUserModel = (neogma: Neogma) => {
 		neogma,
 	);
 	UserModel.beforeCreate = (instance) => {
+		instance.userId = uuidv4();
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
 	};
