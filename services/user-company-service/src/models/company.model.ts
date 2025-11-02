@@ -1,8 +1,20 @@
-import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
-import { v4 as uuidv4 } from "uuid";
+import {
+	ModelFactory,
+	ModelRelatedNodesI,
+	Neogma,
+	NeogmaInstance,
+} from "neogma";
+import { nanoid } from "nanoid";
 
-import { database } from "../config/database";
 import { IndustryModel, UserModel } from ".";
+import { UserInstance } from "./user.model";
+import { IndustryInstance } from "./industry.model";
+
+export enum CompanyRoleRequestStatus {
+	PENDING = "PENDING",
+	APPROVED = "APPROVED",
+	REJECTED = "REJECTED",
+}
 
 export interface CompanyProperties {
 	companyId: string;
@@ -11,30 +23,53 @@ export interface CompanyProperties {
 	foundedYear?: number;
 	website?: string;
 	logoUrl?: string;
-	// TODO: move location to new table
 	location?: string;
 	[key: string]: any;
 }
 
-export type CompanyInstance = NeogmaInstance<CompanyProperties, {}>;
+interface ICompanyRelatedNodes {
+	Owner: ModelRelatedNodesI<typeof UserModel, UserInstance, {}, {}>;
+	Industry: ModelRelatedNodesI<
+		typeof IndustryModel,
+		IndustryInstance,
+		{},
+		{}
+	>;
+	CompanyRoleRequest: ModelRelatedNodesI<
+		typeof UserModel,
+		UserInstance,
+		{
+			Status: CompanyRoleRequestStatus;
+			RequestedAt: string;
+		},
+		{
+			status: string;
+			requestedAt: string;
+		}
+	>;
+}
 
-let CompanyModel: ReturnType<typeof ModelFactory<CompanyProperties>>;
+export type CompanyInstance = NeogmaInstance<
+	CompanyProperties,
+	ICompanyRelatedNodes
+>;
+
+let CompanyModel: ReturnType<
+	typeof ModelFactory<CompanyProperties, ICompanyRelatedNodes>
+>;
 
 export const getCompanyModel = (neogma: Neogma) => {
 	if (CompanyModel) {
-		console.log("runnnn");
 		return CompanyModel;
 	}
 
-	CompanyModel = ModelFactory<CompanyProperties>(
+	CompanyModel = ModelFactory<CompanyProperties, ICompanyRelatedNodes>(
 		{
 			label: "Company",
 			schema: {
 				companyId: {
 					type: "string",
 					required: true,
-					uniqueItems: true,
-					default: () => uuidv4(),
 				},
 				name: {
 					type: "string",
@@ -47,21 +82,57 @@ export const getCompanyModel = (neogma: Neogma) => {
 				location: { type: "string" },
 			},
 			primaryKeyField: "companyId",
+			relationships: {
+				Owner: {
+					model: UserModel,
+					direction: "in",
+					name: "OWNS",
+				},
+				Industry: {
+					model: IndustryModel,
+					direction: "out",
+					name: "IN",
+				},
+				CompanyRoleRequest: {
+					model: UserModel,
+					direction: "in",
+					name: "REQUESTS_COMPANY_ROLE",
+					properties: {
+						Status: {
+							property: "status",
+							schema: {
+								type: "string",
+								required: true,
+								enum: Object.values(CompanyRoleRequestStatus),
+							},
+						},
+						RequestedAt: {
+							property: "requestedAt",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+					},
+				},
+			},
 		},
 		neogma,
 	);
-	CompanyModel.addRelationships({
-		owner: {
-			model: () => UserModel,
-			direction: "in",
-			name: "OWNS",
-		},
-		industry: {
-			model: () => IndustryModel,
-			direction: "out",
-			name: "BELONGS_TO",
-		},
-	});
+
+	CompanyModel.beforeCreate = (instance) => {
+		instance.companyId = nanoid(12);
+	};
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT comapany_id_unique IF NOT EXISTS
+		FOR (c:Company)
+		REQUIRE c.companyId IS UNIQUE
+	`);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT company_name_unique IF NOT EXISTS
+		FOR (c:Company)
+		REQUIRE c.name IS UNIQUE
+	`);
 
 	return CompanyModel;
 };

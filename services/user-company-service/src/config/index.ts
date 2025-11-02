@@ -1,12 +1,6 @@
 import dotenv from "dotenv";
-import z from "zod";
 
 dotenv.config();
-
-const envSchema = z.object({
-	JWT_SECRET: z.string(),
-	JWT_EXPIRES_IN: z.string().default("90d"),
-});
 
 export const config = {
 	env: process.env.NODE_ENV || "development",

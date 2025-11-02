@@ -3,25 +3,36 @@ import * as authService from "../services/auth.service";
 import { CreateUserSchema } from "../validators";
 import { SigninSchema } from "../validators";
 import { config } from "../config";
+import { LoggedInUserRequest } from "../types";
 
-export const signup = async (
+const setCookie = (res: Response, token: string) => {
+	res.cookie("token", token, {
+		httpOnly: true,
+		secure: config.env === "production",
+		sameSite: "strict",
+		maxAge: 24 * 60 * 60 * 1000 * 90,
+	});
+};
+
+const signup = async (
 	req: Request<{}, {}, CreateUserSchema>,
 	res: Response,
 	next: NextFunction,
 ) => {
 	try {
-		const user = await authService.signup(req.body);
+		const { user, token } = await authService.signup(req.body);
+		setCookie(res, token);
 		res.status(201).json({
 			success: true,
 			message: "User created successfully",
-			data: user,
+			data: { user, token },
 		});
 	} catch (error) {
 		next(error);
 	}
 };
 
-export const signin = async (
+const signin = async (
 	req: Request<{}, {}, SigninSchema>,
 	res: Response,
 	next: NextFunction,
@@ -31,14 +42,7 @@ export const signin = async (
 			req.body.email,
 			req.body.password,
 		);
-
-		res.cookie("token", token, {
-			httpOnly: true,
-			secure: config.env === "production",
-			sameSite: "strict",
-			maxAge: 24 * 60 * 60 * 1000 * 90,
-		});
-
+		setCookie(res, token);
 		res.status(200).json({
 			success: true,
 			message: "Signed in successfully",
@@ -49,7 +53,18 @@ export const signin = async (
 	}
 };
 
-export const signout = (req: Request, res: Response) => {
+const signout = (req: Request, res: Response) => {
 	res.cookie("token", "", { httpOnly: true, expires: new Date(0) });
 	res.status(200).json({ success: true, message: "Signed out successfully" });
+};
+
+const getMe = (req: LoggedInUserRequest, res: Response) => {
+	res.status(200).json({ success: true, data: req.user });
+};
+
+export default {
+	signup,
+	signin,
+	signout,
+	getMe,
 };

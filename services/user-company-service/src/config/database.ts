@@ -51,6 +51,7 @@ class Neo4jDatabase {
 				FOR (u:User)
 				REQUIRE u.userId IS UNIQUE
 			`);
+
 			logger.info("✅ Neo4j constraints successfully set up.");
 		} catch (error) {
 			logger.error("⚠️ Error setting up Neo4j constraints:", error);

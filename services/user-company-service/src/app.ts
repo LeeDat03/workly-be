@@ -6,8 +6,8 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import { config } from "./config";
 import routes from "./routes";
-import { errorHandler, notFoundHandler } from "./middlewares";
 import logger from "./utils/logger";
+import { globalErrorHandler } from "./middlewares/errorHandler";
 
 class App {
 	public app: Application;
@@ -53,8 +53,7 @@ class App {
 	}
 
 	private initializeErrorHandling(): void {
-		this.app.use(notFoundHandler);
-		this.app.use(errorHandler);
+		this.app.use(globalErrorHandler);
 	}
 
 	public getApp(): Application {
