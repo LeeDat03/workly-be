@@ -8,6 +8,7 @@ import { NODE_ENV } from "@/common/enviroment";
 import logger from "@/common/logger";
 import { createPostRoutes } from "./routes/post.routes";
 import { ResponseMiddleware } from "./middlewares/response.middleware";
+import { PublicPath } from "@/config/app.constant";
 
 export class ExpressServer {
     private server?: Express;
@@ -87,6 +88,7 @@ export class ExpressServer {
         server.use(bodyParser.urlencoded({ extended: true }));
     }
     private configureRoutes(server: Express) {
+        server.use(PublicPath.PUBLIC_FILES, express.static('uploads'));
         const routes = createPostRoutes();
         server.use(routes)
     }

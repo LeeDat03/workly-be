@@ -19,7 +19,7 @@ export class RepositoryContainer {
             throw new Error('❌ Database must be connected before initializing repositories');
         }
 
-        this.postRepository = new PostRepository(dbAdapter.post);
+        this.postRepository = new PostRepository(dbAdapter);
         this.isInitialized = true;
 
         console.log('✅ RepositoryContainer initialized successfully');

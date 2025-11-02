@@ -2,6 +2,7 @@
 import { MongoClient, Db, Collection, Document } from 'mongodb';
 import logger from '@/common/logger';
 import { MONGODB_NAME, MONGODB_URL } from '@/common/enviroment';
+import { Post } from '@/api/model/post.model';
 
 export class DatabaseAdapter {
     private static instance: DatabaseAdapter;
@@ -27,9 +28,11 @@ export class DatabaseAdapter {
         }
         return DatabaseAdapter.instance;
     }
+
     public isConnected(): boolean {
         return this.db !== null;
     }
+
     async connect(): Promise<void> {
         try {
             await this.client.connect();
@@ -72,12 +75,12 @@ export class DatabaseAdapter {
 
 
     // Transaction support
-    async withTransaction<T>(
-        callback: (session: any) => Promise<T>
-    ): Promise<T> {
+    async withTransaction(
+        callback: (session: any) => Promise<any>
+    ): Promise<any> {
         const session = this.client.startSession();
         try {
-            let result: T;
+            let result: any;
             await session.withTransaction(async () => {
                 result = await callback(session);
             });

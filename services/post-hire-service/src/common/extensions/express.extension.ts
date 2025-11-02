@@ -2,6 +2,8 @@ import express from 'express';
 import { StatusCode } from '@/common/errors';
 
 express.response.sendJson = function (data?: object | any[]) {
+
+
     const isArray = Array.isArray(data);
     const isObject = typeof data === 'object' && data !== null && !isArray;
     const isPrimitive = typeof data === 'string' || typeof data === 'number' || typeof data === 'boolean';

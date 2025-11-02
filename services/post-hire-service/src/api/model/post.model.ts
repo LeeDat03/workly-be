@@ -1,4 +1,4 @@
-import { ObjectId } from 'mongodb';
+import { Document, ObjectId, WithId } from 'mongodb';
 
 export enum PostVisibilityType {
     PRIVATE = 'PRIVATE',
@@ -42,9 +42,11 @@ export interface CreatePostDTO {
 }
 
 export interface UpdatePostDTO {
-    author_type?: string;
     content?: string;
-    media_url?: MediaItem[];
+    media_url?: {
+        add: MediaItem[],
+        delete: MediaItem[]
+    };
     visibility?: PostVisibilityType;
 }
 
@@ -55,6 +57,15 @@ export interface PostResponse {
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
-    created_at: string;
-    updated_at: string;
+}
+
+export function mapToPostResponse(doc: WithId<Document>): PostResponse {
+    return {
+        _id: doc._id.toString(),
+        author_type: doc.author_type,
+        author_id: doc.author_id,
+        content: doc.content,
+        media_url: doc.media_url,
+        visibility: doc.visibility,
+    };
 }

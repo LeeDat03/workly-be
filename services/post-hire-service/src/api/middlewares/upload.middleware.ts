@@ -7,7 +7,7 @@ import { APIError } from '@/common/error/api.error';
 import logger from '@/common/logger';
 
 export class UploadMiddleware {
-    public static uploadFiles = () => {
+    public static uploadFiles = (target: string) => {
         /**
          * Middleware to handle file uploads.
          *
@@ -17,26 +17,69 @@ export class UploadMiddleware {
          *
          * @returns {Function} Express middleware function
          */
-        return (req: Request, res: Response, next: NextFunction) => {
+        return (req: Request, res: Response, next: NextFunction): any => {
             let folderPath: string;
 
-            folderPath = path.join(__dirname, '../../../uploads');
-
-            if (!fs.existsSync(folderPath)) {
-                fs.mkdirSync(folderPath, { recursive: true });
-            }
+            folderPath = path.join(__dirname, `../../../uploads/${target}`);
+            const ensureDirectoryExists = (dirPath: string) => {
+                if (!fs.existsSync(dirPath)) {
+                    fs.mkdirSync(dirPath, { recursive: true }); // recursive: true tạo cả thư mục cha
+                }
+            };
+            ensureDirectoryExists(folderPath);
+            ensureDirectoryExists(`${folderPath}/images`);
+            ensureDirectoryExists(`${folderPath}/videos`);
 
             const storage = multer.diskStorage({
                 destination: (req, file, cb) => {
-                    cb(null, folderPath);
+                    if (file.mimetype.startsWith('image/')) { cb(null, `${folderPath}/images`); };
+                    if (file.mimetype.startsWith('video/')) {
+                        cb(null, `${folderPath}/videos`);
+                    };
                 },
                 filename: (req, file, cb) => {
                     const uniqueSuffix = `${file.originalname}-${Date.now()}${path.extname(file.originalname)}`;
                     cb(null, uniqueSuffix);
                 },
             });
+            const ALLOWED_IMAGE_TYPES = [
+                'image/jpeg',
+                'image/jpg',
+                'image/png',
+                'image/gif',
+                'image/webp',
+                'image/svg+xml',
+            ];
 
-            const upload = multer({ storage }).any();
+            const ALLOWED_VIDEO_TYPES = [
+                'video/mp4',
+                'video/mpeg',
+                'video/quicktime', // .mov
+                'video/x-msvideo', // .avi
+                'video/x-matroska', // .mkv
+                'video/webm',
+            ];
+
+            const ALLOWED_MIME_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
+            // File filter
+            const fileFilter = (
+                req: Request,
+                file: Express.Multer.File,
+                cb: multer.FileFilterCallback
+            ) => {
+                if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+                    cb(null, true);
+                } else {
+                    cb(
+                        new APIError({
+                            message: 'common.upload.invalid_file_type',
+                            status: StatusCode.BAD_REQUEST,
+                        }) as any
+                    );
+                }
+            };
+
+            const upload = multer({ storage, fileFilter, limits: { fileSize: 1000 * 1024 * 1024 }, }).any();
 
             upload(req, res, async (err) => {
                 if (err) {
@@ -50,27 +93,18 @@ export class UploadMiddleware {
                 }
 
                 const files = req.files as Express.Multer.File[];
-                let keys = req.body.keys;
-
-                if (!Array.isArray(keys)) {
-                    keys = keys ? [keys] : [];
-                }
-
-                if (!files || files.length !== keys.length) {
-                    return next(
-                        new APIError({
-                            message: 'common.upload.mismatch',
-                            status: StatusCode.BAD_REQUEST,
-                        }),
-                    );
-                }
 
                 try {
-                    let uploadedUrls: Record<string, string> = {};
+                    let uploadedUrls: Record<string, string[]> = {};
 
                     files.forEach((file, index) => {
-                        const fileUrl = `/uploads/${file.filename}`;
-                        uploadedUrls[keys[index]] = fileUrl;
+                        let fileUrl = `/uploads/${target}/${file.filename}`;
+                        if (file.mimetype.startsWith('image/')) fileUrl = `/uploads/${target}/images/${file.filename}`;
+                        if (file.mimetype.startsWith('video/')) fileUrl = `/videos/${file.filename}`;
+                        if (!uploadedUrls[file.fieldname]) {
+                            uploadedUrls[file.fieldname] = [];
+                        }
+                        uploadedUrls[file.fieldname].push(fileUrl);
                     });
 
                     res.json(uploadedUrls);
