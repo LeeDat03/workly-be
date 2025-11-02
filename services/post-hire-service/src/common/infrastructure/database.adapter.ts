@@ -73,6 +73,9 @@ export class DatabaseAdapter {
         return this.collection('post');
     }
 
+    get comment() {
+        return this.collection('comment');
+    }
 
     // Transaction support
     async withTransaction(

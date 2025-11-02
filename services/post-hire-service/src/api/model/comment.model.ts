@@ -1,21 +1,27 @@
-export interface IPaginationInput {
-    page?: number;
-    size?: number;
-    startIndex?: number;
-    sortField?: string;
-    sortOrder?: number; //0: asc, 1: desc
-    startAt?: DateString;
-    endAt?: DateString;
+import { ObjectId } from "bson/bson";
+
+export interface Comment {
+    _id: ObjectId;
+    postId: ObjectId;
+    parentId?: ObjectId;
+    authorId: ObjectId;
+    content: string;
+    mediaFile?: string;
+    createdAt: Date;
 }
 
-export interface PaginationInfo {
-    page: number;
-    size: number;
-    total: number;
-    totalPages: number;
+export interface CreateCommentDTO {
+    postId: ObjectId;
+    parentId?: ObjectId; //null -> root comment
+    authorId: ObjectId;
+    content: string;
+    mediaFile?: string;
 }
 
-export interface PagingList<T> {
-    data: T[];
-    pagination: PaginationInfo;
+export interface UpdateCommentDTO {
+    content: string;
+    mediaFile?: {
+        add: string,
+        delete: string
+    };
 }

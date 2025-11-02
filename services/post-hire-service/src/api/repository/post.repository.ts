@@ -1,7 +1,7 @@
 import { CreatePostDTO, Post, PostResponse, UpdatePostDTO } from "@/api/model/post.model";
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { Document, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
-import { IPaginationInput, PagingList } from "../model/comment.model";
+import { IPaginationInput, PagingList } from "../model/common.model";
 
 export interface IPostRepository {
     createPost(post: CreatePostDTO): Promise<InsertOneResult>
@@ -72,8 +72,7 @@ export class PostRepository implements IPostRepository {
     }
 
     public async getPostDetail(id: ObjectId): Promise<WithId<Document> | null> {
-        const post = await this.postCollection.post.findOne({ _id: id })
-        return post;
+        return await this.postCollection.post.findOne({ _id: id })
     }
 
     public async getAll(): Promise<any[]> {

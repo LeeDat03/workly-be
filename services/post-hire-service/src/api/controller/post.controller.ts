@@ -3,7 +3,10 @@ import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
 import { CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
-import { IPaginationInput } from "../model/comment.model";
+import { IPaginationInput } from "../model/common.model";
+import path from "path";
+import fs from "fs"
+import mime from 'mime-types';
 
 export class PostController {
     private postService: IPostService
@@ -58,41 +61,41 @@ export class PostController {
         }
     }
 
-    // public getStreamVideo = async (req: Request, res: Response, next: NextFunction) => {
-    //     const videoPath = path.join(__dirname, 'uploads/videos', req.params.filename);
+    public getStreamVideo = async (req: Request, res: Response, next: NextFunction) => {
+        const videoPath = path.join(__dirname, '../../../uploads/videos', req.params.filename);
 
-    //     if (!fs.existsSync(videoPath)) {
-    //         return res.status(404).send('Video not found');
-    //     }
+        if (!fs.existsSync(videoPath)) {
+            return res.status(404).send('Video not found');
+        }
 
-    //     const fileSize = fs.statSync(videoPath).size;
-    //     const range = req.headers.range;
-    //     if (!range) {
-    //         // Không có range => gửi toàn bộ video
-    //         res.writeHead(200, {
-    //             'Content-Length': fileSize,
-    //             'Content-Type': mime.getType(videoPath) || 'video/mp4',
-    //         });
-    //         fs.createReadStream(videoPath).pipe(res);
-    //         return;
-    //     }
+        const fileSize = fs.statSync(videoPath).size;
+        const range = req.headers.range;
+        if (!range) {
+            // Không có range => gửi toàn bộ video
+            res.writeHead(200, {
+                'Content-Length': fileSize,
+                'Content-Type': mime.lookup(videoPath) || 'video/mp4',
+            });
+            fs.createReadStream(videoPath).pipe(res);
+            return;
+        }
 
-    //     const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
-    //     const start = parseInt(startStr, 10);
-    //     const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
-    //     const chunkSize = end - start + 1;
+        const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+        const start = parseInt(startStr, 10);
+        const end = endStr ? parseInt(endStr, 10) : fileSize - 1;
+        const chunkSize = end - start + 1;
 
-    //     const fileStream = fs.createReadStream(videoPath, { start, end });
+        const fileStream = fs.createReadStream(videoPath, { start, end });
 
-    //     res.writeHead(206, {
-    //         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-    //         'Accept-Ranges': 'bytes',
-    //         'Content-Length': chunkSize,
-    //         'Content-Type': mime.getType(videoPath) || 'video/mp4',
-    //     });
+        res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': mime.lookup(videoPath) || 'video/mp4',
+        });
 
-    //     fileStream.pipe(res);
-    // }
+        fileStream.pipe(res);
+    }
 
     public getAll = async (req: Request, res: Response, next: NextFunction) => {
         try {

@@ -6,7 +6,7 @@ import logger from "../logger";
 import { FileUtil } from "@/util/fileUtil";
 
 export class CleanupJob {
-    public static TARGET_DIR = path.resolve(__dirname, "../../../uploads/posts");
+    public static TARGET_DIR = path.resolve(__dirname, "../../../uploads");
 
     public static async cleanupFile(dir: string) {
         try {

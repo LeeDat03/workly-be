@@ -1,8 +1,10 @@
 import { IPostRepository, PostRepository } from "@/api/repository/post.repository";
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
+import { CommentRepository, ICommentRepository } from "@/api/repository/comment.repository";
 
 export class RepositoryContainer {
     private static postRepository: IPostRepository;
+    private static commentRepository: ICommentRepository;
 
     private static isInitialized = false;
 
@@ -20,6 +22,7 @@ export class RepositoryContainer {
         }
 
         this.postRepository = new PostRepository(dbAdapter);
+        this.commentRepository = new CommentRepository(dbAdapter);
         this.isInitialized = true;
 
         console.log('✅ RepositoryContainer initialized successfully');
@@ -30,5 +33,11 @@ export class RepositoryContainer {
             throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
         }
         return this.postRepository;
+    }
+    static getCommentRepository(): ICommentRepository {
+        if (!this.isInitialized) {
+            throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
+        }
+        return this.commentRepository;
     }
 }

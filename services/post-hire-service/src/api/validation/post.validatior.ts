@@ -1,6 +1,7 @@
 import { wrapSchema } from "@/util/wrap-schema.util";
 import { Joi } from "express-validation";
 import { AuthorType, CreatePostDTO, MediaItem, MediaType, PostVisibilityType, UpdatePostDTO } from "@/api/model/post.model";
+import { objectId } from "@/api/validation/common.validator";
 
 const mediaItem = Joi.object<MediaItem>({
     url: Joi.string()
@@ -19,13 +20,6 @@ const mediaItem = Joi.object<MediaItem>({
             'any.required': 'Media type is required'
         })
 });
-
-// Custom validator for ObjectId
-const objectId = Joi.string()
-    .pattern(/^[0-9a-fA-F]{24}$/)
-    .messages({
-        'string.pattern.base': 'Invalid ID format'
-    });
 
 // Schema for visibility
 const visibility = Joi.string()

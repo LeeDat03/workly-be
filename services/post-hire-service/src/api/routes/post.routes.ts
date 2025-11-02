@@ -1,8 +1,9 @@
 import express, { Router } from 'express';
 import { createPost, updatePost } from '@/api/validation/post.validatior';
 import { validateRequest } from '@/api/middlewares/validate.middleware';
-import { ControllerContainer } from '../container/controller.container';
-import { UploadMiddleware } from '../middlewares/upload.middleware';
+import { ControllerContainer } from '@/api/container/controller.container';
+import { UploadMiddleware } from '@/api/middlewares/upload.middleware';
+import { createComment, updateComment } from '@/api/validation/comment.validator';
 
 export function createPostRoutes(): Router {
     const router = express.Router()
@@ -13,12 +14,19 @@ export function createPostRoutes(): Router {
 
     router.put("/update/:id", validateRequest(updatePost), postController.updatePost)
 
-    router.post('/uploads', UploadMiddleware.uploadFiles('posts'), postController.uploadFile)
+    router.post('/uploads', UploadMiddleware.uploadFiles(), postController.uploadFile)
 
     router.get('/read/:id', postController.getPostDetail)
 
     router.get('/', postController.getAll)
-    // router.get("/video/:filename", postController.getStreamVideo)
+
+    router.get("/video/:filename", postController.getStreamVideo)
+
+    const commentController = ControllerContainer.getCommentController()
+
+    router.post("/comment/create", validateRequest(createComment), commentController.createComment);
+    router.put("/comment/update/:id", validateRequest(updateComment), commentController.updateComment);
+
 
     return router;
 }

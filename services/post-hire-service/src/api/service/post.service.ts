@@ -5,8 +5,8 @@ import path from "path";
 import { FileUtil } from "@/util/fileUtil";
 import { APIError } from "@/common/error/api.error";
 import { StatusCode } from "@/common/errors";
-import { IPaginationInput, PagingList } from "../model/comment.model";
 import { log } from "console";
+import { IPaginationInput, PagingList } from "../model/common.model";
 
 export interface IPostService {
     createPost(post: CreatePostDTO): Promise<InsertOneResult>

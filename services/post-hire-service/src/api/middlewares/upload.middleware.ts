@@ -7,7 +7,7 @@ import { APIError } from '@/common/error/api.error';
 import logger from '@/common/logger';
 
 export class UploadMiddleware {
-    public static uploadFiles = (target: string) => {
+    public static uploadFiles = () => {
         /**
          * Middleware to handle file uploads.
          *
@@ -20,7 +20,7 @@ export class UploadMiddleware {
         return (req: Request, res: Response, next: NextFunction): any => {
             let folderPath: string;
 
-            folderPath = path.join(__dirname, `../../../uploads/${target}`);
+            folderPath = path.join(__dirname, `../../../uploads`);
             const ensureDirectoryExists = (dirPath: string) => {
                 if (!fs.existsSync(dirPath)) {
                     fs.mkdirSync(dirPath, { recursive: true }); // recursive: true tạo cả thư mục cha
@@ -98,8 +98,8 @@ export class UploadMiddleware {
                     let uploadedUrls: Record<string, string[]> = {};
 
                     files.forEach((file, index) => {
-                        let fileUrl = `/uploads/${target}/${file.filename}`;
-                        if (file.mimetype.startsWith('image/')) fileUrl = `/uploads/${target}/images/${file.filename}`;
+                        let fileUrl = `/uploads/${file.filename}`;
+                        if (file.mimetype.startsWith('image/')) fileUrl = `/images/${file.filename}`;
                         if (file.mimetype.startsWith('video/')) fileUrl = `/videos/${file.filename}`;
                         if (!uploadedUrls[file.fieldname]) {
                             uploadedUrls[file.fieldname] = [];
