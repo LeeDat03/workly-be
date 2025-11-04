@@ -39,3 +39,5 @@ export const getIndustryModel = (neogma: Neogma) => {
 
 	return IndustryModel;
 };
+
+export type IndustryModelType = typeof IndustryModel;

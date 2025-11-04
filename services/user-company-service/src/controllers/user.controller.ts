@@ -1,29 +1,12 @@
 import { Request, Response, NextFunction } from "express";
-import { ApiResponse } from "../types";
-import { UserProperties, UserRole } from "../models/user.model";
-import { CreateUserSchema } from "../validators";
-import { UserModel } from "../models";
-import { get } from "http";
+import { toUserProfileDTO, UpdateUserProfileSchema } from "../validators";
+import { IndustryModel, UserModel } from "../models";
+import { Op } from "neogma";
+import { LoggedInUserRequest } from "../types";
+import { BadRequestError, NotFoundError } from "../utils/appError";
 
-const createUser = async (req: Request, res: Response, next: NextFunction) => {
-	try {
-		const userData: CreateUserSchema = req.body;
-		console.log(userData);
-
-		const newUserModel = await UserModel.createOne({
-			...userData,
-			role: UserRole.USER,
-		} as UserProperties);
-		const newUser = newUserModel.dataValues;
-
-		const response: ApiResponse<UserProperties> = {
-			success: true,
-			data: newUser,
-		};
-		res.status(201).json(response);
-	} catch (error) {
-		next(error);
-	}
+const extractRelationshipData = (relationships: any[]) => {
+	return relationships[0]?.target?.dataValues || null;
 };
 
 export const getAllUsers = async (
@@ -32,16 +15,98 @@ export const getAllUsers = async (
 	next: NextFunction,
 ) => {
 	try {
-		const users = await UserModel.findMany();
+		const page = Number(req.query.page) || 1;
+		const limit = Math.min(Number(req.query.limit) || 20, 20);
+		const offset = (page - 1) * limit;
+		const search = String(req.query.search || "");
 
-		const usersWithoutPasswords = users.map((user) => {
-			const { password, ...userSafe } = user;
-			return userSafe;
+		const users = await UserModel.findMany({
+			where: {
+				name: {
+					[Op.contains]: search,
+				},
+			},
+			limit: limit,
+			skip: offset,
+			plain: true,
 		});
+
+		const usersDTO = users.map((user: any) => toUserProfileDTO(user));
 
 		res.status(200).json({
 			success: true,
-			data: usersWithoutPasswords,
+			data: usersDTO,
+			pagination: {
+				page,
+				limit,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateUser = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const data: UpdateUserProfileSchema = req.body;
+		const userId = req.user!.userId;
+
+		const { industryId, ...propertiesToUpdate } = data;
+
+		const user = await UserModel.findOne({
+			where: {
+				userId,
+			},
+		});
+
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		Object.assign(user, propertiesToUpdate);
+
+		await user.save();
+
+		if (industryId !== undefined) {
+			if (industryId === "") {
+				await user.updateRelationships({
+					alias: "Industry",
+					disconnectAll: true,
+				});
+			} else {
+				const industry = await IndustryModel.findOne({
+					where: { industryId },
+				});
+				if (!industry) {
+					throw new BadRequestError("Industry not found");
+				}
+				await user.updateRelationships({
+					alias: "Industry",
+					where: {
+						params: { industryId },
+					},
+					disconnectAll: true,
+					connect: true,
+				});
+			}
+		}
+
+		const industryRelationship = await user.findRelationships({
+			alias: "Industry",
+		});
+
+		const industryData = extractRelationshipData(industryRelationship);
+
+		const userProfile = toUserProfileDTO(user.dataValues, industryData);
+
+		res.status(200).json({
+			success: true,
+			message: "Profile updated successfully",
+			data: userProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -49,6 +114,6 @@ export const getAllUsers = async (
 };
 
 export default {
-	createUser,
 	getAllUsers,
+	updateUser,
 };
