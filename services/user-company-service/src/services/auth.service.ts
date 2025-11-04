@@ -9,11 +9,6 @@ import { ApiError } from "../utils/ApiError";
 import { sendEmail } from "../utils/mail";
 import { verifyToken } from "../utils/jwt";
 
-/**
- * Hàm tạo JWT token
- * @param userId - ID của user
- * @returns {string} - JWT token
- */
 const generateToken = (userId: string, role: UserRole): string => {
 	const options: SignOptions = {
 		expiresIn: config.jwt.expiresIn as jwt.SignOptions["expiresIn"],
@@ -22,11 +17,6 @@ const generateToken = (userId: string, role: UserRole): string => {
 	return jwt.sign({ id: userId, role }, config.jwt.secret, options);
 };
 
-/**
- * Đăng ký người dùng mới
- * @param {CreateUserSchema} userData - Dữ liệu người dùng từ validator
- * @returns {Promise<object>} - Thông tin người dùng (không bao gồm password)
- */
 export const signup = async (userData: CreateUserSchema) => {
 	const existingUser = await UserModel.findOne({
 		where: { email: userData.email },
