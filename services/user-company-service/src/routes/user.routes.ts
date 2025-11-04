@@ -1,11 +1,19 @@
 import userController from "../controllers/user.controller";
+import { isAuthenticated } from "../middlewares";
 import { validate } from "../middlewares/validation";
-import { createUserSchema } from "../validators/user.validator";
+import { updateUserProfileSchema } from "../validators/user.validator";
 import { Router } from "express";
 
 const router = Router();
 
-router.post("/", validate(createUserSchema), userController.createUser);
 router.get("/", userController.getAllUsers);
+
+router.use(isAuthenticated);
+
+router.patch(
+	"/me",
+	validate(updateUserProfileSchema),
+	userController.updateUser,
+);
 
 export default router;

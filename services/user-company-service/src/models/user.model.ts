@@ -1,6 +1,15 @@
-import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
-import { database } from "../config/database";
-import { v4 as uuidv4 } from "uuid";
+import {
+	ModelFactory,
+	ModelRelatedNodesI,
+	Neogma,
+	NeogmaInstance,
+} from "neogma";
+import {
+	IndustryInstance,
+	getIndustryModel,
+	IndustryModelType,
+} from "./industry.model";
+import { nanoid } from "nanoid";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
@@ -12,6 +21,7 @@ export interface UserProperties {
 	email: string;
 	password: string;
 	name: string;
+	phone?: string;
 	bio?: string;
 	headline?: string;
 	avatarUrl?: string;
@@ -23,24 +33,42 @@ export interface UserProperties {
 	[key: string]: any;
 }
 
-export type UserInstance = NeogmaInstance<UserProperties, {}>;
+interface IUserRelatedNodes {
+	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
+	// Skills: ModelRelatedNodesI<typeof SkillModel, SkillInstance, {}, {}>;
+	// WorkExperiences: ModelRelatedNodesI<
+	// 	typeof WorkExperienceModel,
+	// 	WorkExperienceInstance,
+	// 	{},
+	// 	{}
+	// >;
+	// Educations: ModelRelatedNodesI<
+	// 	typeof EducationModel,
+	// 	EducationInstance,
+	// 	{},
+	// 	{}
+	// >;
+}
 
-let UserModel: ReturnType<typeof ModelFactory<UserProperties>>;
+export type UserInstance = NeogmaInstance<UserProperties, IUserRelatedNodes>;
+
+let UserModel: ReturnType<
+	typeof ModelFactory<UserProperties, IUserRelatedNodes>
+>;
 
 export const getUserModel = (neogma: Neogma) => {
 	if (UserModel) {
-		console.log("runnnn");
 		return UserModel;
 	}
+	const IndustryModel = getIndustryModel(neogma);
 
-	UserModel = ModelFactory<UserProperties>(
+	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
 			label: "User",
 			schema: {
 				userId: {
 					type: "string",
 					unique: true,
-					default: () => uuidv4(),
 				},
 				email: {
 					type: "string",
@@ -55,6 +83,7 @@ export const getUserModel = (neogma: Neogma) => {
 					type: "string",
 					required: true,
 				},
+				phone: { type: "string" },
 				bio: { type: "string" },
 				headline: { type: "string" },
 				avatarUrl: { type: "string" },
@@ -67,22 +96,58 @@ export const getUserModel = (neogma: Neogma) => {
 				},
 				createdAt: {
 					type: "string",
-					default: () => new Date().toISOString(),
+					required: true,
 				},
 				updatedAt: {
 					type: "string",
-					default: () => new Date().toISOString(),
+					required: true,
 				},
 			},
 			primaryKeyField: "userId",
+			relationships: {
+				Industry: {
+					model: IndustryModel,
+					direction: "out",
+					name: "IN_INDUSTRY",
+				},
+				// Skills: {
+				// 	model: SkillModel,
+				// 	direction: "out",
+				// 	name: "HAS_SKILL",
+				// },
+				// WorkExperiences: {
+				// 	model: WorkExperienceModel,
+				// 	direction: "out",
+				// 	name: "HAS_WORK_EXPERIENCE",
+				// },
+				// Educations: {
+				// 	model: EducationModel,
+				// 	direction: "out",
+				// 	name: "HAS_EDUCATION",
+				// },
+			},
 		},
 		neogma,
 	);
 	UserModel.beforeCreate = (instance) => {
-		instance.userId = uuidv4();
+		instance.userId = nanoid(12); // Dùng nanoid cho nhất quán
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
+		if (!instance.role) {
+			instance.role = UserRole.USER;
+		}
 	};
+
+	neogma.queryRunner.run(`
+        CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+        FOR (u:User)
+        REQUIRE u.userId IS UNIQUE
+    `);
+	neogma.queryRunner.run(`
+        CREATE CONSTRAINT user_email_unique IF NOT EXISTS
+        FOR (u:User)
+        REQUIRE u.email IS UNIQUE
+    `);
 
 	return UserModel;
 };
