@@ -21,4 +21,13 @@ export const config = {
 		secret: process.env.JWT_SECRET || "fallback_secret",
 		expiresIn: process.env.JWT_EXPIRES_IN || "90d",
 	},
+
+	mail: {
+		host: process.env.MAIL_HOST!,
+		port: Number(process.env.MAIL_PORT),
+		user: process.env.MAIL_USER!,
+		pass: process.env.MAIL_PASS!,
+		fromEmail: process.env.MAIL_FROM_EMAIL!,
+		fromName: process.env.MAIL_FROM_NAME!,
+	},
 } as const;

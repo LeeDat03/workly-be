@@ -46,7 +46,7 @@ class App {
 		this.app.get("/", (req, res) => {
 			res.json({
 				success: true,
-				message: "User-Company Service API",
+				message: "User-Company Service API is healthy",
 				version: "1.0.0",
 			});
 		});

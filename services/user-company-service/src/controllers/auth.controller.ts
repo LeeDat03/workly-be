@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import * as authService from "../services/auth.service";
-import { CreateUserSchema } from "../validators";
+import {
+	CreateUserSchema,
+	ForgotPasswordSchema,
+	ResetPasswordSchema,
+} from "../validators";
 import { SigninSchema } from "../validators";
 import { config } from "../config";
 import { LoggedInUserRequest } from "../types";
@@ -62,9 +66,39 @@ const getMe = (req: LoggedInUserRequest, res: Response) => {
 	res.status(200).json({ success: true, data: req.user });
 };
 
+const forgotPassword = async (
+	req: Request<{}, {}, ForgotPasswordSchema>,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const result = await authService.forgotPassword(req.body.email);
+		res.status(200).json({ success: true, ...result });
+	} catch (err) {
+		next(err);
+	}
+};
+
+const resetPassword = async (
+	req: Request<{}, {}, ResetPasswordSchema>,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { token } = req.params as { token: string };
+		const { newPassword } = req.body;
+		const result = await authService.resetPassword(token, newPassword);
+		res.status(200).json({ success: true, ...result });
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	signup,
 	signin,
 	signout,
 	getMe,
+	forgotPassword,
+	resetPassword,
 };

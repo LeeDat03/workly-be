@@ -1,16 +1,14 @@
 import bcrypt from "bcryptjs";
-import jwt, { SignOptions } from "jsonwebtoken";
+import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
 import { CreateUserSchema } from "../validators";
 import { UserModel } from "../models";
 import { config } from "../config";
 import { UserProperties, UserRole } from "../models/user.model";
 import { ConflictError, UnauthorizedError } from "../utils/appError";
+import { ApiError } from "../utils/ApiError";
+import { sendEmail } from "../utils/mail";
+import { verifyToken } from "../utils/jwt";
 
-/**
- * Hàm tạo JWT token
- * @param userId - ID của user
- * @returns {string} - JWT token
- */
 const generateToken = (userId: string, role: UserRole): string => {
 	const options: SignOptions = {
 		expiresIn: config.jwt.expiresIn as jwt.SignOptions["expiresIn"],
@@ -19,11 +17,6 @@ const generateToken = (userId: string, role: UserRole): string => {
 	return jwt.sign({ id: userId, role }, config.jwt.secret, options);
 };
 
-/**
- * Đăng ký người dùng mới
- * @param {CreateUserSchema} userData - Dữ liệu người dùng từ validator
- * @returns {Promise<object>} - Thông tin người dùng (không bao gồm password)
- */
 export const signup = async (userData: CreateUserSchema) => {
 	const existingUser = await UserModel.findOne({
 		where: { email: userData.email },
@@ -37,7 +30,7 @@ export const signup = async (userData: CreateUserSchema) => {
 	const newUserProperties = await UserModel.createOne({
 		...userData,
 		password: hashedPassword,
-	} as unknown as UserProperties);
+	} as UserProperties);
 
 	const token = generateToken(
 		newUserProperties.dataValues.userId,
@@ -49,12 +42,6 @@ export const signup = async (userData: CreateUserSchema) => {
 	return { user: userWithoutPassword, token };
 };
 
-/**
- * Đăng nhập người dùng
- * @param {string} email
- * @param {string} pass - Mật khẩu
- * @returns {Promise<{user: object, token: string}>}
- */
 export const signin = async (email: string, pass: string) => {
 	const user = await UserModel.findOne({ where: { email } });
 	if (!user) {
@@ -71,4 +58,50 @@ export const signin = async (email: string, pass: string) => {
 	const { password, ...userWithoutPassword } = user.dataValues;
 
 	return { user: userWithoutPassword, token };
+};
+
+export const forgotPassword = async (email: string) => {
+	const user = await UserModel.findOne({ where: { email } });
+	if (!user) throw new ApiError(404, "User not found");
+
+	const resetToken = jwt.sign({ userId: user.userId }, config.jwt.secret, {
+		expiresIn: "15m",
+	});
+
+	await sendEmail(
+		user.email,
+		"Workly Support - Password Reset",
+		`
+		<h3>Hello ${user.name || ""},</h3>
+		<p>We received a request to reset your password.</p>
+		<p>Please use the token below to reset your password:</p>
+		<pre style="padding: 10px; background: #f2f2f2;">${resetToken}</pre>
+		<p>This token will expire in <b>15 minutes</b>.</p>
+		<br/>
+		<p>Workly Support</p>
+		`,
+	);
+
+	return { message: "Reset token sent to your email." };
+};
+
+export const resetPassword = async (token: string, newPassword: string) => {
+	try {
+		const decoded = verifyToken(token) as JwtPayload;
+
+		const user = await UserModel.findOne({
+			where: { userId: decoded.userId || decoded.id },
+		});
+		if (!user) throw new ApiError(404, "User not found");
+
+		const hashedPassword = await bcrypt.hash(newPassword, 10);
+		await UserModel.update(
+			{ password: hashedPassword },
+			{ where: { userId: user.userId } },
+		);
+
+		return { message: "Password reset successfully" };
+	} catch {
+		throw new ApiError(400, "Invalid or expired token");
+	}
 };
