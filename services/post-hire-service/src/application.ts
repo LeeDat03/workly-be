@@ -5,6 +5,8 @@ import logger from "@/common/logger";
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { ContainerManager } from "./api/container";
 import { initializeIndexModel } from './api/model/model';
+import { RedisAdapter } from '@/common/infrastructure/redis.adapter';
+import { WorkerServer } from './worker/server';
 
 export class Application {
 
@@ -13,21 +15,26 @@ export class Application {
 
     public static async createApplication(): Promise<ExpressServer> {
         await this.databaseInstance.connect();
+        await RedisAdapter.connect();
         await ContainerManager.initializeAll();
         await initializeIndexModel();
         const expressServer = new ExpressServer();
         await expressServer.setup(Number(PORT));
-        Application.handleExit(expressServer);
+        const workerServer = new WorkerServer();
+        await workerServer.setup();
+        Application.handleExit(expressServer, workerServer);
 
         return expressServer;
     }
 
     // private static handleExit(expressServer: ExpressServer, workerServer: WorkerServer, socketServer: SocketServer) {
-    private static handleExit(expressServer: ExpressServer) {
+    private static handleExit(expressServer: ExpressServer, workerServer: WorkerServer) {
         const shutdown = async (exitCode: number) => {
             logger.info('Starting graceful shutdown...');
             try {
                 await expressServer.kill();
+                await workerServer.kill();
+
                 logger.info('Shutdown complete, bye bye!');
                 process.exit(exitCode);
             } catch (err) {

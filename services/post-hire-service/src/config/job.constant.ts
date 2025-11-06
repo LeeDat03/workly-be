@@ -1,0 +1,1 @@
+export const ADD_POST_JOB = 'add-post-job';

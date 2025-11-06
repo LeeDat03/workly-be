@@ -4,9 +4,11 @@ import logger from "@/common/logger";
 import { CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
 import { IPaginationInput } from "../model/common.model";
+import { ADD_POST_JOB as JOB_NAME } from "@/config/job.constant"
 import path from "path";
 import fs from "fs"
 import mime from 'mime-types';
+import { QueueService } from "../service/queue.service";
 
 export class PostController {
     private postService: IPostService
@@ -20,6 +22,8 @@ export class PostController {
     public createPost = async (req: Request, res: Response, next: NextFunction) => {
         try {
             const body = req.body as CreatePostDTO
+            const queue = await QueueService.getQueue<any>(JOB_NAME);
+            queue.add({ a: "hihi", b: "hahah" }, { removeOnComplete: true, removeOnFail: true })
             const result = await this.postService.createPost(body)
             res.sendJson(result)
         } catch (error) {

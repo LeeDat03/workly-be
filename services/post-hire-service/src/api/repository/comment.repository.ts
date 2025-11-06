@@ -1,6 +1,7 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
-import { CreateCommentDTO, UpdateCommentDTO } from "../model/comment.model";
+import { CommentResponse, CreateCommentDTO, UpdateCommentDTO } from "../model/comment.model";
 import { Document, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
+import { IPaginationInput, PagingList } from "../model/common.model";
 
 export interface ICommentRepository {
     createComment(data: CreateCommentDTO): Promise<InsertOneResult>
@@ -40,5 +41,70 @@ export class CommentRepository implements ICommentRepository {
                 $set: updateFields
             }
         )
+    }
+
+    public getPagingRootComment = async (input: IPaginationInput, postId: ObjectId): Promise<PagingList<CommentResponse>> => {
+        const page = input.page ?? 1;
+        const size = input.size ?? 10;
+        const skip = (page - 1) * size;
+        let query: any = { postId: postId };
+
+        const [result, total] = await Promise.all([
+            this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
+            this.commentCollection.comment.countDocuments(),
+        ]);
+        const data = await Promise.all(
+            result.map(async (item) => {
+                const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
+                return {
+                    authorId: item.content,
+                    content: item.content,
+                    mediaFile: item.mediaFile,
+                    replyCount: countSubComment,
+                };
+            })
+        );
+        return {
+            data,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
+    }
+    public getPagingComment = async (input: IPaginationInput, parentId: ObjectId): Promise<PagingList<CommentResponse>> => {
+        const page = input.page ?? 1;
+        const size = input.size ?? 10;
+        const skip = (page - 1) * size;
+        let query: any = { parentId: parentId };
+
+        const [result, total] = await Promise.all([
+            this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
+            this.commentCollection.comment.countDocuments(),
+        ]);
+
+        const data = await Promise.all(
+            result.map(async (item) => {
+                const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
+                return {
+                    authorId: item.content,
+                    content: item.content,
+                    mediaFile: item.mediaFile,
+                    replyCount: countSubComment,
+                };
+            })
+        )
+
+        return {
+            data,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
     }
 }

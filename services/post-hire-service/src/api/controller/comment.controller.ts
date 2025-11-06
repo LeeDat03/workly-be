@@ -36,4 +36,6 @@ export class CommentController {
             next(error);
         }
     }
+
+    public getAllComment = async () => { }
 }
