@@ -9,6 +9,12 @@ import {
 	getIndustryModel,
 	IndustryModelType,
 } from "./industry.model";
+import { SkillInstance, getSkillModel, SkillModelType } from "./skill.model";
+import {
+	SchoolInstance,
+	getSchoolModel,
+	SchoolModelType,
+} from "./school.model";
 import { nanoid } from "nanoid";
 
 export enum UserRole {
@@ -35,6 +41,8 @@ export interface UserProperties {
 
 interface IUserRelatedNodes {
 	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
+	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
+	School: ModelRelatedNodesI<SchoolModelType, SchoolInstance, {}, {}>;
 	// Skills: ModelRelatedNodesI<typeof SkillModel, SkillInstance, {}, {}>;
 	// WorkExperiences: ModelRelatedNodesI<
 	// 	typeof WorkExperienceModel,
@@ -61,6 +69,8 @@ export const getUserModel = (neogma: Neogma) => {
 		return UserModel;
 	}
 	const IndustryModel = getIndustryModel(neogma);
+	const SkillModel = getSkillModel(neogma);
+	const SchoolModel = getSchoolModel(neogma);
 
 	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
@@ -110,11 +120,16 @@ export const getUserModel = (neogma: Neogma) => {
 					direction: "out",
 					name: "IN_INDUSTRY",
 				},
-				// Skills: {
-				// 	model: SkillModel,
-				// 	direction: "out",
-				// 	name: "HAS_SKILL",
-				// },
+				Skill: {
+					model: SkillModel,
+					direction: "out",
+					name: "HAS_SKILL",
+				},
+				School: {
+					model: SchoolModel,
+					direction: "out",
+					name: "ATTENDED_SCHOOL",
+				},
 				// WorkExperiences: {
 				// 	model: WorkExperienceModel,
 				// 	direction: "out",
