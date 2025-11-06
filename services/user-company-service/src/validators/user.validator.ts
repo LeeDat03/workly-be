@@ -2,7 +2,7 @@ import { z } from "zod";
 import { UserProperties, UserRole } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 import { SkillProperties } from "../models/skill.model";
-import { SchoolProperties } from "../models/school.model";
+import { EducationProperties } from "../models/education.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -49,10 +49,6 @@ export const updateUserSkillsSchema = z.object({
 	skillIds: z.array(z.string()).default([]),
 });
 
-export const updateUserSchoolsSchema = z.object({
-	schoolIds: z.array(z.string()).default([]),
-});
-
 export const changePasswordSchema = z
 	.object({
 		currentPassword: z.string().min(1, "Current password is required"),
@@ -76,7 +72,6 @@ export type UpdateUserIndustriesSchema = z.infer<
 	typeof updateUserIndustriesSchema
 >;
 export type UpdateUserSkillsSchema = z.infer<typeof updateUserSkillsSchema>;
-export type UpdateUserSchoolsSchema = z.infer<typeof updateUserSchoolsSchema>;
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 
 export const toUserBasicDTO = (user: UserProperties) => {
@@ -93,7 +88,7 @@ export const toUserProfileDTO = (
 	user: UserProperties,
 	industries?: IndustryProperties[],
 	skills?: SkillProperties[],
-	schools?: SchoolProperties[],
+	educations?: EducationProperties[],
 ) => {
 	const {
 		password,
@@ -117,11 +112,6 @@ export const toUserProfileDTO = (
 					name: skill.name,
 				}))
 			: [],
-		schools: schools
-			? schools.map((school: SchoolProperties) => ({
-					schoolId: school.schoolId,
-					name: school.name,
-				}))
-			: [],
+		educations: educations ? educations : [],
 	};
 };
