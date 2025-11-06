@@ -43,7 +43,7 @@ class App {
 	}
 
 	private initializeRoutes(): void {
-		this.app.use("/api/v1", routes);
+		this.app.use("/api/v1/", routes);
 
 		this.app.get("/", (req, res) => {
 			res.json({
