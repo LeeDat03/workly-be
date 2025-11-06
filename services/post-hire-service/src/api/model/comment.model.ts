@@ -18,6 +18,14 @@ export interface CreateCommentDTO {
     mediaFile?: string;
 }
 
+export interface CommentResponse {
+    authorId: string;
+    content: string;
+    mediaFile?: string;
+    replyCount: number;
+}
+
+
 export interface UpdateCommentDTO {
     content: string;
     mediaFile?: {

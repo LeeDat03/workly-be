@@ -25,8 +25,8 @@ export function createPostRoutes(): Router {
     const commentController = ControllerContainer.getCommentController()
 
     router.post("/comment/create", validateRequest(createComment), commentController.createComment);
-    router.put("/comment/update/:id", validateRequest(updateComment), commentController.updateComment);
 
+    router.put("/comment/update/:id", validateRequest(updateComment), commentController.updateComment);
 
     return router;
 }
