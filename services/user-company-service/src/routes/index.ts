@@ -8,5 +8,8 @@ const router = Router();
 router.use("/auth", authRoutes);
 router.use("/users", userRoutes);
 router.use("/companies", companyRoutes);
+router.use("/auth", authRoutes);
+router.use("/users", userRoutes);
+router.use("/companies", companyRoutes);
 
 export default router;

@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { UserProperties, UserRole } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
+import { SkillProperties } from "../models/skill.model";
+import { SchoolProperties } from "../models/school.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -20,8 +22,8 @@ export const createUserSchema = z.object({
 	headline: z.string().optional(),
 	avatarUrl: z.url().optional().or(z.literal("")),
 	bgCoverUrl: z.url().optional().or(z.literal("")),
-	dateOfBirth: z.iso.datetime().optional().or(z.literal("")),
-	role: z.enum(Object.values(UserRole)).optional(),
+	dateOfBirth: z.string().datetime().optional().or(z.literal("")),
+	role: z.nativeEnum(UserRole).optional(),
 });
 
 export const updateUserProfileSchema = z.object({
@@ -37,26 +39,61 @@ export const updateUserProfileSchema = z.object({
 		.optional()
 		.or(z.literal("")),
 	phone: z.string().optional(),
-	industryId: z.string().optional(),
 });
+
+export const updateUserIndustriesSchema = z.object({
+	industryIds: z.array(z.string()).default([]),
+});
+
+export const updateUserSkillsSchema = z.object({
+	skillIds: z.array(z.string()).default([]),
+});
+
+export const updateUserSchoolsSchema = z.object({
+	schoolIds: z.array(z.string()).default([]),
+});
+
+export const changePasswordSchema = z
+	.object({
+		currentPassword: z.string().min(1, "Current password is required"),
+		newPassword: z
+			.string()
+			.min(8, "Password must be at least 8 characters")
+			.regex(
+				passwordRegex,
+				"Password must contain at least one uppercase, one lowercase, one number, and one special character",
+			),
+		confirmNewPassword: z.string(),
+	})
+	.refine((data) => data.newPassword === data.confirmNewPassword, {
+		message: "New password and confirmation do not match",
+		path: ["confirmNewPassword"],
+	});
 
 export type CreateUserSchema = z.infer<typeof createUserSchema>;
 export type UpdateUserProfileSchema = z.infer<typeof updateUserProfileSchema>;
+export type UpdateUserIndustriesSchema = z.infer<
+	typeof updateUserIndustriesSchema
+>;
+export type UpdateUserSkillsSchema = z.infer<typeof updateUserSkillsSchema>;
+export type UpdateUserSchoolsSchema = z.infer<typeof updateUserSchoolsSchema>;
+export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 
 export const toUserBasicDTO = (user: UserProperties) => {
 	return {
 		userId: user.userId,
+
 		email: user.email,
+
 		name: user.name,
 	};
 };
 
 export const toUserProfileDTO = (
 	user: UserProperties,
-	industry?: IndustryProperties,
-	// skills?: SkillProperties[],
-	// workExperiences?: WorkExperienceProperties[],
-	// educations?: EducationProperties[],
+	industries?: IndustryProperties[],
+	skills?: SkillProperties[],
+	schools?: SchoolProperties[],
 ) => {
 	const {
 		password,
@@ -67,14 +104,24 @@ export const toUserProfileDTO = (
 
 	return {
 		user: userProfile,
-		industry: industry
-			? {
+		industries: industries
+			? industries.map((industry: IndustryProperties) => ({
 					industryId: industry.industryId,
 					name: industry.name,
-				}
-			: undefined,
-		// skills: skills ? skills : [],
-		// workExperiences: workExperiences ? workExperiences : [],
-		// educations: educations ? educations : [],
+					description: industry.description,
+				}))
+			: [],
+		skills: skills
+			? skills.map((skill: SkillProperties) => ({
+					skillId: skill.skillId,
+					name: skill.name,
+				}))
+			: [],
+		schools: schools
+			? schools.map((school: SchoolProperties) => ({
+					schoolId: school.schoolId,
+					name: school.name,
+				}))
+			: [],
 	};
 };
