@@ -17,6 +17,7 @@ routes:
           - /api/v1/auth
           - /api/v1/users
           - /api/v1/companies
+      strip_path: false
 
     - name: route-for-post-hire
       service: post-hire-service
