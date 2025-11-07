@@ -1,32 +1,61 @@
-import express, { Router } from 'express';
-import { createPost, updatePost } from '@/api/validation/post.validatior';
-import { validateRequest } from '@/api/middlewares/validate.middleware';
-import { ControllerContainer } from '@/api/container/controller.container';
-import { UploadMiddleware } from '@/api/middlewares/upload.middleware';
-import { createComment, updateComment } from '@/api/validation/comment.validator';
+import express, { Router } from "express";
+import { createPost, updatePost } from "@/api/validation/post.validatior";
+import { validateRequest } from "@/api/middlewares/validate.middleware";
+import { ControllerContainer } from "@/api/container/controller.container";
+import { UploadMiddleware } from "@/api/middlewares/upload.middleware";
+import {
+	createComment,
+	updateComment,
+} from "@/api/validation/comment.validator";
+import { log } from "console";
 
 export function createPostRoutes(): Router {
-    const router = express.Router()
+	const router = express.Router();
 
-    const postController = ControllerContainer.getPostController()
+	const postController = ControllerContainer.getPostController();
 
-    router.post("/create", validateRequest(createPost), postController.createPost)
+	router.get("/test", (req, res) => {
+		console.log(req);
+		res.send({ a: "abc" });
+	});
 
-    router.put("/update/:id", validateRequest(updatePost), postController.updatePost)
+	router.post(
+		"/create",
+		validateRequest(createPost),
+		postController.createPost
+	);
 
-    router.post('/uploads', UploadMiddleware.uploadFiles(), postController.uploadFile)
+	router.put(
+		"/update/:id",
+		validateRequest(updatePost),
+		postController.updatePost
+	);
 
-    router.get('/read/:id', postController.getPostDetail)
+	router.post(
+		"/uploads",
+		UploadMiddleware.uploadFiles(),
+		postController.uploadFile
+	);
 
-    router.get('/', postController.getAll)
+	router.get("/read/:id", postController.getPostDetail);
 
-    router.get("/video/:filename", postController.getStreamVideo)
+	router.get("/", postController.getAll);
 
-    const commentController = ControllerContainer.getCommentController()
+	router.get("/video/:filename", postController.getStreamVideo);
 
-    router.post("/comment/create", validateRequest(createComment), commentController.createComment);
+	const commentController = ControllerContainer.getCommentController();
 
-    router.put("/comment/update/:id", validateRequest(updateComment), commentController.updateComment);
+	router.post(
+		"/comment/create",
+		validateRequest(createComment),
+		commentController.createComment
+	);
 
-    return router;
+	router.put(
+		"/comment/update/:id",
+		validateRequest(updateComment),
+		commentController.updateComment
+	);
+
+	return router;
 }
