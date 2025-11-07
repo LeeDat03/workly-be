@@ -8,7 +8,13 @@ import {
 	PostResponse,
 	UpdatePostDTO,
 } from "@/api/model/post.model";
-import { InsertOneResult, ObjectId, UpdateResult } from "mongodb";
+import {
+	Document,
+	InsertOneResult,
+	ObjectId,
+	UpdateResult,
+	WithId,
+} from "mongodb";
 import path from "path";
 import { FileUtil } from "@/util/fileUtil";
 import { APIError } from "@/common/error/api.error";
@@ -18,8 +24,12 @@ import {
 	JobPost,
 	PagingList,
 } from "@/api/model/common.model";
-import { ADD_POST_JOB as JOB_NAME } from "@/config/job.constant";
+import {
+	HOME_ACCOUNT_POST_KEY,
+	ADD_POST_JOB as JOB_NAME,
+} from "@/config/job.constant";
 import { QueueService } from "@/api/service/queue.service";
+import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -55,7 +65,8 @@ export class PostService implements IPostService {
 
 	public updatePost = async (
 		post: UpdatePostDTO,
-		id: ObjectId
+		id: ObjectId,
+		userId: ObjectId
 	): Promise<UpdateResult> => {
 		const postExisted = await this.postRepository.getPostDetail(id);
 		if (!postExisted) {
@@ -64,8 +75,9 @@ export class PostService implements IPostService {
 				status: StatusCode.BAD_REQUEST,
 			});
 		}
-
-		const result = await this.postRepository.updatePost(post, id);
+		const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}`;
+		const result = await this.postRepository.updatePost(post, id, userId);
+		await RedisAdapter.deleteKeysWithPrefix(cacheKey);
 
 		// delete old file
 		if (post.media_url?.delete && post.media_url.delete.length > 0) {
@@ -104,10 +116,18 @@ export class PostService implements IPostService {
 		input: IPaginationInput,
 		userId: ObjectId
 	): Promise<PagingList<PostResponse>> => {
-		const result = await this.postRepository.getPagingPostByUserId(
-			input,
-			userId
-		);
+		const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
+		let result: PagingList<WithId<Document>>;
+		result = (await RedisAdapter.get(cacheKey)) as PagingList<
+			WithId<Document>
+		>;
+		if (!result) {
+			result = await this.postRepository.getPagingPostByUserId(
+				input,
+				userId
+			);
+			await RedisAdapter.set(cacheKey, result, 36000);
+		}
 		const mappedData = result.data.map((item) => {
 			return mapToPostResponse(item);
 		});
