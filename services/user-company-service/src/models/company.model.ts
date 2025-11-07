@@ -16,13 +16,24 @@ export enum CompanyRoleRequestStatus {
 	REJECTED = "REJECTED",
 }
 
+export enum CompanySize {
+	"1-10" = "1-10",
+	"11-50" = "11-50",
+	"51-200" = "51-200",
+	"201-500" = "201-500",
+	"501-1000" = "501-1000",
+	"1000+" = "1000+",
+}
+
 export interface CompanyProperties {
 	companyId: string;
 	name: string;
 	description?: string;
-	foundedYear?: number;
+	foundedYear: number;
+	size: CompanySize;
 	website?: string;
 	logoUrl?: string;
+	bannerUrl?: string;
 	location?: string;
 	[key: string]: any;
 }
@@ -76,10 +87,16 @@ export const getCompanyModel = (neogma: Neogma) => {
 					required: true,
 				},
 				description: { type: "string" },
-				foundedYear: { type: "number" },
+				foundedYear: { type: "number", required: true },
 				website: { type: "string" },
 				logoUrl: { type: "string" },
+				bannerUrl: { type: "string" },
 				location: { type: "string" },
+				size: {
+					type: "string",
+					required: true,
+					enum: Object.values(CompanySize),
+				},
 			},
 			primaryKeyField: "companyId",
 			relationships: {

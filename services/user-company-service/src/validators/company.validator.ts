@@ -1,48 +1,70 @@
 import z from "zod";
 
-import { CompanyProperties } from "../models/company.model";
+import { CompanyProperties, CompanySize } from "../models/company.model";
 import { UserProperties } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 
-export const createCompanySchema = z.object({
+const createCompanyBodySchema = z.object({
 	industryId: z.string().min(1, "Industry must be provided"),
+	name: z.string().min(1, "Company name is required"),
+	foundedYear: z
+		.number()
+		.int()
+		.min(1800, "Founed year look wrong")
+		.max(new Date().getFullYear(), "Founded year can not be in the future"),
+	size: z.enum(Object.values(CompanySize)),
+	description: z.string().optional(),
+	website: z.url({ message: "Website must be a valid url" }).optional(),
+	logoUrl: z
+		.url({
+			message: "LogoURL must be valid",
+		})
+		.optional(),
+	bannerUrl: z
+		.url({
+			message: "BannerURL must be valid",
+		})
+		.optional(),
+});
+
+export const createCompanySchema = z.object({
+	body: createCompanyBodySchema,
+});
+
+const updateCompanyBodySchema = z.object({
 	name: z.string().min(1, "Company name is required"),
 	description: z.string().optional(),
 	foundedYear: z
 		.number()
 		.int()
 		.min(1800, "Founed year look wrong")
-		.max(new Date().getFullYear(), "Founded year can not be in the future")
+		.max(new Date().getFullYear(), "Founded year can not be in the future"),
+	size: z.enum(Object.values(CompanySize)),
+	industryId: z.string().min(1, "Industry must be provided"),
+	website: z
+		.url({ message: "Website must be a valid url" })
+		.or(z.literal(""))
 		.optional(),
-	website: z.url({ message: "Website must be a valid url" }).optional(),
 	logoUrl: z
 		.url({
 			message: "LogoURL must be valid",
 		})
+		.or(z.literal(""))
 		.optional(),
-	location: z.string().optional(),
+	bannerUrl: z
+		.url({
+			message: "BannerURL must be valid",
+		})
+		.or(z.literal(""))
+		.optional(),
 });
 
 export const updateCompanySchema = z.object({
-	name: z.string().min(1, "Company name is required").optional(),
-	description: z.string().optional(),
-	foundedYear: z
-		.number()
-		.int()
-		.min(1800, "Founed year look wrong")
-		.max(new Date().getFullYear(), "Founded year can not be in the future")
-		.optional(),
-	website: z.url({ message: "Website must be a valid url" }).optional(),
-	logoUrl: z
-		.url({
-			message: "LogoURL must be valid",
-		})
-		.optional(),
-	location: z.string().optional(),
+	body: updateCompanyBodySchema,
 });
 
-export type UpdateCompanySchema = z.infer<typeof updateCompanySchema>;
-export type CreateCompanySchema = z.infer<typeof createCompanySchema>;
+export type UpdateCompanySchema = z.infer<typeof updateCompanyBodySchema>;
+export type CreateCompanySchema = z.infer<typeof createCompanyBodySchema>;
 
 export const toCompanyProfileDTO = (
 	company: CompanyProperties,
@@ -51,13 +73,7 @@ export const toCompanyProfileDTO = (
 ) => {
 	return {
 		company: {
-			companyId: company.companyId,
-			name: company.name,
-			description: company.description,
-			website: company.website,
-			foundedYear: company.foundedYear,
-			logoUrl: company.logoUrl,
-			location: company.location,
+			...company,
 			owner: owner
 				? {
 						userId: owner.userId,
