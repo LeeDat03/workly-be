@@ -16,6 +16,11 @@ import {
 	SchoolModelType,
 } from "./school.model";
 import { nanoid } from "nanoid";
+import {
+	EducationInstance,
+	EducationModelType,
+	getEducationModel,
+} from "./education.model";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
@@ -42,20 +47,12 @@ export interface UserProperties {
 interface IUserRelatedNodes {
 	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
 	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
-	School: ModelRelatedNodesI<SchoolModelType, SchoolInstance, {}, {}>;
-	// Skills: ModelRelatedNodesI<typeof SkillModel, SkillInstance, {}, {}>;
-	// WorkExperiences: ModelRelatedNodesI<
-	// 	typeof WorkExperienceModel,
-	// 	WorkExperienceInstance,
-	// 	{},
-	// 	{}
-	// >;
-	// Educations: ModelRelatedNodesI<
-	// 	typeof EducationModel,
-	// 	EducationInstance,
-	// 	{},
-	// 	{}
-	// >;
+	Education: ModelRelatedNodesI<
+		EducationModelType,
+		EducationInstance,
+		{},
+		{}
+	>;
 }
 
 export type UserInstance = NeogmaInstance<UserProperties, IUserRelatedNodes>;
@@ -70,7 +67,7 @@ export const getUserModel = (neogma: Neogma) => {
 	}
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
-	const SchoolModel = getSchoolModel(neogma);
+	const EducationModel = getEducationModel(neogma);
 
 	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
@@ -125,27 +122,17 @@ export const getUserModel = (neogma: Neogma) => {
 					direction: "out",
 					name: "HAS_SKILL",
 				},
-				School: {
-					model: SchoolModel,
+				Education: {
+					model: EducationModel,
 					direction: "out",
-					name: "ATTENDED_SCHOOL",
+					name: "HAS_EDUCATION",
 				},
-				// WorkExperiences: {
-				// 	model: WorkExperienceModel,
-				// 	direction: "out",
-				// 	name: "HAS_WORK_EXPERIENCE",
-				// },
-				// Educations: {
-				// 	model: EducationModel,
-				// 	direction: "out",
-				// 	name: "HAS_EDUCATION",
-				// },
 			},
 		},
 		neogma,
 	);
 	UserModel.beforeCreate = (instance) => {
-		instance.userId = nanoid(12); // Dùng nanoid cho nhất quán
+		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
 		if (!instance.role) {
@@ -166,3 +153,5 @@ export const getUserModel = (neogma: Neogma) => {
 
 	return UserModel;
 };
+
+export type UserModelType = typeof UserModel;

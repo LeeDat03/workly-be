@@ -5,10 +5,9 @@ import {
 	UpdateUserProfileSchema,
 	UpdateUserSkillsSchema,
 	UpdateUserIndustriesSchema,
-	UpdateUserSchoolsSchema,
 	ChangePasswordSchema,
 } from "../validators";
-import { IndustryModel, SchoolModel, SkillModel, UserModel } from "../models";
+import { IndustryModel, SkillModel, UserModel } from "../models";
 import { Op } from "neogma";
 import { LoggedInUserRequest } from "../types";
 import { NotFoundError, UnauthorizedError } from "../utils/appError";
@@ -56,21 +55,39 @@ const getFullUserProfile = async (userId: string) => {
 		throw new NotFoundError("User not found");
 	}
 
-	const [industryRels, skillRels, schoolRels] = await Promise.all([
+	const [industryRels, skillRels] = await Promise.all([
 		user.findRelationships({ alias: "Industry" }),
 		user.findRelationships({ alias: "Skill" }),
-		user.findRelationships({ alias: "School" }),
 	]);
 
 	const industryData = industryRels.map((rel: any) => rel.target.dataValues);
 	const skillData = skillRels.map((rel: any) => rel.target.dataValues);
-	const schoolData = schoolRels.map((rel: any) => rel.target.dataValues);
+
+	const educationData = [];
+
+	const educationRels = await user.findRelationships({ alias: "Education" });
+
+	for (const eduRel of educationRels) {
+		const education = eduRel.target;
+		if (!education) continue;
+
+		const schoolRels = await education.findRelationships({
+			alias: "School",
+		});
+		const schoolData =
+			schoolRels.length > 0 ? schoolRels[0].target.dataValues : null;
+
+		educationData.push({
+			...education.dataValues,
+			school: schoolData,
+		});
+	}
 
 	return toUserProfileDTO(
 		user.dataValues,
 		industryData as IndustryProperties[],
 		skillData as SkillProperties[],
-		schoolData as SchoolProperties[],
+		educationData as any[],
 	);
 };
 
@@ -97,13 +114,10 @@ export const getAllUsers = async (
 
 		const usersDTO = await Promise.all(
 			users.map(async (user) => {
-				const [industryRels, skillRels, schoolRels] = await Promise.all(
-					[
-						user.findRelationships({ alias: "Industry" }),
-						user.findRelationships({ alias: "Skill" }),
-						user.findRelationships({ alias: "School" }),
-					],
-				);
+				const [industryRels, skillRels] = await Promise.all([
+					user.findRelationships({ alias: "Industry" }),
+					user.findRelationships({ alias: "Skill" }),
+				]);
 
 				const industryData = industryRels.map(
 					(rel: any) => rel.target.dataValues,
@@ -111,15 +125,32 @@ export const getAllUsers = async (
 				const skillData = skillRels.map(
 					(rel: any) => rel.target.dataValues,
 				);
-				const schoolData = schoolRels.map(
-					(rel: any) => rel.target.dataValues,
-				);
+
+				const educationData = [];
+				const educationRels = await user.findRelationships({
+					alias: "Education",
+				});
+				for (const eduRel of educationRels) {
+					const education = eduRel.target;
+					if (!education) continue;
+					const schoolRels = await education.findRelationships({
+						alias: "School",
+					});
+					const schoolData =
+						schoolRels.length > 0
+							? schoolRels[0].target.dataValues
+							: null;
+					educationData.push({
+						...education.dataValues,
+						school: schoolData,
+					});
+				}
 
 				return toUserProfileDTO(
 					user.dataValues,
 					industryData as IndustryProperties[],
 					skillData as SkillProperties[],
-					schoolData as SchoolProperties[],
+					educationData as any[],
 				);
 			}),
 		);
@@ -219,37 +250,6 @@ export const updateUserIndustries = async (
 	}
 };
 
-export const updateUserSchools = async (
-	req: LoggedInUserRequest,
-	res: Response,
-	next: NextFunction,
-) => {
-	try {
-		const { schoolIds }: UpdateUserSchoolsSchema = req.body;
-		const userId = req.user!.userId;
-
-		const user = await UserModel.findOne({ where: { userId } });
-		if (!user) throw new NotFoundError("User not found");
-
-		await updateRelations(
-			user,
-			"School",
-			schoolIds,
-			SchoolModel,
-			"schoolId",
-		);
-
-		const userProfile = await getFullUserProfile(userId);
-		res.status(200).json({
-			success: true,
-			message: "Schools updated successfully",
-			data: userProfile,
-		});
-	} catch (error) {
-		next(error);
-	}
-};
-
 export const getMe = async (
 	req: LoggedInUserRequest,
 	res: Response,
@@ -340,6 +340,5 @@ export default {
 	updateBasicProfile,
 	updateUserSkills,
 	updateUserIndustries,
-	updateUserSchools,
 	changeMyPassword,
 };

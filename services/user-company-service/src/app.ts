@@ -26,6 +26,8 @@ class App {
 			cors({
 				origin: config.cors.origin,
 				credentials: true,
+				methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+				allowedHeaders: "Content-Type, Authorization",
 			}),
 		);
 		this.app.use(compression());
@@ -41,7 +43,7 @@ class App {
 	}
 
 	private initializeRoutes(): void {
-		this.app.use(routes);
+		this.app.use("/api/v1/", routes);
 
 		this.app.get("/", (req, res) => {
 			res.json({

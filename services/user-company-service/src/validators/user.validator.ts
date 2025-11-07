@@ -3,6 +3,7 @@ import { UserProperties, UserRole } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 import { SkillProperties } from "../models/skill.model";
 import { SchoolProperties } from "../models/school.model";
+import { EducationProperties } from "../models/education.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -94,6 +95,7 @@ export const toUserProfileDTO = (
 	industries?: IndustryProperties[],
 	skills?: SkillProperties[],
 	schools?: SchoolProperties[],
+	educations?: EducationProperties[],
 ) => {
 	const {
 		password,
@@ -123,5 +125,6 @@ export const toUserProfileDTO = (
 					name: school.name,
 				}))
 			: [],
+		educations: educations ? educations : [],
 	};
 };
