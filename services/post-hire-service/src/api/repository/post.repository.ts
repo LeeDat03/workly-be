@@ -17,7 +17,11 @@ import { IPaginationInput, PagingList } from "../model/common.model";
 export interface IPostRepository {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
 	getAll(): Promise<any[]>;
-	updatePost(post: UpdatePostDTO, id: ObjectId): Promise<UpdateResult>;
+	updatePost(
+		post: UpdatePostDTO,
+		id: ObjectId,
+		userId: ObjectId
+	): Promise<UpdateResult>;
 	getPostDetail(id: ObjectId): Promise<WithId<Document> | null>;
 	getPagingPostByUserId(
 		input: IPaginationInput,
@@ -39,7 +43,8 @@ export class PostRepository implements IPostRepository {
 
 	public async updatePost(
 		post: UpdatePostDTO,
-		id: ObjectId
+		id: ObjectId,
+		userId: ObjectId
 	): Promise<UpdateResult> {
 		return await this.postCollection.withTransaction(async (session) => {
 			let result;
@@ -62,7 +67,7 @@ export class PostRepository implements IPostRepository {
 			// Xóa media
 			if (post.media_url?.delete?.length) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id },
+					{ _id: id, author_id: userId },
 					updatePullQuery,
 					{ session }
 				);
@@ -71,7 +76,7 @@ export class PostRepository implements IPostRepository {
 			// Thêm media
 			if (post.media_url?.add?.length) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id },
+					{ _id: id, author_id: userId },
 					updatePushQuery,
 					{ session }
 				);
@@ -84,7 +89,7 @@ export class PostRepository implements IPostRepository {
 
 			if (Object.keys(updateFields).length > 0) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id },
+					{ _id: id, author_id: userId },
 					{ $set: updateFields },
 					{ session }
 				);
