@@ -21,6 +21,7 @@ import {
 	getUserProfile,
 	updateRelationsWithQuery,
 } from "../services/user.service";
+import { UpdateEducationSchema } from "../validators/user.validator";
 
 const updateRelations = async <T extends keyof typeof UserModel.relationships>(
 	user: any,
@@ -70,31 +71,31 @@ const getFullUserProfile = async (userId: string) => {
 	const industryData = industryRels.map((rel: any) => rel.target.dataValues);
 	const skillData = skillRels.map((rel: any) => rel.target.dataValues);
 
-	const educationData = [];
+	// const educationData = [];
 
-	const educationRels = await user.findRelationships({ alias: "Education" });
+	// const educationRels = await user.findRelationships({ alias: "Education" });
 
-	for (const eduRel of educationRels) {
-		const education = eduRel.target;
-		if (!education) continue;
+	// for (const eduRel of educationRels) {
+	// 	const education = eduRel.target;
+	// 	if (!education) continue;
 
-		const schoolRels = await education.findRelationships({
-			alias: "School",
-		});
-		const schoolData =
-			schoolRels.length > 0 ? schoolRels[0].target.dataValues : null;
+	// 	const schoolRels = await education.findRelationships({
+	// 		alias: "School",
+	// 	});
+	// 	const schoolData =
+	// 		schoolRels.length > 0 ? schoolRels[0].target.dataValues : null;
 
-		educationData.push({
-			...education.dataValues,
-			school: schoolData,
-		});
-	}
+	// 	educationData.push({
+	// 		...education.dataValues,
+	// 		school: schoolData,
+	// 	});
+	// }
 
 	return toUserProfileDTO(
 		user.dataValues,
 		industryData as IndustryProperties[],
 		skillData as SkillProperties[],
-		educationData as any[],
+		// educationData as any[],
 	);
 };
 
@@ -133,31 +134,31 @@ export const getAllUsers = async (
 					(rel: any) => rel.target.dataValues,
 				);
 
-				const educationData = [];
-				const educationRels = await user.findRelationships({
-					alias: "Education",
-				});
-				for (const eduRel of educationRels) {
-					const education = eduRel.target;
-					if (!education) continue;
-					const schoolRels = await education.findRelationships({
-						alias: "School",
-					});
-					const schoolData =
-						schoolRels.length > 0
-							? schoolRels[0].target.dataValues
-							: null;
-					educationData.push({
-						...education.dataValues,
-						school: schoolData,
-					});
-				}
+				// const educationData = [];
+				// const educationRels = await user.findRelationships({
+				// 	alias: "Education",
+				// });
+				// for (const eduRel of educationRels) {
+				// 	const education = eduRel.target;
+				// 	if (!education) continue;
+				// 	const schoolRels = await education.findRelationships({
+				// 		alias: "School",
+				// 	});
+				// 	const schoolData =
+				// 		schoolRels.length > 0
+				// 			? schoolRels[0].target.dataValues
+				// 			: null;
+				// 	educationData.push({
+				// 		...education.dataValues,
+				// 		school: schoolData,
+				// 	});
+				// }
 
 				return toUserProfileDTO(
 					user.dataValues,
 					industryData as IndustryProperties[],
 					skillData as SkillProperties[],
-					educationData as any[],
+					// educationData as any[],
 				);
 			}),
 		);
@@ -289,6 +290,41 @@ export const updateUserIndustries = async (
 	}
 };
 
+export const updateUserEducations = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const educationsData: UpdateEducationSchema = req.body;
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		await updateRelationsWithQuery(
+			userId,
+			"ATTEND_SCHOOL",
+			"School",
+			"schoolId",
+			educationsData.map((e) => e.schoolId),
+			educationsData.map((e) => {
+				// get every property except schoolId
+				const { schoolId, ...rest } = e;
+				return rest;
+			}),
+		);
+
+		res.status(200).json({
+			success: true,
+			message: "Education updated successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const getMe = async (
 	req: LoggedInUserRequest,
 	res: Response,
@@ -384,5 +420,6 @@ export default {
 	updateBasicProfile,
 	updateUserSkills,
 	updateUserIndustries,
+	updateUserEducations,
 	changeMyPassword,
 };

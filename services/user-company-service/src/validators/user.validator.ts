@@ -1,9 +1,8 @@
 import { z } from "zod";
-import { UserProperties, UserRole } from "../models/user.model";
+import { Degree, UserProperties, UserRole } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 import { SkillProperties } from "../models/skill.model";
 import { SchoolProperties } from "../models/school.model";
-import { EducationProperties } from "../models/education.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -50,9 +49,18 @@ export const updateUserSkillsSchema = z.object({
 	skillIds: z.array(z.string()).default([]),
 });
 
-export const updateUserSchoolsSchema = z.object({
-	schoolIds: z.array(z.string()).default([]),
-});
+export const updateEducationSchema = z.array(
+	z.object({
+		schoolId: z.string().min(1, "schoolId là bắt buộc"),
+		degree: z.enum(Object.values(Degree)),
+		major: z.string().min(1, "Chuyên ngành là bắt buộc"),
+		start_date: z.iso.datetime("Ngày bắt đầu phải là ISO datetime"),
+		end_date: z.iso
+			.datetime("Ngày kết thúc phải là ISO datetime")
+			.optional(),
+		description: z.string().optional(),
+	}),
+);
 
 export const changePasswordSchema = z
 	.object({
@@ -77,7 +85,7 @@ export type UpdateUserIndustriesSchema = z.infer<
 	typeof updateUserIndustriesSchema
 >;
 export type UpdateUserSkillsSchema = z.infer<typeof updateUserSkillsSchema>;
-export type UpdateUserSchoolsSchema = z.infer<typeof updateUserSchoolsSchema>;
+export type UpdateEducationSchema = z.infer<typeof updateEducationSchema>;
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 
 export const toUserBasicDTO = (user: UserProperties) => {
@@ -95,7 +103,7 @@ export const toUserProfileDTO = (
 	industries?: IndustryProperties[],
 	skills?: SkillProperties[],
 	schools?: SchoolProperties[],
-	educations?: EducationProperties[],
+	educations?: any[],
 ) => {
 	const {
 		password,

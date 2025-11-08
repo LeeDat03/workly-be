@@ -12,19 +12,21 @@ import {
 import { SkillInstance, getSkillModel, SkillModelType } from "./skill.model";
 import {
 	SchoolInstance,
-	getSchoolModel,
 	SchoolModelType,
+	getSchoolModel,
 } from "./school.model";
 import { nanoid } from "nanoid";
-import {
-	EducationInstance,
-	EducationModelType,
-	getEducationModel,
-} from "./education.model";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
 	USER = "USER",
+}
+
+export enum Degree {
+	Associate = "Associate",
+	Bachelor = "Bachelor",
+	Master = "Master",
+	Doctorate = "Doctorate",
 }
 
 export interface UserProperties {
@@ -48,10 +50,22 @@ interface IUserRelatedNodes {
 	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
 	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
 	Education: ModelRelatedNodesI<
-		EducationModelType,
-		EducationInstance,
-		{},
-		{}
+		SchoolModelType,
+		SchoolInstance,
+		{
+			Degree: Degree;
+			Major: string;
+			Start_Date: string;
+			End_Date: string;
+			Description: string;
+		},
+		{
+			degree: string;
+			major: string;
+			startDate: string;
+			endDate: string;
+			description: string;
+		}
 	>;
 }
 
@@ -67,7 +81,7 @@ export const getUserModel = (neogma: Neogma) => {
 	}
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
-	const EducationModel = getEducationModel(neogma);
+	const SchoolModel = getSchoolModel(neogma);
 
 	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
@@ -123,9 +137,44 @@ export const getUserModel = (neogma: Neogma) => {
 					name: "HAS_SKILL",
 				},
 				Education: {
-					model: EducationModel,
+					model: SchoolModel,
 					direction: "out",
-					name: "HAS_EDUCATION",
+					name: "ATTEND_SCHOOL",
+					properties: {
+						Degree: {
+							property: "degree",
+							schema: {
+								type: "string",
+								enum: Object.values(Degree),
+							},
+						},
+						Major: {
+							property: "major",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						Start_Date: {
+							property: "startDate",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						End_Date: {
+							property: "endDate",
+							schema: {
+								type: "string",
+							},
+						},
+						Description: {
+							property: "description",
+							schema: {
+								type: "string",
+							},
+						},
+					},
 				},
 			},
 		},
