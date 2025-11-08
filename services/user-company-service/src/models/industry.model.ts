@@ -1,5 +1,5 @@
 import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
-import { database } from "../config/database";
+import { nanoid } from "nanoid";
 
 export interface IndustryProperties {
 	industryId: string;
@@ -36,6 +36,21 @@ export const getIndustryModel = (neogma: Neogma) => {
 		},
 		neogma,
 	);
+
+	IndustryModel.beforeCreate = (instance) => {
+		instance.industryId = nanoid(12);
+	};
+
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT industry_id_unique IF NOT EXISTS
+		FOR (i:Industry)
+		REQUIRE i.industryId IS UNIQUE
+	`);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT industry_name_unique IF NOT EXISTS
+		FOR (i:Industry)
+		REQUIRE i.name IS UNIQUE
+	`);
 
 	return IndustryModel;
 };

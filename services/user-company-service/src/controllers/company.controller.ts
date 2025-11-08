@@ -240,9 +240,39 @@ const updateCompany = async (
 			}
 		}
 
+		// Handle industry relationship update
+		if (data.industryId) {
+			const industry = await IndustryModel.findOne({
+				where: {
+					industryId: data.industryId,
+				},
+			});
+			if (!industry) {
+				throw new BadRequestError("Industry does not exist");
+			}
+
+			const neogma = database.getNeogma();
+			await neogma.queryRunner.run(
+				`
+				MATCH (c:Company {companyId: $companyId})
+				OPTIONAL MATCH (c)-[r:IN]->(:Industry)
+				DELETE r
+				WITH c
+				MATCH (i:Industry {industryId: $industryId})
+				MERGE (c)-[:IN]->(i)
+				`,
+				{
+					companyId,
+					industryId: data.industryId,
+				},
+			);
+		}
+
+		const { industryId, ...companyUpdateData } = data;
+
 		const result = await CompanyModel.update(
 			{
-				...data,
+				...companyUpdateData,
 			},
 			{
 				where: {

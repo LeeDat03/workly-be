@@ -17,6 +17,9 @@ routes:
           - /api/v1/auth
           - /api/v1/users
           - /api/v1/companies
+          - /api/v1/industries
+          - /api/v1/skills
+          - /api/v1/schools
       strip_path: false
 
     - name: route-for-post-hire
