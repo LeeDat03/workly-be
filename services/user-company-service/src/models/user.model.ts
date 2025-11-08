@@ -1,10 +1,32 @@
-import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
-import { database } from "../config/database";
-import { v4 as uuidv4 } from "uuid";
+import {
+	ModelFactory,
+	ModelRelatedNodesI,
+	Neogma,
+	NeogmaInstance,
+} from "neogma";
+import {
+	IndustryInstance,
+	getIndustryModel,
+	IndustryModelType,
+} from "./industry.model";
+import { SkillInstance, getSkillModel, SkillModelType } from "./skill.model";
+import {
+	SchoolInstance,
+	SchoolModelType,
+	getSchoolModel,
+} from "./school.model";
+import { nanoid } from "nanoid";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
 	USER = "USER",
+}
+
+export enum Degree {
+	Associate = "Associate",
+	Bachelor = "Bachelor",
+	Master = "Master",
+	Doctorate = "Doctorate",
 }
 
 export interface UserProperties {
@@ -12,6 +34,7 @@ export interface UserProperties {
 	email: string;
 	password: string;
 	name: string;
+	phone?: string;
 	bio?: string;
 	headline?: string;
 	avatarUrl?: string;
@@ -23,24 +46,50 @@ export interface UserProperties {
 	[key: string]: any;
 }
 
-export type UserInstance = NeogmaInstance<UserProperties, {}>;
+interface IUserRelatedNodes {
+	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
+	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
+	Education: ModelRelatedNodesI<
+		SchoolModelType,
+		SchoolInstance,
+		{
+			Degree: Degree;
+			Major: string;
+			StartDate: string;
+			EndDate: string;
+			Description: string;
+		},
+		{
+			degree: string;
+			major: string;
+			startDate: string;
+			endDate: string;
+			description: string;
+		}
+	>;
+}
 
-let UserModel: ReturnType<typeof ModelFactory<UserProperties>>;
+export type UserInstance = NeogmaInstance<UserProperties, IUserRelatedNodes>;
+
+let UserModel: ReturnType<
+	typeof ModelFactory<UserProperties, IUserRelatedNodes>
+>;
 
 export const getUserModel = (neogma: Neogma) => {
 	if (UserModel) {
-		console.log("runnnn");
 		return UserModel;
 	}
+	const IndustryModel = getIndustryModel(neogma);
+	const SkillModel = getSkillModel(neogma);
+	const SchoolModel = getSchoolModel(neogma);
 
-	UserModel = ModelFactory<UserProperties>(
+	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
 			label: "User",
 			schema: {
 				userId: {
 					type: "string",
 					unique: true,
-					default: () => uuidv4(),
 				},
 				email: {
 					type: "string",
@@ -55,6 +104,7 @@ export const getUserModel = (neogma: Neogma) => {
 					type: "string",
 					required: true,
 				},
+				phone: { type: "string" },
 				bio: { type: "string" },
 				headline: { type: "string" },
 				avatarUrl: { type: "string" },
@@ -67,22 +117,88 @@ export const getUserModel = (neogma: Neogma) => {
 				},
 				createdAt: {
 					type: "string",
-					default: () => new Date().toISOString(),
+					required: true,
 				},
 				updatedAt: {
 					type: "string",
-					default: () => new Date().toISOString(),
+					required: true,
 				},
 			},
 			primaryKeyField: "userId",
+			relationships: {
+				Industry: {
+					model: IndustryModel,
+					direction: "out",
+					name: "IN_INDUSTRY",
+				},
+				Skill: {
+					model: SkillModel,
+					direction: "out",
+					name: "HAS_SKILL",
+				},
+				Education: {
+					model: SchoolModel,
+					direction: "out",
+					name: "ATTEND_SCHOOL",
+					properties: {
+						Degree: {
+							property: "degree",
+							schema: {
+								type: "string",
+								enum: Object.values(Degree),
+							},
+						},
+						Major: {
+							property: "major",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						StartDate: {
+							property: "startDate",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						EndDate: {
+							property: "endDate",
+							schema: {
+								type: "string",
+							},
+						},
+						Description: {
+							property: "description",
+							schema: {
+								type: "string",
+							},
+						},
+					},
+				},
+			},
 		},
 		neogma,
 	);
 	UserModel.beforeCreate = (instance) => {
-		instance.userId = uuidv4();
+		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
+		instance.role = UserRole.USER;
 	};
+
+	neogma.queryRunner.run(`
+        CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+        FOR (u:User)
+        REQUIRE u.userId IS UNIQUE
+    `);
+	neogma.queryRunner.run(`
+        CREATE CONSTRAINT user_email_unique IF NOT EXISTS
+        FOR (u:User)
+        REQUIRE u.email IS UNIQUE
+    `);
 
 	return UserModel;
 };
+
+export type UserModelType = typeof UserModel;
