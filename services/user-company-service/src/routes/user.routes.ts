@@ -17,11 +17,11 @@ import {
 const router = Router();
 
 router.get("/", userController.getAllUsers);
+router.get("/:id", userController.getUserById);
 
 router.use(isAuthenticated);
 
 router.get("/me", userController.getMe);
-
 router.patch(
 	"/me",
 	validate(updateUserProfileSchema),

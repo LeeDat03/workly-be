@@ -7,13 +7,20 @@ import {
 	UpdateUserIndustriesSchema,
 	ChangePasswordSchema,
 } from "../validators";
-import { IndustryModel, SkillModel, UserModel } from "../models";
+import { UserModel } from "../models";
 import { Op } from "neogma";
 import { LoggedInUserRequest } from "../types";
-import { NotFoundError, UnauthorizedError } from "../utils/appError";
+import {
+	BadRequestError,
+	NotFoundError,
+	UnauthorizedError,
+} from "../utils/appError";
 import { IndustryProperties } from "../models/industry.model";
 import { SkillProperties } from "../models/skill.model";
-import { SchoolProperties } from "../models/school.model";
+import {
+	getUserProfile,
+	updateRelationsWithQuery,
+} from "../services/user.service";
 
 const updateRelations = async <T extends keyof typeof UserModel.relationships>(
 	user: any,
@@ -168,6 +175,32 @@ export const getAllUsers = async (
 	}
 };
 
+export const getUserById = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id } = req.params;
+		const includeFields = req.query.include as string | undefined;
+		const relationsArray = includeFields
+			? includeFields.trim().split(",")
+			: [];
+
+		if (!id) {
+			throw new BadRequestError("User ID is required");
+		}
+
+		const userProfile = await getUserProfile(id, relationsArray);
+		res.status(200).json({
+			success: true,
+			data: userProfile,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const updateBasicProfile = async (
 	req: LoggedInUserRequest,
 	res: Response,
@@ -183,11 +216,11 @@ export const updateBasicProfile = async (
 		Object.assign(user, data);
 		await user.save();
 
-		const userProfile = await getFullUserProfile(userId);
+		// const userProfile = await getFullUserProfile(userId);
 		res.status(200).json({
 			success: true,
 			message: "Profile updated successfully",
-			data: userProfile,
+			// data: userProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -206,13 +239,19 @@ export const updateUserSkills = async (
 		const user = await UserModel.findOne({ where: { userId } });
 		if (!user) throw new NotFoundError("User not found");
 
-		await updateRelations(user, "Skill", skillIds, SkillModel, "skillId");
+		await updateRelationsWithQuery(
+			userId,
+			"HAS_SKILL",
+			"Skill",
+			"skillId",
+			skillIds,
+		);
 
-		const userProfile = await getFullUserProfile(userId);
+		// const userProfile = await getFullUserProfile(userId);
 		res.status(200).json({
 			success: true,
 			message: "Skills updated successfully",
-			data: userProfile,
+			// data: userProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -231,19 +270,19 @@ export const updateUserIndustries = async (
 		const user = await UserModel.findOne({ where: { userId } });
 		if (!user) throw new NotFoundError("User not found");
 
-		await updateRelations(
-			user,
+		await updateRelationsWithQuery(
+			userId,
+			"IN_INDUSTRY",
 			"Industry",
-			industryIds,
-			IndustryModel,
 			"industryId",
+			industryIds,
 		);
 
-		const userProfile = await getFullUserProfile(userId);
+		// const userProfile = await getFullUserProfile(userId);
 		res.status(200).json({
 			success: true,
 			message: "Industries updated successfully",
-			data: userProfile,
+			// data: userProfile,
 		});
 	} catch (error) {
 		next(error);
@@ -257,8 +296,12 @@ export const getMe = async (
 ) => {
 	try {
 		const userId = req.user!.userId;
-		const userProfile = await getFullUserProfile(userId);
+		const includeFields = req.query.include as string | undefined;
+		const relationsArray = includeFields
+			? includeFields.trim().split(",")
+			: [];
 
+		const userProfile = await getUserProfile(userId, relationsArray);
 		res.status(200).json({
 			success: true,
 			data: userProfile,
@@ -335,6 +378,7 @@ export const deleteMe = async (
 
 export default {
 	getAllUsers,
+	getUserById,
 	getMe,
 	deleteMe,
 	updateBasicProfile,

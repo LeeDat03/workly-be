@@ -135,9 +135,7 @@ export const getUserModel = (neogma: Neogma) => {
 		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();
 		instance.updatedAt = new Date().toISOString();
-		if (!instance.role) {
-			instance.role = UserRole.USER;
-		}
+		instance.role = UserRole.USER;
 	};
 
 	neogma.queryRunner.run(`

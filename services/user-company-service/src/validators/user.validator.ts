@@ -28,7 +28,7 @@ export const createUserSchema = z.object({
 });
 
 export const updateUserProfileSchema = z.object({
-	name: z.string().min(1, "Name is required").optional(),
+	name: z.string().min(1, "Name is required"),
 	headline: z.string().optional(),
 	bio: z.string().optional(),
 	avatarUrl: z

@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
 
 export interface SkillProperties {
@@ -33,6 +34,21 @@ export const getSkillModel = (neogma: Neogma) => {
 		},
 		neogma,
 	);
+
+	SkillModel.beforeCreate = (instance) => {
+		instance.skillId = nanoid(12);
+	};
+
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
+		FOR (s:Skill)
+		REQUIRE s.skillId IS UNIQUE
+	`);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
+		FOR (s:Skill)
+		REQUIRE s.name IS UNIQUE
+	`);
 
 	return SkillModel;
 };
