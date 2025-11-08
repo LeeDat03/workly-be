@@ -53,7 +53,7 @@ export class PostController {
 		try {
 			const body = req.body as UpdatePostDTO;
 			const objectId = new ObjectId(req.params.id);
-			const result = await this.postService.updatePost(body, objectId);
+			const result = await this.postService.updatePost(body, objectId, new ObjectId("123"));
 			res.sendJson(result);
 		} catch (error) {
 			logger.error("PostController.updatePost", error);
@@ -138,5 +138,5 @@ export class PostController {
 		req: Request,
 		res: Response,
 		next: NextFunction
-	) => {};
+	) => { };
 }
