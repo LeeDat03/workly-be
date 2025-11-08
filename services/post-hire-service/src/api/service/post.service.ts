@@ -34,11 +34,11 @@ import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
 	getAllFileMedia(): Promise<string[]>;
-	updatePost(post: UpdatePostDTO, id: ObjectId): Promise<UpdateResult>;
+	updatePost(post: UpdatePostDTO, id: ObjectId, userId: ObjectId): Promise<UpdateResult>;
 	getPostDetail(id: ObjectId): Promise<PostResponse>;
 	getAllPost(
 		input: IPaginationInput,
-		userId: ObjectId
+		userId: ObjectId,
 	): Promise<PagingList<PostResponse>>;
 }
 
@@ -85,13 +85,13 @@ export class PostService implements IPostService {
 				const TARGET_DIR =
 					item.type === MediaType.IMAGE
 						? path.resolve(
-								__dirname,
-								"../../../uploads/posts/images"
-						  )
+							__dirname,
+							"../../../uploads/posts/images"
+						)
 						: path.resolve(
-								__dirname,
-								"../../../uploads/posts/videos"
-						  );
+							__dirname,
+							"../../../uploads/posts/videos"
+						);
 				const fullPath = path.join(TARGET_DIR, item.url);
 				FileUtil.deleteFilePath(fullPath);
 			});
