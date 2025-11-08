@@ -54,8 +54,8 @@ export const updateEducationSchema = z.array(
 		schoolId: z.string().min(1, "schoolId là bắt buộc"),
 		degree: z.enum(Object.values(Degree)),
 		major: z.string().min(1, "Chuyên ngành là bắt buộc"),
-		start_date: z.iso.datetime("Ngày bắt đầu phải là ISO datetime"),
-		end_date: z.iso
+		startDate: z.iso.datetime("Ngày bắt đầu phải là ISO datetime"),
+		endDate: z.iso
 			.datetime("Ngày kết thúc phải là ISO datetime")
 			.optional(),
 		description: z.string().optional(),
@@ -102,7 +102,6 @@ export const toUserProfileDTO = (
 	user: UserProperties,
 	industries?: IndustryProperties[],
 	skills?: SkillProperties[],
-	schools?: SchoolProperties[],
 	educations?: any[],
 ) => {
 	const {
@@ -114,25 +113,21 @@ export const toUserProfileDTO = (
 
 	return {
 		user: userProfile,
-		industries: industries
-			? industries.map((industry: IndustryProperties) => ({
-					industryId: industry.industryId,
-					name: industry.name,
-					description: industry.description,
-				}))
-			: [],
-		skills: skills
-			? skills.map((skill: SkillProperties) => ({
-					skillId: skill.skillId,
-					name: skill.name,
-				}))
-			: [],
-		schools: schools
-			? schools.map((school: SchoolProperties) => ({
-					schoolId: school.schoolId,
-					name: school.name,
-				}))
-			: [],
-		educations: educations ? educations : [],
+		relationships: {
+			industries: industries
+				? industries.map((industry: IndustryProperties) => ({
+						industryId: industry.industryId,
+						name: industry.name,
+						description: industry.description,
+					}))
+				: [],
+			skills: skills
+				? skills.map((skill: SkillProperties) => ({
+						skillId: skill.skillId,
+						name: skill.name,
+					}))
+				: [],
+			educations: educations ? educations : [],
+		},
 	};
 };

@@ -55,8 +55,8 @@ interface IUserRelatedNodes {
 		{
 			Degree: Degree;
 			Major: string;
-			Start_Date: string;
-			End_Date: string;
+			StartDate: string;
+			EndDate: string;
 			Description: string;
 		},
 		{
@@ -155,14 +155,14 @@ export const getUserModel = (neogma: Neogma) => {
 								required: true,
 							},
 						},
-						Start_Date: {
+						StartDate: {
 							property: "startDate",
 							schema: {
 								type: "string",
 								required: true,
 							},
 						},
-						End_Date: {
+						EndDate: {
 							property: "endDate",
 							schema: {
 								type: "string",

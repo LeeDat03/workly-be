@@ -58,7 +58,19 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 			: [];
 	const educationData =
 		educationRels.length > 0
-			? (educationRels.map((rel) => rel.target.dataValues) as any)
+			? educationRels
+					.map((rel) => {
+						return {
+							...rel.target.dataValues,
+							...rel.relationship,
+						};
+					})
+					.sort((a, b) => {
+						return (
+							new Date(a.startDate!).getTime() -
+							new Date(b.startDate!).getTime()
+						);
+					})
 			: [];
 
 	return toUserProfileDTO(

@@ -99,6 +99,7 @@ const getFullUserProfile = async (userId: string) => {
 	);
 };
 
+// TODO: optimize
 export const getAllUsers = async (
 	req: Request,
 	res: Response,
@@ -120,52 +121,9 @@ export const getAllUsers = async (
 			skip: offset,
 		});
 
-		const usersDTO = await Promise.all(
-			users.map(async (user) => {
-				const [industryRels, skillRels] = await Promise.all([
-					user.findRelationships({ alias: "Industry" }),
-					user.findRelationships({ alias: "Skill" }),
-				]);
-
-				const industryData = industryRels.map(
-					(rel: any) => rel.target.dataValues,
-				);
-				const skillData = skillRels.map(
-					(rel: any) => rel.target.dataValues,
-				);
-
-				// const educationData = [];
-				// const educationRels = await user.findRelationships({
-				// 	alias: "Education",
-				// });
-				// for (const eduRel of educationRels) {
-				// 	const education = eduRel.target;
-				// 	if (!education) continue;
-				// 	const schoolRels = await education.findRelationships({
-				// 		alias: "School",
-				// 	});
-				// 	const schoolData =
-				// 		schoolRels.length > 0
-				// 			? schoolRels[0].target.dataValues
-				// 			: null;
-				// 	educationData.push({
-				// 		...education.dataValues,
-				// 		school: schoolData,
-				// 	});
-				// }
-
-				return toUserProfileDTO(
-					user.dataValues,
-					industryData as IndustryProperties[],
-					skillData as SkillProperties[],
-					// educationData as any[],
-				);
-			}),
-		);
-
 		res.status(200).json({
 			success: true,
-			data: usersDTO,
+			data: users,
 			pagination: {
 				page,
 				limit,
