@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import * as crypto from "crypto";
 import jwt, { JwtPayload, SignOptions } from "jsonwebtoken";
 import { CreateUserSchema } from "../validators";
 import { UserModel } from "../models";
@@ -8,6 +9,7 @@ import { ConflictError, UnauthorizedError } from "../utils/appError";
 import { ApiError } from "../utils/ApiError";
 import { sendEmail } from "../utils/mail";
 import { verifyToken } from "../utils/jwt";
+import { OAuthSchema } from "../validators/oauth.validator";
 
 const generateToken = (userId: string, role: UserRole): string => {
 	const options: SignOptions = {
@@ -32,14 +34,15 @@ export const signup = async (userData: CreateUserSchema) => {
 		password: hashedPassword,
 	} as UserProperties);
 
-	const token = generateToken(
-		newUserProperties.dataValues.userId,
-		newUserProperties.dataValues.role,
-	);
+	// const token = generateToken(
+	// 	newUserProperties.dataValues.userId,
+	// 	newUserProperties.dataValues.role,
+	// );
 
 	const { password, ...userWithoutPassword } = newUserProperties.dataValues;
 
-	return { user: userWithoutPassword, token };
+	// return { user: userWithoutPassword, token };
+	return { user: userWithoutPassword };
 };
 
 export const signin = async (email: string, pass: string) => {
@@ -60,27 +63,58 @@ export const signin = async (email: string, pass: string) => {
 	return { user: userWithoutPassword, token };
 };
 
+export const findOrCreateUserByOAuth = async (data: OAuthSchema) => {
+	const { email, name, image } = data;
+
+	let userInstance = await UserModel.findOne({
+		where: { email },
+	});
+
+	if (!userInstance) {
+		const dummyPassword = crypto.randomBytes(32).toString("hex");
+		userInstance = await UserModel.createOne({
+			email,
+			name: name || "User",
+			avatarUrl: image,
+			role: UserRole.USER,
+			password: dummyPassword,
+		} as UserProperties);
+	}
+
+	const user = userInstance.dataValues;
+
+	const token = generateToken(user.userId, user.role);
+
+	const { password, ...userWithoutPassword } = user;
+
+	return { user: userWithoutPassword, token };
+};
+
 export const forgotPassword = async (email: string) => {
 	const user = await UserModel.findOne({ where: { email } });
 	if (!user) throw new ApiError(404, "User not found");
-
-	const resetToken = jwt.sign({ userId: user.userId }, config.jwt.secret, {
+	console.log("TẠO TOKEN BẰNG SECRET:", config.jwt.secret);
+	const resetToken = jwt.sign({ id: user.userId }, config.jwt.secret, {
 		expiresIn: "15m",
 	});
 
-	await sendEmail(
-		user.email,
-		"Workly Support - Password Reset",
-		`
-		<h3>Hello ${user.name || ""},</h3>
-		<p>We received a request to reset your password.</p>
-		<p>Please use the token below to reset your password:</p>
-		<pre style="padding: 10px; background: #f2f2f2;">${resetToken}</pre>
-		<p>This token will expire in <b>15 minutes</b>.</p>
-		<br/>
-		<p>Workly Support</p>
-		`,
-	);
+	try {
+		const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
+		const resetLink = `${CORS_ORIGIN}/reset-password/${resetToken}`;
+
+		await sendEmail(
+			user.email,
+			"Workly Support - Password Reset",
+			`
+            <h3>Hello ${user.name || ""},</h3>
+            <p>Please click the link below to set a new password:</p>
+            <a href="${resetLink}" target="_blank">Reset Your Password</a>
+            <p>This link will expire in 15 minutes.</p>
+        `,
+		);
+	} catch (error) {
+		throw new ApiError(500, "Failed to send password reset email.");
+	}
 
 	return { message: "Reset token sent to your email." };
 };
