@@ -14,9 +14,9 @@ routes:
     - name: route-for-user-company
       service: user-company-service
       paths:
-          - /auth
-          - /users
-          - /companies
+          - /api/v1/auth
+          - /api/v1/users
+          - /api/v1/companies
 
     - name: route-for-post-hire
       service: post-hire-service
@@ -37,3 +37,32 @@ routes:
 #       jwt_secrets:
 #           - key: my-app-key
 #             secret: change-this-to-a-very-strong-secret-key-in-production
+
+plugins:
+    - name: cors
+      config:
+          origins:
+              - "http://localhost:3000"
+              - "https://your-production-domain.com"
+          methods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+          headers:
+              - "Authorization"
+              - "Content-Type"
+          exposed_headers:
+              - "X-Custom-Header"
+          credentials: true
+          max_age: 3600
+
+    - name: rate-limiting
+      config:
+          minute: 100 # Max requests per minute
+          hour: 2000 # Max requests per hour
+          policy: local # Can be 'local', 'cluster', or 'redis'
+          limit_by: consumer # Limit per authenticated consumer
+          hide_client_headers: true
