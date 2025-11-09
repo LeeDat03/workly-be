@@ -120,7 +120,7 @@ export class PostController {
 		fileStream.pipe(res);
 	};
 
-	public getAll = async (req: Request, res: Response, next: NextFunction) => {
+	public getMyPost = async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const input = req.query as IPaginationInput;
 			const data = await this.postService.getAllPost(
