@@ -7,6 +7,7 @@ import {
 	resetPasswordSchema,
 	signinSchema,
 } from "../validators";
+import { oauthSchema } from "../validators/oauth.validator";
 
 const router = Router();
 
@@ -27,4 +28,6 @@ router.patch(
 );
 
 router.get("/me", isAuthenticated, authController.getMe);
+
+router.post("/oauth", validate(oauthSchema), authController.handleOAuth);
 export default router;
