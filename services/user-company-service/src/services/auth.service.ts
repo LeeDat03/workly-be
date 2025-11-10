@@ -93,7 +93,6 @@ export const findOrCreateUserByOAuth = async (data: OAuthSchema) => {
 export const forgotPassword = async (email: string) => {
 	const user = await UserModel.findOne({ where: { email } });
 	if (!user) throw new ApiError(404, "User not found");
-	console.log("TẠO TOKEN BẰNG SECRET:", config.jwt.secret);
 	const resetToken = jwt.sign({ id: user.userId }, config.jwt.secret, {
 		expiresIn: "15m",
 	});

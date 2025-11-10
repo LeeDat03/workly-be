@@ -1,10 +1,10 @@
 import { Router } from "express";
 
-import { createCompanySchema, updateCompanySchema } from "../validators";
 import { isAuthenticated, validate } from "../middlewares";
 import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
+import { createCompanySchema, updateCompanySchema } from "../validators";
 
 const router = Router();
 

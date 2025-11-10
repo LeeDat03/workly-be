@@ -4,7 +4,7 @@ import { CompanyProperties, CompanySize } from "../models/company.model";
 import { UserProperties } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 
-const createCompanyBodySchema = z.object({
+export const createCompanySchema = z.object({
 	industryId: z.string().min(1, "Industry must be provided"),
 	name: z.string().min(1, "Company name is required"),
 	foundedYear: z
@@ -27,11 +27,7 @@ const createCompanyBodySchema = z.object({
 		.optional(),
 });
 
-export const createCompanySchema = z.object({
-	body: createCompanyBodySchema,
-});
-
-const updateCompanyBodySchema = z.object({
+export const updateCompanySchema = z.object({
 	name: z.string().min(1, "Company name is required"),
 	description: z.string().optional(),
 	foundedYear: z
@@ -59,12 +55,8 @@ const updateCompanyBodySchema = z.object({
 		.optional(),
 });
 
-export const updateCompanySchema = z.object({
-	body: updateCompanyBodySchema,
-});
-
-export type UpdateCompanySchema = z.infer<typeof updateCompanyBodySchema>;
-export type CreateCompanySchema = z.infer<typeof createCompanyBodySchema>;
+export type UpdateCompanySchema = z.infer<typeof updateCompanySchema>;
+export type CreateCompanySchema = z.infer<typeof createCompanySchema>;
 
 export const toCompanyProfileDTO = (
 	company: CompanyProperties,

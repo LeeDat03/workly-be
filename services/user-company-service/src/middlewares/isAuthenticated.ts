@@ -28,9 +28,7 @@ export const isAuthenticated = async (
 			);
 		}
 
-		console.log("Token received: ", token);
 		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
-		console.log("Decoded token:", decoded);
 
 		const currentUser = await UserModel.findOne({
 			where: { userId: decoded.id },
@@ -49,7 +47,6 @@ export const isAuthenticated = async (
 
 		next();
 	} catch (error) {
-		console.error("Token verify failed:", error);
 		next(error);
 	}
 };
