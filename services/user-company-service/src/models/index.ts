@@ -18,11 +18,15 @@ export const initModels = async (neogma: Neogma) => {
 		return;
 	}
 
-	UserModel = await getUserModel(neogma);
-	IndustryModel = await getIndustryModel(neogma);
-	SkillModel = await getSkillModel(neogma);
-	SchoolModel = await getSchoolModel(neogma);
-	CompanyModel = await getCompanyModel(neogma);
+	try {
+		UserModel = await getUserModel(neogma);
+		IndustryModel = await getIndustryModel(neogma);
+		SkillModel = await getSkillModel(neogma);
+		SchoolModel = await getSchoolModel(neogma);
+		CompanyModel = await getCompanyModel(neogma);
+	} catch (error) {
+		console.log(error);
+	}
 
 	logger.info("Models initialized");
 };

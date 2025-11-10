@@ -34,14 +34,8 @@ export const signup = async (userData: CreateUserSchema) => {
 		password: hashedPassword,
 	} as UserProperties);
 
-	// const token = generateToken(
-	// 	newUserProperties.dataValues.userId,
-	// 	newUserProperties.dataValues.role,
-	// );
-
 	const { password, ...userWithoutPassword } = newUserProperties.dataValues;
 
-	// return { user: userWithoutPassword, token };
 	return { user: userWithoutPassword };
 };
 
@@ -59,7 +53,6 @@ export const signin = async (email: string, pass: string) => {
 	const token = generateToken(user.userId, user.role);
 
 	const { password, ...userWithoutPassword } = user.dataValues;
-
 	return { user: userWithoutPassword, token };
 };
 
