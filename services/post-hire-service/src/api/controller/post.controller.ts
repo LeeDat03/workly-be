@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
-import { CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
+import { AuthorType, CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
 import { IPaginationInput } from "../model/common.model";
 
@@ -22,7 +22,7 @@ export class PostController {
 		next: NextFunction
 	) => {
 		try {
-			const body = req.body as CreatePostDTO;
+			const body = { ...req.body, author_id: new ObjectId("69104f33ace675418225c6f1"), author_type: AuthorType.USER } as CreatePostDTO;
 			const result = await this.postService.createPost(body);
 			res.sendJson(result);
 		} catch (error) {
@@ -125,7 +125,7 @@ export class PostController {
 			const input = req.query as IPaginationInput;
 			const data = await this.postService.getAllPost(
 				input,
-				new ObjectId("123")
+				new ObjectId("69104f33ace675418225c6f1")
 			);
 			res.sendJson(data);
 		} catch (error) {

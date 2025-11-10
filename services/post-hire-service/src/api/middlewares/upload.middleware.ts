@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { StatusCode } from '@/common/errors';
 import { APIError } from '@/common/error/api.error';
 import logger from '@/common/logger';
+import { MediaItem, MediaType } from '../model/post.model';
 
 export class UploadMiddleware {
     public static uploadFiles = () => {
@@ -18,6 +19,8 @@ export class UploadMiddleware {
          * @returns {Function} Express middleware function
          */
         return (req: Request, res: Response, next: NextFunction): any => {
+            console.log(req.files);
+
             let folderPath: string;
 
             folderPath = path.join(__dirname, `../../../uploads`);
@@ -95,19 +98,15 @@ export class UploadMiddleware {
                 const files = req.files as Express.Multer.File[];
 
                 try {
-                    let uploadedUrls: Record<string, string[]> = {};
+                    let uploadedUrls: MediaItem[] = [];
 
                     files.forEach((file, index) => {
                         let fileUrl = `/uploads/${file.filename}`;
-                        if (file.mimetype.startsWith('image/')) fileUrl = `/images/${file.filename}`;
-                        if (file.mimetype.startsWith('video/')) fileUrl = `/videos/${file.filename}`;
-                        if (!uploadedUrls[file.fieldname]) {
-                            uploadedUrls[file.fieldname] = [];
-                        }
-                        uploadedUrls[file.fieldname].push(fileUrl);
+                        if (file.mimetype.startsWith('image/')) { fileUrl = `/images/${file.filename}`; uploadedUrls.push({ url: fileUrl, type: MediaType.IMAGE }) };
+                        if (file.mimetype.startsWith('video/')) { fileUrl = `/videos/${file.filename}`; uploadedUrls.push({ url: fileUrl, type: MediaType.VIDEO }) };
                     });
 
-                    res.json(uploadedUrls);
+                    res.json({ code: 200, results: uploadedUrls });
                 } catch (error) {
                     logger.error('UploadMiddleware: Error during upload processing:', error);
                     return next(

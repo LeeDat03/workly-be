@@ -34,8 +34,6 @@ export interface Post {
 }
 
 export interface CreatePostDTO {
-    author_type: AuthorType;
-    author_id: ObjectId | string;
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
