@@ -116,21 +116,30 @@ export class PostService implements IPostService {
 		input: IPaginationInput,
 		userId: ObjectId
 	): Promise<PagingList<PostResponse>> => {
-		const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
+		// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
 		let result: PagingList<WithId<Document>>;
-		result = (await RedisAdapter.get(cacheKey)) as PagingList<
-			WithId<Document>
-		>;
-		if (!result) {
-			result = await this.postRepository.getPagingPostByUserId(
-				input,
-				userId
-			);
-			await RedisAdapter.set(cacheKey, result, 36000);
-		}
+		// result = (await RedisAdapter.get(cacheKey)) as PagingList<
+		// 	WithId<Document>
+		// >;
+		// console.log("map1", result.data);
+		result = await this.postRepository.getPagingPostByUserId(
+			input,
+			userId
+		);
+		// if (!result) {
+		// 	result = await this.postRepository.getPagingPostByUserId(
+		// 		input,
+		// 		userId
+		// 	);
+		// 	console.log("map", result.data);
+
+		// 	await RedisAdapter.set(cacheKey, result, 36000);
+		// }
+
 		const mappedData = result.data.map((item) => {
 			return mapToPostResponse(item);
-		});
+		})
+
 		return {
 			...result,
 			data: mappedData,

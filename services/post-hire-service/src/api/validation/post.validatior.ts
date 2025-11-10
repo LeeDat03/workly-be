@@ -5,7 +5,6 @@ import { objectId } from "@/api/validation/common.validator";
 
 const mediaItem = Joi.object<MediaItem>({
     url: Joi.string()
-        .uri()
         .required()
         .messages({
             'string.uri': 'Invalid URL format',
@@ -32,20 +31,6 @@ const visibility = Joi.string()
 export const createPost = {
     body: wrapSchema(
         Joi.object<CreatePostDTO>({
-            author_type: Joi.string()
-                .valid(...Object.values(AuthorType))
-                .required()
-                .messages({
-                    'any.required': 'Author type is required',
-                    'any.only': 'Invalid author type'
-                }),
-
-            author_id: objectId
-                .required()
-                .messages({
-                    'any.required': 'Author ID is required'
-                }),
-
             content: Joi.string()
                 .min(1)
                 .max(10000)
