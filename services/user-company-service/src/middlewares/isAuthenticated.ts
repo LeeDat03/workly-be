@@ -22,6 +22,15 @@ export const isAuthenticated = async (
 			}
 		}
 
+		if (req.cookies.token) {
+			token = req.cookies.token.trim();
+		} else {
+			const authHeader = req.headers.authorization;
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				token = authHeader.split(" ")[1].trim();
+			}
+		}
+
 		if (!token) {
 			throw new UnauthorizedError("Token is required");
 		}
