@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Service - Socket.io Test Client</title>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+        }
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff4444;
+        }
+        .status-indicator.connected {
+            background: #44ff44;
+        }
+        .config-section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .config-section input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .config-section button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .config-section button:hover {
+            background: #5568d3;
+        }
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .message.sent {
+            background: #667eea;
+            color: white;
+            margin-left: 20%;
+        }
+        .message.received {
+            background: white;
+            margin-right: 20%;
+        }
+        .message-header {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-bottom: 5px;
+        }
+        .message-content {
+            font-size: 14px;
+        }
+        .input-section {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+        .input-section input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .input-section button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .input-section button:hover {
+            background: #5568d3;
+        }
+        .typing-indicator {
+            padding: 10px 20px;
+            font-size: 12px;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Chat Service Test Client</h1>
+            <div class="status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <div class="config-section">
+            <input type="text" id="serverUrl" placeholder="Server URL" value="http://localhost:3003">
+            <input type="text" id="userId" placeholder="Your User ID" value="user123">
+            <select id="userType">
+                <option value="user">User</option>
+                <option value="company">Company</option>
+            </select>
+            <input type="text" id="conversationId" placeholder="Conversation ID">
+            <button id="connectBtn">Connect</button>
+            <button id="joinBtn" style="display:none;">Join Conversation</button>
+        </div>
+
+        <div class="messages" id="messages"></div>
+        <div class="typing-indicator" id="typingIndicator"></div>
+
+        <div class="input-section">
+            <input type="text" id="messageInput" placeholder="Type a message..." disabled>
+            <button id="sendBtn" disabled>Send</button>
+        </div>
+    </div>
+
+    <script>
+        let socket = null;
+        let isTyping = false;
+        let typingTimeout = null;
+
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const messagesDiv = document.getElementById('messages');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const connectBtn = document.getElementById('connectBtn');
+        const joinBtn = document.getElementById('joinBtn');
+
+        // Connect to server
+        connectBtn.addEventListener('click', () => {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userId = document.getElementById('userId').value;
+            const userType = document.getElementById('userType').value;
+
+            if (!serverUrl || !userId) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Disconnect if already connected
+            if (socket) {
+                socket.disconnect();
+            }
+
+            // Connect with authentication
+            socket = io(serverUrl, {
+                auth: {
+                    userId: userId,
+                    userType: userType
+                }
+            });
+
+            // Connection events
+            socket.on('connect', () => {
+                statusIndicator.classList.add('connected');
+                statusText.textContent = 'Connected';
+                joinBtn.style.display = 'block';
+                addSystemMessage('Connected to server');
+            });
+
+            socket.on('disconnect', () => {
+                statusIndicator.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                addSystemMessage('Disconnected from server');
+            });
+
+            // Chat events
+            socket.on('new_message', (data) => {
+                addMessage(data.message, false);
+            });
+
+            socket.on('user_typing', (data) => {
+                if (data.isTyping) {
+                    typingIndicator.textContent = `User ${data.userId} is typing...`;
+                } else {
+                    typingIndicator.textContent = '';
+                }
+            });
+
+            socket.on('message_read', (data) => {
+                addSystemMessage(`Message read by ${data.userId}`);
+            });
+
+            socket.on('user_online', (data) => {
+                addSystemMessage(`User ${data.userId} is online`);
+            });
+
+            socket.on('user_offline', (data) => {
+                addSystemMessage(`User ${data.userId} is offline`);
+            });
+
+            socket.on('error', (data) => {
+                addSystemMessage(`Error: ${data.message}`, true);
+            });
+        });
+
+        // Join conversation
+        joinBtn.addEventListener('click', () => {
+            const conversationId = document.getElementById('conversationId').value;
+
+            if (!conversationId) {
+                alert('Please enter conversation ID');
+                return;
+            }
+
+            socket.emit('join_conversation', { conversationId });
+            messageInput.disabled = false;
+            sendBtn.disabled = false;
+            addSystemMessage(`Joined conversation ${conversationId}`);
+        });
+
+        // Send message
+        sendBtn.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        function sendMessage() {
+            const conversationId = document.getElementById('conversationId').value;
+            const content = messageInput.value.trim();
+
+            if (!content) return;
+
+            socket.emit('send_message', {
+                conversationId,
+                content
+            });
+
+            addMessage({ content, sender: { id: document.getElementById('userId').value } }, true);
+            messageInput.value = '';
+            
+            // Stop typing
+            socket.emit('stop_typing', { conversationId });
+        }
+
+        // Typing indicator
+        messageInput.addEventListener('input', () => {
+            const conversationId = document.getElementById('conversationId').value;
+            
+            if (!isTyping) {
+                isTyping = true;
+                socket.emit('typing', { conversationId });
+            }
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                isTyping = false;
+                socket.emit('stop_typing', { conversationId });
+            }, 1000);
+        });
+
+        // Helper functions
+        function addMessage(message, isSent) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isSent ? 'sent' : 'received'}`;
+            
+            const header = document.createElement('div');
+            header.className = 'message-header';
+            header.textContent = isSent ? 'You' : `User ${message.sender.id}`;
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.textContent = message.content;
+            
+            messageDiv.appendChild(header);
+            messageDiv.appendChild(content);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function addSystemMessage(text, isError = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.style.padding = '10px';
+            messageDiv.style.textAlign = 'center';
+            messageDiv.style.fontSize = '12px';
+            messageDiv.style.color = isError ? '#ff4444' : '#666';
+            messageDiv.style.fontStyle = 'italic';
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+    </script>
+</body>
+</html>
+
