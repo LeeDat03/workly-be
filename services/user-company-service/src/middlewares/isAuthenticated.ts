@@ -11,16 +11,7 @@ export const isAuthenticated = async (
 	next: NextFunction,
 ) => {
 	try {
-		let token: string | undefined;
-
-		if (req.cookies.token) {
-			token = req.cookies.token.trim();
-		} else {
-			const authHeader = req.headers.authorization;
-			if (authHeader && authHeader.startsWith("Bearer ")) {
-				token = authHeader.split(" ")[1].trim();
-			}
-		}
+		let token = req.headers.authorization;
 
 		if (!token) {
 			throw new UnauthorizedError(
@@ -34,8 +25,9 @@ export const isAuthenticated = async (
 			where: { userId: decoded.id },
 			plain: true,
 		});
+		console.log("reqreq", currentUser);
 		if (!currentUser) {
-			throw new UnauthorizedError("Token invalid. Please log in again.");
+			throw new UnauthorizedError("Invalid token, please log in again.");
 		}
 
 		req.user = {
