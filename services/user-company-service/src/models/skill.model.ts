@@ -39,16 +39,16 @@ export const getSkillModel = (neogma: Neogma) => {
 		instance.skillId = nanoid(12);
 	};
 
-	// neogma.queryRunner.run(`
-	// 	CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
-	// 	FOR (s:Skill)
-	// 	REQUIRE s.skillId IS UNIQUE
-	// `);
-	// neogma.queryRunner.run(`
-	// 	CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
-	// 	FOR (s:Skill)
-	// 	REQUIRE s.name IS UNIQUE
-	// `);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
+		FOR (s:Skill)
+		REQUIRE s.skillId IS UNIQUE
+	`);
+	neogma.queryRunner.run(`
+		CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
+		FOR (s:Skill)
+		REQUIRE s.name IS UNIQUE
+	`);
 
 	return SkillModel;
 };
