@@ -1,12 +1,41 @@
 {
-  "name": "chat-noti-service",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+	"name": "chat-noti-service",
+	"version": "1.0.0",
+	"description": "Chat and Notification Service with MongoDB, Express, Socket.io",
+	"main": "dist/index.js",
+	"scripts": {
+		"dev": "nodemon",
+		"build": "tsc",
+		"start": "node dist/index.js",
+		"init-db": "ts-node src/scripts/init-database.ts",
+		"seed-db": "ts-node src/scripts/seed-database.ts",
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [
+		"chat",
+		"socket.io",
+		"mongodb",
+		"express"
+	],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"express": "^4.18.2",
+		"mongoose": "^8.0.0",
+		"socket.io": "^4.6.0",
+		"cors": "^2.8.5",
+		"dotenv": "^16.3.1",
+		"joi": "^17.11.0",
+		"winston": "^3.11.0",
+		"express-async-handler": "^1.2.0",
+		"http-status-codes": "^2.3.0"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.21",
+		"@types/node": "^20.10.0",
+		"@types/cors": "^2.8.17",
+		"typescript": "^5.3.2",
+		"nodemon": "^3.0.2",
+		"ts-node": "^10.9.1"
+	}
 }
