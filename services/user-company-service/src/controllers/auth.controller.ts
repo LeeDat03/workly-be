@@ -4,20 +4,13 @@ import {
 	CreateUserSchema,
 	ForgotPasswordSchema,
 	ResetPasswordSchema,
+	SigninSchema,
 } from "../validators";
-import { SigninSchema } from "../validators";
 import { config } from "../config";
 import { LoggedInUserRequest } from "../types";
 import { OAuthSchema } from "../validators/oauth.validator";
 
-// const setCookie = (res: Response, token: string) => {
-// 	res.cookie("token", token, {
-// 		httpOnly: true,
-// 		secure: config.env === "production",
-// 		sameSite: "strict",
-// 		maxAge: 24 * 60 * 60 * 1000 * 90,
-// 	});
-// };
+const COOKIE_NAME = "access_token";
 
 const signup = async (
 	req: Request<{}, {}, CreateUserSchema>,
@@ -25,13 +18,10 @@ const signup = async (
 	next: NextFunction,
 ) => {
 	try {
-		// const { user, token } = await authService.signup(req.body);
 		const { user } = await authService.signup(req.body);
-		// setCookie(res, token);
 		res.status(201).json({
 			success: true,
 			message: "User created successfully",
-			// data: { user, token },
 			data: { user },
 		});
 	} catch (error) {
@@ -49,7 +39,14 @@ const signin = async (
 			req.body.email,
 			req.body.password,
 		);
-		// setCookie(res, token);
+
+		res.cookie("token", token, {
+			httpOnly: true,
+			secure: config.env === "production",
+			sameSite: "strict",
+			maxAge: 24 * 60 * 60 * 1000 * 7,
+		});
+
 		res.status(200).json({
 			success: true,
 			message: "Signed in successfully",
@@ -61,7 +58,11 @@ const signin = async (
 };
 
 const signout = (req: Request, res: Response) => {
-	// res.cookie("token", "", { httpOnly: true, expires: new Date(0) });
+	res.clearCookie(COOKIE_NAME, {
+		httpOnly: true,
+		sameSite: "lax",
+		secure: config.env === "production",
+	});
 	res.status(200).json({ success: true, message: "Signed out successfully" });
 };
 
@@ -97,10 +98,8 @@ const forgotPassword = async (
 		const result = await authService.forgotPassword(req.body.email);
 		res.status(200).json({ success: true, ...result });
 	} catch (err) {
-		// --- THÊM 2 DÒNG NÀY ĐỂ DEBUG ---
 		console.error("--- LỖI GỬI EMAIL ---");
-		console.error(err); // In ra lỗi thật sự từ nodemailer
-		// ----------------------------------
+		console.error(err);
 		next(err);
 	}
 };
