@@ -351,7 +351,9 @@ export const getMe = async (
 	next: NextFunction,
 ) => {
 	try {
+		console.log("first");
 		const userId = req.user!.userId;
+		console.log(userId);
 		const includeFields = req.query.include as string | undefined;
 		const relationsArray = includeFields
 			? includeFields.trim().split(",")
