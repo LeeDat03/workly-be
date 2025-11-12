@@ -32,7 +32,7 @@ const signup = async (
 		res.status(201).json({
 			success: true,
 			message: "User created successfully",
-			data: { user },
+			data: { user, token },
 		});
 	} catch (error) {
 		next(error);

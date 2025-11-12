@@ -11,7 +11,7 @@ export const isAuthenticated = async (
 	next: NextFunction,
 ) => {
 	try {
-		let token = req.headers.authorization;
+		let token;
 
 		if (req.cookies.token) {
 			token = req.cookies.token.trim();
