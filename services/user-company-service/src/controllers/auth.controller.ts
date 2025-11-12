@@ -10,6 +10,15 @@ import { config } from "../config";
 import { LoggedInUserRequest } from "../types";
 import { OAuthSchema } from "../validators/oauth.validator";
 
+const setCookie = (res: Response, token: string) => {
+	res.cookie("token", token, {
+		httpOnly: true,
+		secure: config.env === "production",
+		sameSite: "strict",
+		maxAge: 24 * 60 * 60 * 1000 * 90,
+	});
+};
+
 const COOKIE_NAME = "access_token";
 
 const signup = async (
@@ -18,11 +27,12 @@ const signup = async (
 	next: NextFunction,
 ) => {
 	try {
-		const { user } = await authService.signup(req.body);
+		const { user, token } = await authService.signup(req.body);
+		setCookie(res, token);
 		res.status(201).json({
 			success: true,
 			message: "User created successfully",
-			data: { user },
+			data: { user, token },
 		});
 	} catch (error) {
 		next(error);
@@ -40,13 +50,7 @@ const signin = async (
 			req.body.password,
 		);
 
-		res.cookie("token", token, {
-			httpOnly: true,
-			secure: config.env === "production",
-			sameSite: "strict",
-			maxAge: 24 * 60 * 60 * 1000 * 7,
-		});
-
+		setCookie(res, token);
 		res.status(200).json({
 			success: true,
 			message: "Signed in successfully",

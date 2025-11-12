@@ -1,6 +1,6 @@
 import { Router } from "express";
 import userController from "../controllers/user.controller";
-import { isAuthenticated } from "../middlewares"; // <-- "Người gác cổng"
+import { isAuthenticated } from "../middlewares";
 import { validate } from "../middlewares/validation";
 import {
 	changePasswordSchema,
@@ -12,44 +12,41 @@ import {
 
 const router = Router();
 
-// PRIVATE ROUTE
+// PUBLIC ROUTE
+router.get("/", userController.getAllUsers);
 router.get("/me", isAuthenticated, userController.getMe);
+router.get("/skills", userController.getAllSkills);
+router.get("/schools", userController.getAllSchools);
+router.get("/:id", userController.getUserById);
 
+// PRIVATE ROUTE
+router.use(isAuthenticated);
 router.patch(
 	"/me",
-	isAuthenticated,
 	validate(updateUserProfileSchema),
 	userController.updateBasicProfile,
 );
+
 router.patch(
 	"/me/skills",
-	isAuthenticated,
 	validate(updateUserSkillsSchema),
 	userController.updateUserSkills,
 );
 router.patch(
 	"/me/industries",
-	isAuthenticated,
 	validate(updateUserIndustriesSchema),
 	userController.updateUserIndustries,
 );
 router.patch(
 	"/me/educations",
-	isAuthenticated,
 	validate(updateEducationSchema),
 	userController.updateUserEducations,
 );
 router.patch(
 	"/me/change-password",
-	isAuthenticated,
 	validate(changePasswordSchema),
 	userController.changeMyPassword,
 );
-router.delete("/me", isAuthenticated, userController.deleteMe);
-
-// PUBLIC ROUTE
-router.get("/", userController.getAllUsers);
-
-router.get("/:id", userController.getUserById);
+router.delete("/me", userController.deleteMe);
 
 export default router;

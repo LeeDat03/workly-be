@@ -11,12 +11,19 @@ export const isAuthenticated = async (
 	next: NextFunction,
 ) => {
 	try {
-		let token = req.headers.authorization;
+		let token;
+
+		if (req.cookies.token) {
+			token = req.cookies.token.trim();
+		} else {
+			const authHeader = req.headers.authorization;
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				token = authHeader.split(" ")[1].trim();
+			}
+		}
 
 		if (!token) {
-			throw new UnauthorizedError(
-				"You are not logged in. Please log in to get access.",
-			);
+			throw new UnauthorizedError("Token is required");
 		}
 
 		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
@@ -25,7 +32,7 @@ export const isAuthenticated = async (
 			where: { userId: decoded.id },
 			plain: true,
 		});
-		console.log("reqreq", currentUser);
+
 		if (!currentUser) {
 			throw new UnauthorizedError("Invalid token, please log in again.");
 		}
