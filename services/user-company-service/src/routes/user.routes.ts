@@ -15,6 +15,8 @@ const router = Router();
 // PUBLIC ROUTE
 router.get("/", userController.getAllUsers);
 router.get("/me", isAuthenticated, userController.getMe);
+router.get("/skills", userController.getAllSkills);
+router.get("/schools", userController.getAllSchools);
 router.get("/:id", userController.getUserById);
 
 // PRIVATE ROUTE
@@ -24,6 +26,7 @@ router.patch(
 	validate(updateUserProfileSchema),
 	userController.updateBasicProfile,
 );
+
 router.patch(
 	"/me/skills",
 	validate(updateUserSkillsSchema),

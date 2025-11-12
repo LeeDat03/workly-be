@@ -39,16 +39,16 @@ export const getSchoolModel = (neogma: Neogma) => {
 		instance.schoolId = nanoid(12);
 	};
 
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT school_id_unique IF NOT EXISTS
-		FOR (s:School)
-		REQUIRE s.schoolId IS UNIQUE
-	`);
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT school_name_unique IF NOT EXISTS
-		FOR (s:School)
-		REQUIRE s.name IS UNIQUE
-	`);
+	// neogma.queryRunner.run(`
+	// 	CREATE CONSTRAINT school_id_unique IF NOT EXISTS
+	// 	FOR (s:School)
+	// 	REQUIRE s.schoolId IS UNIQUE
+	// `);
+	// neogma.queryRunner.run(`
+	// 	CREATE CONSTRAINT school_name_unique IF NOT EXISTS
+	// 	FOR (s:School)
+	// 	REQUIRE s.name IS UNIQUE
+	// `);
 	return SchoolModel;
 };
 
