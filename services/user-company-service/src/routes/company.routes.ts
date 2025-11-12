@@ -5,6 +5,7 @@ import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
 import { createCompanySchema, updateCompanySchema } from "../validators";
+import upload from "../middlewares/checkUpload";
 
 const router = Router();
 
@@ -22,6 +23,20 @@ router.patch(
 	isAuthenticated,
 	validate(updateCompanySchema),
 	companyController.updateCompany,
+);
+
+router.patch(
+	"/:id/logo",
+	isAuthenticated,
+	upload.single("logo"),
+	companyController.updateCompanyLogo,
+);
+
+router.patch(
+	"/:id/banner",
+	isAuthenticated,
+	upload.single("banner"),
+	companyController.updateCompanyBanner,
 );
 
 // OWNER ACCESS

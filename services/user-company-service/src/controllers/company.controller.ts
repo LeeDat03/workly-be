@@ -17,6 +17,7 @@ import {
 } from "../utils/appError";
 import { LoggedInUserRequest } from "../types";
 import { database } from "../config/database";
+import { cloudinaryService } from "../services/upload/cloudinary.service";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
@@ -51,6 +52,34 @@ const checkCompanyAccess = async (userId: string, companyId: string) => {
 		isOwner: record.get("isOwner") || false,
 		isAdmin: record.get("isAdmin") || false,
 	};
+};
+
+// TODO: HANDLE TRANSACTION
+const updateCompanyImage = async (
+	companyId: string,
+	file: Express.Multer.File,
+	type: "logo" | "banner",
+) => {
+	const { url } = await cloudinaryService.upload({
+		file,
+		sourceId: companyId,
+		fileType: type,
+		overwrite: true,
+	});
+
+	const result = await CompanyModel.update(
+		{
+			[type === "logo" ? "logoUrl" : "bannerUrl"]: url,
+		},
+		{
+			where: {
+				companyId,
+			},
+			return: true,
+		},
+	);
+
+	return result[0][0].dataValues;
 };
 
 const createCompany = async (
@@ -240,53 +269,174 @@ const updateCompany = async (
 			}
 		}
 
-		// Handle industry relationship update
-		if (data.industryId) {
-			const industry = await IndustryModel.findOne({
-				where: {
-					industryId: data.industryId,
-				},
-			});
-			if (!industry) {
-				throw new BadRequestError("Industry does not exist");
+		const neogma = database.getNeogma();
+		const session = neogma.driver.session();
+		const transaction = session.beginTransaction();
+
+		try {
+			if (data.industryId) {
+				const industry = await IndustryModel.findOne({
+					where: {
+						industryId: data.industryId,
+					},
+				});
+				if (!industry) {
+					throw new BadRequestError("Industry does not exist");
+				}
+
+				await transaction.run(
+					`
+					MATCH (c:Company {companyId: $companyId})
+					OPTIONAL MATCH (c)-[r:IN]->(:Industry)
+					DELETE r
+					WITH c
+					MATCH (i:Industry {industryId: $industryId})
+					MERGE (c)-[:IN]->(i)
+					`,
+					{
+						companyId,
+						industryId: data.industryId,
+					},
+				);
 			}
 
-			const neogma = database.getNeogma();
-			await neogma.queryRunner.run(
+			const { industryId, ...companyUpdateData } = data;
+
+			// Update company properties
+			const updateResult = await transaction.run(
 				`
 				MATCH (c:Company {companyId: $companyId})
-				OPTIONAL MATCH (c)-[r:IN]->(:Industry)
-				DELETE r
-				WITH c
-				MATCH (i:Industry {industryId: $industryId})
-				MERGE (c)-[:IN]->(i)
+				SET c += $updateData
+				RETURN c
 				`,
 				{
 					companyId,
-					industryId: data.industryId,
+					updateData: companyUpdateData,
 				},
+			);
+
+			if (updateResult.records.length === 0) {
+				throw new NotFoundError("Company not found during update");
+			}
+
+			await transaction.commit();
+
+			// const result = await CompanyModel.findOne({
+			// 	where: {
+			// 		companyId,
+			// 	},
+			// });
+
+			// if (!result) {
+			// 	throw new NotFoundError("Company not found after update");
+			// }
+
+			// const companyProfile = toCompanyProfileDTO(result.dataValues);
+
+			res.status(200).json({
+				status: "success",
+				message: "Company updated successfully",
+				// data: companyProfile,
+			});
+		} catch (error) {
+			await transaction.rollback();
+			throw error;
+		} finally {
+			await session.close();
+		}
+
+		return;
+	} catch (error) {
+		next(error);
+	}
+};
+
+const updateCompanyLogo = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id: companyId } = req.params;
+		const logo = req.file;
+		if (!logo) {
+			throw new BadRequestError("Logo is required");
+		}
+
+		const company = await CompanyModel.findOne({
+			where: {
+				companyId,
+			},
+		});
+		if (!company) {
+			throw new NotFoundError("Company not found");
+		}
+
+		const { isOwner, isAdmin } = await checkCompanyAccess(
+			req.user!.userId,
+			companyId,
+		);
+		if (!isOwner && !isAdmin) {
+			throw new ForbiddenError(
+				"You must be the owner or an admin of this company to perform this action",
 			);
 		}
 
-		const { industryId, ...companyUpdateData } = data;
-
-		const result = await CompanyModel.update(
-			{
-				...companyUpdateData,
-			},
-			{
-				where: {
-					companyId,
-				},
-				return: true,
-			},
-		);
-		const companyProfile = toCompanyProfileDTO(result[0][0].dataValues);
-
-		res.status(200).json({
+		const updateResult = await updateCompanyImage(companyId, logo, "logo");
+		return res.status(200).json({
 			status: "success",
-			message: "Company updated successfully",
-			data: companyProfile,
+			message: "Company logo updated successfully",
+			data: {
+				company: updateResult,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const updateCompanyBanner = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id: companyId } = req.params;
+		const banner = req.file;
+		if (!banner) {
+			throw new BadRequestError("Banner is required");
+		}
+
+		const company = await CompanyModel.findOne({
+			where: {
+				companyId,
+			},
+		});
+		if (!company) {
+			throw new NotFoundError("Company not found");
+		}
+
+		const { isOwner, isAdmin } = await checkCompanyAccess(
+			req.user!.userId,
+			companyId,
+		);
+		if (!isOwner && !isAdmin) {
+			throw new ForbiddenError(
+				"You must be the owner or an admin of this company to perform this action",
+			);
+		}
+
+		const updateResult = await updateCompanyImage(
+			companyId,
+			banner,
+			"banner",
+		);
+		return res.status(200).json({
+			status: "success",
+			message: "Company banner updated successfully",
+			data: {
+				company: updateResult,
+			},
 		});
 	} catch (error) {
 		next(error);
@@ -333,4 +483,6 @@ export default {
 	getCompanyById,
 	updateCompany,
 	deleteCompany,
+	updateCompanyLogo,
+	updateCompanyBanner,
 };
