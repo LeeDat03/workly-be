@@ -26,17 +26,13 @@ router.patch(
 );
 
 router.patch(
-	"/:id/logo",
+	"/:id/media",
 	isAuthenticated,
-	upload.single("logo"),
-	companyController.updateCompanyLogo,
-);
-
-router.patch(
-	"/:id/banner",
-	isAuthenticated,
-	upload.single("banner"),
-	companyController.updateCompanyBanner,
+	upload.fields([
+		{ name: "logo", maxCount: 1 },
+		{ name: "banner", maxCount: 1 },
+	]),
+	companyController.updateCompanyMedia,
 );
 
 // OWNER ACCESS

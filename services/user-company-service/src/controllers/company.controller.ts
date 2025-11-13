@@ -351,16 +351,29 @@ const updateCompany = async (
 	}
 };
 
-const updateCompanyLogo = async (
+const updateCompanyMedia = async (
 	req: LoggedInUserRequest,
 	res: Response,
 	next: NextFunction,
 ) => {
 	try {
 		const { id: companyId } = req.params;
-		const logo = req.file;
-		if (!logo) {
-			throw new BadRequestError("Logo is required");
+		const updates: {
+			logo?: Express.Multer.File;
+			banner?: Express.Multer.File;
+		} = {};
+
+		if (req.files && !Array.isArray(req.files)) {
+			if (req.files.logo && Array.isArray(req.files.logo)) {
+				updates.logo = req.files.logo[0];
+			}
+			if (req.files.banner && Array.isArray(req.files.banner)) {
+				updates.banner = req.files.banner[0];
+			}
+		}
+
+		if (!updates.logo && !updates.banner) {
+			throw new BadRequestError("Logo or banner is required");
 		}
 
 		const company = await CompanyModel.findOne({
@@ -382,60 +395,30 @@ const updateCompanyLogo = async (
 			);
 		}
 
-		const updateResult = await updateCompanyImage(companyId, logo, "logo");
-		return res.status(200).json({
-			status: "success",
-			message: "Company logo updated successfully",
-			data: {
-				company: updateResult,
-			},
-		});
-	} catch (error) {
-		next(error);
-	}
-};
-
-const updateCompanyBanner = async (
-	req: LoggedInUserRequest,
-	res: Response,
-	next: NextFunction,
-) => {
-	try {
-		const { id: companyId } = req.params;
-		const banner = req.file;
-		if (!banner) {
-			throw new BadRequestError("Banner is required");
+		const updatePromises = [];
+		if (updates.logo) {
+			updatePromises.push(
+				updateCompanyImage(companyId, updates.logo, "logo"),
+			);
 		}
-
-		const company = await CompanyModel.findOne({
-			where: {
-				companyId,
-			},
-		});
-		if (!company) {
-			throw new NotFoundError("Company not found");
-		}
-
-		const { isOwner, isAdmin } = await checkCompanyAccess(
-			req.user!.userId,
-			companyId,
-		);
-		if (!isOwner && !isAdmin) {
-			throw new ForbiddenError(
-				"You must be the owner or an admin of this company to perform this action",
+		if (updates.banner) {
+			updatePromises.push(
+				updateCompanyImage(companyId, updates.banner, "banner"),
 			);
 		}
 
-		const updateResult = await updateCompanyImage(
-			companyId,
-			banner,
-			"banner",
-		);
+		const updateResults = await Promise.all(updatePromises);
+		const finalResult = updateResults[updateResults.length - 1];
+
+		const messages = [];
+		if (updates.logo) messages.push("logo");
+		if (updates.banner) messages.push("banner");
+
 		return res.status(200).json({
 			status: "success",
-			message: "Company banner updated successfully",
+			message: `Company ${messages.join(" and ")} updated successfully`,
 			data: {
-				company: updateResult,
+				company: finalResult,
 			},
 		});
 	} catch (error) {
@@ -483,6 +466,5 @@ export default {
 	getCompanyById,
 	updateCompany,
 	deleteCompany,
-	updateCompanyLogo,
-	updateCompanyBanner,
+	updateCompanyMedia,
 };
