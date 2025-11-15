@@ -8,6 +8,8 @@
 		"build": "tsc",
 		"start": "node dist/server.js",
 		"start:dev": "ts-node src/server.ts",
+		"seed": "ts-node src/seed/seed.runner.ts",
+		"seed:dev": "ts-node src/seed/seed.runner.ts",
 		"lint": "eslint src/**/*.ts",
 		"lint:fix": "eslint src/**/*.ts --fix",
 		"format": "prettier --write \"src/**/*.ts\"",
