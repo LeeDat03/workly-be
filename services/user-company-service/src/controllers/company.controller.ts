@@ -18,6 +18,12 @@ import {
 import { LoggedInUserRequest } from "../types";
 import { database } from "../config/database";
 import { cloudinaryService } from "../services/upload/cloudinary.service";
+import {
+	followCompany,
+	getCompanyFollowers,
+	unfollowCompany,
+} from "../services/follow.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
@@ -460,6 +466,81 @@ const deleteCompany = async (
 	}
 };
 
+const follow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+
+		await followCompany(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Followed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const unfollow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+
+		await unfollowCompany(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Unfollowed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id: companyId } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+		if (!companyId) {
+			throw new BadRequestError("Company ID is required");
+		}
+
+		const { followers, pagination } = await getCompanyFollowers(
+			companyId,
+			paginationQuery,
+		);
+
+		res.status(200).json({
+			success: true,
+			data: {
+				followers,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	createCompany,
 	getAllCompanies,
@@ -467,4 +548,7 @@ export default {
 	updateCompany,
 	deleteCompany,
 	updateCompanyMedia,
+	follow,
+	unfollow,
+	getFollowers,
 };

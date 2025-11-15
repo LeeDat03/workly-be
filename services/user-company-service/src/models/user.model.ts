@@ -16,6 +16,7 @@ import {
 	getSchoolModel,
 } from "./school.model";
 import { nanoid } from "nanoid";
+import { CompanyInstance, CompanyModelType } from "./company.model";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
@@ -65,6 +66,26 @@ interface IUserRelatedNodes {
 			startDate: string;
 			endDate: string;
 			description: string;
+		}
+	>;
+	FollowingUser: ModelRelatedNodesI<
+		typeof UserModel,
+		UserInstance,
+		{
+			Timestamp: number;
+		},
+		{
+			timestamp: number;
+		}
+	>;
+	FollowingCompany: ModelRelatedNodesI<
+		CompanyModelType,
+		CompanyInstance,
+		{
+			Timestamp: number;
+		},
+		{
+			timestamp: number;
 		}
 	>;
 }
@@ -180,10 +201,42 @@ export const getUserModel = (neogma: Neogma) => {
 		},
 		neogma,
 	);
+	// Add self-referential relationship after model is created
+	UserModel.relationships.FollowingUser = {
+		model: UserModel,
+		direction: "out",
+		name: "FOLLOWING_USER",
+		properties: {
+			Timestamp: {
+				property: "timestamp",
+				schema: {
+					type: "number",
+					required: true,
+				},
+			},
+		},
+	};
+
+	// Add FollowingCompany relationship after model is created
+	const CompanyModel = require("./company.model").getCompanyModel(neogma);
+	UserModel.relationships.FollowingCompany = {
+		model: CompanyModel,
+		direction: "out",
+		name: "FOLLOWING_COMPANY",
+		properties: {
+			Timestamp: {
+				property: "timestamp",
+				schema: {
+					type: "number",
+					required: true,
+				},
+			},
+		},
+	};
+
 	UserModel.beforeCreate = (instance) => {
 		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();
-		instance.updatedAt = new Date().toISOString();
 		instance.role = UserRole.USER;
 	};
 

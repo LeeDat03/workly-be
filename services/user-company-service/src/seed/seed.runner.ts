@@ -1,7 +1,7 @@
 import { database } from "../config/database";
 import { initModels } from "../models";
 import logger from "../utils/logger";
-import { seedUser } from "./index";
+import { seedUser, seedCompany } from "./index";
 
 const runSeeder = async () => {
 	try {
@@ -14,9 +14,9 @@ const runSeeder = async () => {
 		console.log("✅ Models initialized successfully\n");
 
 		await seedUser(10);
+		await seedCompany(10);
 
 		// Add more seed functions here as needed
-		// await seedCompany();
 		// await seedIndustry();
 		// await seedSkill();
 		// await seedSchool();
