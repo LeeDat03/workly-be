@@ -91,10 +91,9 @@ export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 export const toUserBasicDTO = (user: UserProperties) => {
 	return {
 		userId: user.userId,
-
 		email: user.email,
-
 		name: user.name,
+		avatarUrl: user.avatarUrl,
 	};
 };
 

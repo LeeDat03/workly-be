@@ -22,6 +22,13 @@ import {
 	updateRelationsWithQuery,
 } from "../services/user.service";
 import { UpdateEducationSchema } from "../validators/user.validator";
+import {
+	followUser,
+	getUserFollowers,
+	getUserFollowing,
+	unfollowUser,
+} from "../services/follow.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 const updateRelations = async <T extends keyof typeof UserModel.relationships>(
 	user: any,
@@ -369,6 +376,113 @@ export const deleteMe = async (
 	}
 };
 
+const follow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+		if (userId === targetId) {
+			throw new BadRequestError("You cannot follow yourself");
+		}
+
+		await followUser(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Followed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const unfollow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+		if (userId === targetId) {
+			throw new BadRequestError("You cannot unfollow yourself");
+		}
+
+		await unfollowUser(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Unfollowed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+
+		if (!id) {
+			throw new BadRequestError("User ID is required");
+		}
+		const { followers, pagination } = await getUserFollowers(
+			id,
+			paginationQuery,
+		);
+		res.status(200).json({
+			success: true,
+			data: {
+				followers,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowing = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+		if (!id) {
+			throw new BadRequestError("User ID is required");
+		}
+		const { following, pagination } = await getUserFollowing(
+			id,
+			paginationQuery,
+		);
+		res.status(200).json({
+			success: true,
+			data: {
+				following,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	getAllUsers,
 	getUserById,
@@ -379,4 +493,8 @@ export default {
 	updateUserIndustries,
 	updateUserEducations,
 	changeMyPassword,
+	follow,
+	unfollow,
+	getFollowers,
+	getFollowing,
 };
