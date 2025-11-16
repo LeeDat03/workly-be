@@ -1,8 +1,42 @@
 import { database } from "../config/database";
 import bcrypt from "bcryptjs";
-import { UserModel, CompanyModel } from "../models";
+import { UserModel, CompanyModel, IndustryModel } from "../models";
 import { UserProperties } from "../models/user.model";
 import { CompanyProperties, CompanySize } from "../models/company.model";
+import { IndustryProperties } from "../models/industry.model";
+import { nanoid } from "nanoid";
+
+const INDUSTRY_DATA = [
+	{ industryId: "technology", name: "Technology" },
+	{ industryId: "finance", name: "Finance" },
+	{ industryId: "healthcare", name: "Healthcare" },
+	{ industryId: "e-commerce", name: "E-Commerce" },
+	{ industryId: "education", name: "Education" },
+	{ industryId: "marketing", name: "Marketing" },
+	{ industryId: "real-estate", name: "Real Estate" },
+	{ industryId: "automotive", name: "Automotive" },
+	{ industryId: "biotech", name: "Biotechnology" },
+	{ industryId: "entertainment", name: "Entertainment" },
+	{ industryId: "telecommunications", name: "Telecommunications" },
+	{ industryId: "consulting", name: "Consulting" },
+];
+
+const SKILL_DATA = [
+	{ skillId: "javascript", name: "JavaScript" },
+	{ skillId: "python", name: "Python" },
+	{ skillId: "react", name: "React" },
+	{ skillId: "nodejs", name: "Node.js" },
+	{ skillId: "mongodb", name: "MongoDB" },
+	{ skillId: "express", name: "Express" },
+];
+
+const SCHOOL_DATA = [
+	{ schoolId: "harvard", name: "Harvard University" },
+	{ schoolId: "stanford", name: "Stanford University" },
+	{ schoolId: "mit", name: "MIT" },
+	{ schoolId: "oxford", name: "Oxford University" },
+	{ schoolId: "cambridge", name: "Cambridge University" },
+];
 
 // SEED USER
 export const seedUser = async (count: number = 10) => {
@@ -129,18 +163,41 @@ export const seedCompany = async (count: number = 10) => {
 			const suffix = i > companyTemplates.length ? ` ${i}` : "";
 
 			const companyData = {
+				companyId: nanoid(12),
 				name: `${template.name}${suffix}`,
 				description: template.description,
 				foundedYear: currentYear - Math.floor(Math.random() * 20),
 				size: template.size,
 				website: template.website,
 				location: template.location,
+				industryId:
+					INDUSTRY_DATA[(i - 1) % INDUSTRY_DATA.length].industryId,
 			};
 			companiesToCreate.push(companyData);
 		}
 
-		await CompanyModel.createMany(
-			companiesToCreate as unknown as CompanyProperties[],
+		console.log(companiesToCreate);
+		const neogma = database.getNeogma();
+		await Promise.all(
+			companiesToCreate.map(async (company) => {
+				await neogma.queryRunner.run(
+					`
+				MATCH (i:Industry {industryId: $industryId})
+				CREATE (c:Company { companyId: $companyId, name: $name, description: $description, foundedYear: $foundedYear, size: $size, website: $website, location: $location })
+				MERGE (c)-[:IN]->(i)
+				`,
+					{
+						industryId: company.industryId,
+						companyId: company.companyId,
+						name: company.name,
+						description: company.description,
+						foundedYear: company.foundedYear,
+						size: company.size,
+						website: company.website,
+						location: company.location,
+					},
+				);
+			}),
 		);
 
 		console.log(`✅ Successfully seeded ${count} companies.`);
@@ -150,9 +207,65 @@ export const seedCompany = async (count: number = 10) => {
 };
 
 // SEED INDUSTRY
+export const seedIndustry = async () => {
+	try {
+		console.log(`🌱 Starting to seed industries...`);
+		const neogma = database.getNeogma();
+		await Promise.all(
+			INDUSTRY_DATA.map(async (industry) => {
+				await neogma.queryRunner.run(
+					`
+				CREATE (i:Industry { industryId: $industryId, name: $name })
+				`,
+					{ industryId: industry.industryId, name: industry.name },
+				);
+			}),
+		);
+		console.log(`✅ Successfully seeded industries.`);
+	} catch (error) {
+		console.error("❌ Error during industry seeding:", error);
+	}
+};
 
 // SEED SKILL
+export const seedSkill = async () => {
+	try {
+		console.log(`🌱 Starting to seed skills...`);
+		const neogma = database.getNeogma();
+		await Promise.all(
+			SKILL_DATA.map(async (skill) => {
+				await neogma.queryRunner.run(
+					`
+				CREATE (s:Skill { skillId: $skillId, name: $name })
+				`,
+					{ skillId: skill.skillId, name: skill.name },
+				);
+			}),
+		);
+		console.log(`✅ Successfully seeded skills.`);
+	} catch (error) {
+		console.error("❌ Error during skill seeding:", error);
+	}
+};
 
 // SEED SCHOOL
-
+export const seedSchool = async () => {
+	try {
+		console.log(`🌱 Starting to seed schools...`);
+		const neogma = database.getNeogma();
+		await Promise.all(
+			SCHOOL_DATA.map(async (school) => {
+				await neogma.queryRunner.run(
+					`
+				CREATE (s:School { schoolId: $schoolId, name: $name })
+				`,
+					{ schoolId: school.schoolId, name: school.name },
+				);
+			}),
+		);
+		console.log(`✅ Successfully seeded schools.`);
+	} catch (error) {
+		console.error("❌ Error during school seeding:", error);
+	}
+};
 // SEED JOB
