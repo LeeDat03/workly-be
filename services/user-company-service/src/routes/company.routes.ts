@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { isAuthenticated, validate } from "../middlewares";
+import { isAuthenticated, validate, optionalAuth } from "../middlewares";
 import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
@@ -40,6 +40,8 @@ router.patch(
 router.get("/:id/followers", companyController.getFollowers);
 router.post("/:id/follow", isAuthenticated, companyController.follow);
 router.delete("/:id/follow", isAuthenticated, companyController.unfollow);
+
+router.get("/:id/is-following", optionalAuth, companyController.isFollowing);
 
 // OWNER ACCESS - OWNER ACTION
 const ownerRoutes = Router({ mergeParams: true });

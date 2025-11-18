@@ -2,7 +2,7 @@ import { int } from "neo4j-driver";
 import { database } from "../config/database";
 import { IPagination } from "../types";
 import { NotFoundError } from "../utils/appError";
-import { toUserBasicDTO } from "../validators/user.validator";
+import { toUserBasicDTO, toUserFollowDTO } from "../validators/user.validator";
 
 //////////////////////////////////////////////////////////////////
 // USER
@@ -214,9 +214,9 @@ export const getCompanyFollowers = async (
 	const followers = result.records.slice(0, limit).map((record) => {
 		const userNode = record.get("u");
 		const relationship = record.get("r");
-		const user = toUserBasicDTO(userNode.properties);
+		const user = toUserFollowDTO(userNode.properties);
 		return {
-			user,
+			...user,
 			followedAt: new Date(relationship.properties.timestamp),
 		};
 	});
@@ -225,4 +225,31 @@ export const getCompanyFollowers = async (
 		followers: followers,
 		pagination: { page, limit, hasNextPage },
 	};
+};
+
+export const countCompanyFollowers = async (companyId: string) => {
+	const neogma = database.getNeogma();
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (u:User)-[r:FOLLOWING_COMPANY]->(c:Company {companyId: $companyId})
+		RETURN count(r) as count
+		`,
+		{ companyId },
+	);
+	return result.records[0]?.get("count")?.toNumber() || 0;
+};
+
+export const checkIfUserFollowsCompany = async (
+	userId: string,
+	companyId: string,
+) => {
+	const neogma = database.getNeogma();
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (u:User {userId: $userId})-[r:FOLLOWING_COMPANY]->(c:Company {companyId: $companyId})
+		RETURN r
+		`,
+		{ userId, companyId },
+	);
+	return result.records.length > 0;
 };
