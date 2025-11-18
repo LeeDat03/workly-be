@@ -19,6 +19,8 @@ import { LoggedInUserRequest } from "../types";
 import { database } from "../config/database";
 import { cloudinaryService } from "../services/upload/cloudinary.service";
 import {
+	checkIfUserFollowsCompany,
+	countCompanyFollowers,
 	followCompany,
 	getCompanyFollowers,
 	unfollowCompany,
@@ -211,20 +213,28 @@ const getCompanyById = async (
 			throw new NotFoundError("Company not found");
 		}
 
-		const [ownerRelationship, industryRelationship] = await Promise.all([
-			company.findRelationships({ alias: "Owner" }),
-			company.findRelationships({ alias: "Industry" }),
-		]);
-		const companyProfile = toCompanyProfileDTO(
-			company.dataValues,
-			extractRelationshipData(ownerRelationship),
-			extractRelationshipData(industryRelationship),
-		);
+		const [ownerRelationship, industryRelationship, followersCount] =
+			await Promise.all([
+				company.findRelationships({ alias: "Owner" }),
+				company.findRelationships({ alias: "Industry" }),
+				countCompanyFollowers(companyId),
+			]);
+
+		const companyProfile = {
+			...toCompanyProfileDTO(
+				company.dataValues,
+				extractRelationshipData(ownerRelationship),
+				extractRelationshipData(industryRelationship),
+			),
+		};
 
 		res.status(200).json({
 			status: "success",
 			data: {
-				...companyProfile,
+				company: {
+					...companyProfile.company,
+					followersCount,
+				},
 			},
 		});
 	} catch (error) {
@@ -512,6 +522,39 @@ const unfollow = async (
 	}
 };
 
+const isFollowing = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { id: companyId } = req.params;
+		if (!companyId) {
+			throw new BadRequestError("Company ID is required");
+		}
+
+		const user = (req as any).user;
+		if (!user || !user.userId) {
+			return res.status(200).json({
+				success: true,
+				data: {
+					isFollowing: false,
+				},
+			});
+		}
+
+		const isFollowingCompany = await checkIfUserFollowsCompany(
+			user.userId,
+			companyId,
+		);
+
+		res.status(200).json({
+			success: true,
+			data: {
+				isFollowing: isFollowingCompany,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 const getFollowers = async (
 	req: Request,
 	res: Response,
@@ -550,5 +593,6 @@ export default {
 	updateCompanyMedia,
 	follow,
 	unfollow,
+	isFollowing,
 	getFollowers,
 };

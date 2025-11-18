@@ -97,6 +97,16 @@ export const toUserBasicDTO = (user: UserProperties) => {
 	};
 };
 
+export const toUserFollowDTO = (user: UserProperties) => {
+	return {
+		userId: user.userId,
+		name: user.name,
+		username: user.username,
+		avatarUrl: user.avatarUrl,
+		headline: user.headline,
+	};
+};
+
 export const toUserProfileDTO = (
 	user: UserProperties,
 	industries?: IndustryProperties[],
