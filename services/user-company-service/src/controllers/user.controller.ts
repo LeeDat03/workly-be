@@ -23,6 +23,8 @@ import {
 } from "../services/user.service";
 import { UpdateEducationSchema } from "../validators/user.validator";
 import {
+	checkIfUserFollowsUser,
+	countUserFollowers,
 	followUser,
 	getUserFollowers,
 	getUserFollowing,
@@ -30,81 +32,32 @@ import {
 } from "../services/follow.service";
 import { parsePaginationQuery } from "../utils/pagination";
 import { clearCookie } from "./auth.controller";
+import { cloudinaryService } from "../services/upload/cloudinary.service";
 
-const updateRelations = async <T extends keyof typeof UserModel.relationships>(
-	user: any,
-	alias: T,
-	newIds: string[] | undefined,
-	Model: any,
-	idField: string,
+// TODO: HANDLE TRANSACTION
+const updateUserImage = async (
+	userId: string,
+	file: Express.Multer.File,
+	type: "avatar" | "background",
 ) => {
-	if (newIds === undefined) return;
+	const { url } = await cloudinaryService.upload({
+		file,
+		sourceId: userId,
+		fileType: type,
+		overwrite: true,
+	});
 
-	const currentRels = await user.findRelationships({ alias });
-	const currentIds = currentRels.map(
-		(rel: any) => rel.target.dataValues[idField],
+	const result = await UserModel.update(
+		{
+			[type === "avatar" ? "avatarUrl" : "bgCoverUrl"]: url,
+		},
+		{
+			where: { userId },
+			return: true,
+		},
 	);
 
-	const toDelete = currentIds.filter((id: any) => !newIds.includes(id));
-	for (const id of toDelete) {
-		await UserModel.deleteRelationships({
-			alias,
-			where: {
-				source: { userId: user.userId },
-				target: { [idField]: id },
-			},
-		});
-	}
-
-	const toAdd = newIds.filter((id) => !currentIds.includes(id));
-	for (const id of toAdd) {
-		const item = await Model.findOne({ where: { [idField]: id } });
-		if (item) {
-			await user.relateTo({ alias, where: { [idField]: id } });
-		}
-	}
-};
-
-const getFullUserProfile = async (userId: string) => {
-	const user = await UserModel.findOne({ where: { userId } });
-	if (!user) {
-		throw new NotFoundError("User not found");
-	}
-
-	const [industryRels, skillRels] = await Promise.all([
-		user.findRelationships({ alias: "Industry" }),
-		user.findRelationships({ alias: "Skill" }),
-	]);
-
-	const industryData = industryRels.map((rel: any) => rel.target.dataValues);
-	const skillData = skillRels.map((rel: any) => rel.target.dataValues);
-
-	// const educationData = [];
-
-	// const educationRels = await user.findRelationships({ alias: "Education" });
-
-	// for (const eduRel of educationRels) {
-	// 	const education = eduRel.target;
-	// 	if (!education) continue;
-
-	// 	const schoolRels = await education.findRelationships({
-	// 		alias: "School",
-	// 	});
-	// 	const schoolData =
-	// 		schoolRels.length > 0 ? schoolRels[0].target.dataValues : null;
-
-	// 	educationData.push({
-	// 		...education.dataValues,
-	// 		school: schoolData,
-	// 	});
-	// }
-
-	return toUserProfileDTO(
-		user.dataValues,
-		industryData as IndustryProperties[],
-		skillData as SkillProperties[],
-		// educationData as any[],
-	);
+	return result[0][0].dataValues;
 };
 
 // TODO: optimize
@@ -158,7 +111,12 @@ export const getUserById = async (
 			throw new BadRequestError("User ID is required");
 		}
 
-		const userProfile = await getUserProfile(id, relationsArray);
+		const [userProfile, followersCount] = await Promise.all([
+			getUserProfile(id, relationsArray),
+			countUserFollowers(id),
+		]);
+		userProfile.user.followersCount = followersCount;
+
 		res.status(200).json({
 			success: true,
 			data: userProfile,
@@ -379,6 +337,67 @@ export const deleteMe = async (
 	}
 };
 
+const updateUserMedia = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const updates: {
+			avatar?: Express.Multer.File;
+			background?: Express.Multer.File;
+		} = {};
+
+		if (req.files && !Array.isArray(req.files)) {
+			if (req.files.avatar && Array.isArray(req.files.avatar)) {
+				updates.avatar = req.files.avatar[0];
+			}
+			if (req.files.background && Array.isArray(req.files.background)) {
+				updates.background = req.files.background[0];
+			}
+		}
+
+		if (!updates.avatar && !updates.background) {
+			throw new BadRequestError("Avatar or background is required");
+		}
+
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		const updatePromises = [];
+		if (updates.avatar) {
+			updatePromises.push(
+				updateUserImage(userId, updates.avatar, "avatar"),
+			);
+		}
+		if (updates.background) {
+			updatePromises.push(
+				updateUserImage(userId, updates.background, "background"),
+			);
+		}
+
+		const updateResults = await Promise.all(updatePromises);
+		const finalResult = updateResults[updateResults.length - 1];
+
+		const messages = [];
+		if (updates.avatar) messages.push("avatar");
+		if (updates.background) messages.push("background");
+
+		res.status(200).json({
+			success: true,
+			message: `User ${messages.join(" and ")} updated successfully`,
+			data: {
+				user: finalResult,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 const follow = async (
 	req: LoggedInUserRequest,
 	res: Response,
@@ -486,6 +505,31 @@ const getFollowing = async (
 	}
 };
 
+const isFollowing = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { id } = req.params;
+		const user = (req as any).user;
+		if (!user || !user.userId || user.userId === id) {
+			return res.status(200).json({
+				success: true,
+				data: {
+					isFollowing: false,
+				},
+			});
+		}
+
+		const isFollowingUser = await checkIfUserFollowsUser(user.userId, id);
+		res.status(200).json({
+			success: true,
+			data: {
+				isFollowing: isFollowingUser,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	getAllUsers,
 	getUserById,
@@ -500,4 +544,6 @@ export default {
 	unfollow,
 	getFollowers,
 	getFollowing,
+	updateUserMedia,
+	isFollowing,
 };

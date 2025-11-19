@@ -51,9 +51,9 @@ export const unfollowUser = async (currId: string, targetId: string) => {
 
 	const deletedCount =
 		result.records[0]?.get("deletedCount")?.toNumber() || 0;
-	if (deletedCount === 0) {
-		throw new NotFoundError("Follow relationship not found");
-	}
+	// if (deletedCount === 0) {
+	// 	throw new NotFoundError("Follow relationship not found");
+	// }
 };
 
 export const getUserFollowers = async (
@@ -88,7 +88,7 @@ export const getUserFollowers = async (
 
 		const user = toUserBasicDTO(userNode.properties);
 		return {
-			user,
+			...user,
 			followedAt: new Date(relationship.properties.timestamp),
 		};
 	});
@@ -126,7 +126,7 @@ export const getUserFollowing = async (
 		const relationship = record.get("r");
 		const user = toUserBasicDTO(userNode.properties);
 		return {
-			user,
+			...user,
 			followedAt: new Date(relationship.properties.timestamp),
 		};
 	});
@@ -135,6 +135,45 @@ export const getUserFollowing = async (
 		following: following,
 		pagination: { page, limit, hasNextPage },
 	};
+};
+
+export const countUserFollowers = async (userId: string) => {
+	const neogma = database.getNeogma();
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (u:User)-[r:FOLLOWING_USER]->(f:User {userId: $userId})
+		RETURN count(r) as count
+		`,
+		{ userId },
+	);
+	return result.records[0]?.get("count")?.toNumber() || 0;
+};
+
+export const countUserFollowing = async (userId: string) => {
+	const neogma = database.getNeogma();
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (u:User {userId: $userId})-[r:FOLLOWING_USER]->(f:User)
+		RETURN count(r) as count
+		`,
+		{ userId },
+	);
+	return result.records[0]?.get("count")?.toNumber() || 0;
+};
+
+export const checkIfUserFollowsUser = async (
+	userId: string,
+	targetId: string,
+) => {
+	const neogma = database.getNeogma();
+	const result = await neogma.queryRunner.run(
+		`
+		MATCH (u:User {userId: $userId})-[r:FOLLOWING_USER]->(t:User {userId: $targetId})
+		RETURN r
+		`,
+		{ userId, targetId },
+	);
+	return result.records.length > 0;
 };
 
 ////////////////////////////////////////////////////////////////////
@@ -184,9 +223,9 @@ export const unfollowCompany = async (userId: string, companyId: string) => {
 
 	const deletedCount =
 		result.records[0]?.get("deletedCount")?.toNumber() || 0;
-	if (deletedCount === 0) {
-		throw new NotFoundError("Follow relationship not found");
-	}
+	// if (deletedCount === 0) {
+	// 	throw new NotFoundError("Follow relationship not found");
+	// }
 };
 
 export const getCompanyFollowers = async (
