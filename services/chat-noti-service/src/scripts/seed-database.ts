@@ -81,7 +81,7 @@ const seedDatabase = async (): Promise<void> => {
 		});
 
 		// Update conversation 1 với last message
-		conversation1.lastMessage = message3._id;
+		conversation1.lastMessage = message3._id as any;
 		conversation1.lastMessageAt = message3.createdAt;
 		conversation1.unreadCount.set("user456", 1);
 		await conversation1.save();
@@ -111,7 +111,7 @@ const seedDatabase = async (): Promise<void> => {
 		});
 
 		// Update conversation 2 với last message
-		conversation2.lastMessage = message5._id;
+		conversation2.lastMessage = message5._id as any;
 		conversation2.lastMessageAt = message5.createdAt;
 		conversation2.unreadCount.set("company789", 1);
 		await conversation2.save();
@@ -136,4 +136,3 @@ Summary:
 
 // Run seed
 seedDatabase();
-

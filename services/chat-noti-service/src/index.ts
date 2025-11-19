@@ -2,6 +2,7 @@ import { App } from "./app";
 import { config, connectDatabase } from "./config";
 import { ChatSocket } from "./socket";
 import { logger } from "./utils";
+import { userController } from "./routes/user.routes";
 
 const startServer = async (): Promise<void> => {
 	try {
@@ -14,7 +15,10 @@ const startServer = async (): Promise<void> => {
 		const io = appInstance.getSocketIO();
 
 		// Initialize socket handlers
-		new ChatSocket(io);
+		const chatSocket = new ChatSocket(io);
+
+		// Connect user controller with chat socket
+		userController.setChatSocket(chatSocket);
 
 		// Start server
 		server.listen(config.port, () => {

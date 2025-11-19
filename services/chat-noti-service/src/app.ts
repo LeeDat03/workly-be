@@ -1,5 +1,6 @@
 import express, { Application } from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { createServer, Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import { config } from "./config";
@@ -18,6 +19,14 @@ export class App {
 		this.io = new Server(this.httpServer, {
 			cors: {
 				origin: config.cors.allowedOrigins,
+				methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+				allowedHeaders: [
+					"Content-Type",
+					"Authorization",
+					"X-Requested-With",
+					"x-user-id",
+					"x-user-type",
+				],
 				credentials: true,
 			},
 		});
@@ -28,13 +37,23 @@ export class App {
 	}
 
 	private initializeMiddlewares(): void {
-		// CORS
+		// CORS - Allow specific origins with credentials
 		this.app.use(
 			cors({
 				origin: config.cors.allowedOrigins,
 				credentials: true,
+				methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+				allowedHeaders: [
+					"Content-Type",
+					"Authorization",
+					"x-user-id",
+					"x-user-type",
+				],
 			})
 		);
+
+		// Cookie parser
+		this.app.use(cookieParser());
 
 		// Body parser
 		this.app.use(express.json());
@@ -48,6 +67,9 @@ export class App {
 	}
 
 	private initializeRoutes(): void {
+		// Serve static files from examples directory
+		this.app.use("/examples", express.static("examples"));
+
 		// API routes
 		this.app.use("/api", routes);
 
@@ -61,6 +83,7 @@ export class App {
 					health: "/api/health",
 					conversations: "/api/conversations",
 					messages: "/api/messages",
+					testClient: "/examples/socket-client.html",
 				},
 			});
 		});

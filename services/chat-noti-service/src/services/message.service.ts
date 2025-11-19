@@ -1,183 +1,211 @@
-import { Message, IMessage, Conversation } from '../models';
-import { ApiError } from '../utils';
-import { IParticipant } from '../types';
-import { ConversationService } from './conversation.service';
+import { Message, IMessage, Conversation } from "../models";
+import { ApiError } from "../utils";
+import { IParticipant } from "../types";
+import { ConversationService } from "./conversation.service";
 
 export class MessageService {
-  private conversationService: ConversationService;
+	private conversationService: ConversationService;
 
-  constructor() {
-    this.conversationService = new ConversationService();
-  }
+	constructor() {
+		this.conversationService = new ConversationService();
+	}
 
-  /**
-   * Gửi message
-   */
-  async sendMessage(
-    conversationId: string,
-    sender: IParticipant,
-    content: string
-  ): Promise<IMessage> {
-    // Kiểm tra conversation tồn tại
-    const conversation = await Conversation.findById(conversationId);
+	/**
+	 * Gửi message
+	 */
+	async sendMessage(
+		conversationId: string,
+		sender: IParticipant,
+		content: string
+	): Promise<IMessage> {
+		// Kiểm tra conversation tồn tại
+		const conversation = await Conversation.findById(conversationId);
 
-    if (!conversation) {
-      throw ApiError.notFound('Conversation not found');
-    }
+		if (!conversation) {
+			throw ApiError.notFound("Conversation not found");
+		}
 
-    // Kiểm tra sender có phải là participant không
-    const isParticipant = conversation.participants.some(
-      (p) => p.id === sender.id && p.type === sender.type
-    );
+		// Kiểm tra sender có phải là participant không
+		const isParticipant = conversation.participants.some(
+			(p) => p.id === sender.id && p.type === sender.type
+		);
 
-    if (!isParticipant) {
-      throw ApiError.forbidden('You are not a participant of this conversation');
-    }
+		if (!isParticipant) {
+			throw ApiError.forbidden(
+				"You are not a participant of this conversation"
+			);
+		}
+		const message = await Message.create({
+			conversationId,
+			sender,
+			content,
+		});
+		conversation.lastMessage = message._id as any;
+		conversation.lastMessageAt = new Date();
+		const receiver = conversation.participants.find(
+			(p) => p.id !== sender.id || p.type !== sender.type
+		);
 
-    // Tạo message mới
-    const message = await Message.create({
-      conversationId,
-      sender,
-      content,
-    });
+		if (receiver) {
+			await this.conversationService.updateUnreadCount(
+				conversationId,
+				receiver.id,
+				true
+			);
+		}
 
-    // Update conversation's last message
-    conversation.lastMessage = message._id;
-    conversation.lastMessageAt = new Date();
+		await conversation.save();
 
-    // Tăng unread count cho người nhận
-    const receiver = conversation.participants.find(
-      (p) => p.id !== sender.id || p.type !== sender.type
-    );
+		return message;
+	}
 
-    if (receiver) {
-      await this.conversationService.updateUnreadCount(conversationId, receiver.id, true);
-    }
+	/**
+	 * Lấy messages của một conversation
+	 */
+	async getMessagesByConversation(
+		conversationId: string,
+		userId: string,
+		page: number = 1,
+		limit: number = 50
+	): Promise<{
+		messages: IMessage[];
+		total: number;
+		page: number;
+		limit: number;
+	}> {
+		// Kiểm tra user có quyền xem conversation không
+		const conversation = await Conversation.findById(conversationId);
 
-    await conversation.save();
+		if (!conversation) {
+			throw ApiError.notFound("Conversation not found");
+		}
 
-    return message;
-  }
+		const isParticipant = conversation.participants.some(
+			(p) => p.id === userId
+		);
 
-  /**
-   * Lấy messages của một conversation
-   */
-  async getMessagesByConversation(
-    conversationId: string,
-    userId: string,
-    page: number = 1,
-    limit: number = 50
-  ): Promise<{ messages: IMessage[]; total: number; page: number; limit: number }> {
-    // Kiểm tra user có quyền xem conversation không
-    const conversation = await Conversation.findById(conversationId);
+		if (!isParticipant) {
+			throw ApiError.forbidden(
+				"You are not a participant of this conversation"
+			);
+		}
 
-    if (!conversation) {
-      throw ApiError.notFound('Conversation not found');
-    }
+		// Lấy messages
+		const messages = await Message.findByConversation(
+			conversationId,
+			page,
+			limit
+		);
 
-    const isParticipant = conversation.participants.some((p) => p.id === userId);
+		const total = await Message.countDocuments({ conversationId });
 
-    if (!isParticipant) {
-      throw ApiError.forbidden('You are not a participant of this conversation');
-    }
+		return {
+			messages: messages.reverse(), // Reverse để có thứ tự từ cũ đến mới
+			total,
+			page,
+			limit,
+		};
+	}
 
-    // Lấy messages
-    const messages = await Message.findByConversation(conversationId, page, limit);
+	/**
+	 * Đánh dấu message đã đọc
+	 */
+	async markMessageAsRead(
+		messageId: string,
+		userId: string
+	): Promise<IMessage> {
+		const message = await Message.findById(messageId);
 
-    const total = await Message.countDocuments({ conversationId });
+		if (!message) {
+			throw ApiError.notFound("Message not found");
+		}
 
-    return {
-      messages: messages.reverse(), // Reverse để có thứ tự từ cũ đến mới
-      total,
-      page,
-      limit,
-    };
-  }
+		// Kiểm tra user có phải là participant không
+		const conversation = await Conversation.findById(
+			message.conversationId
+		);
 
-  /**
-   * Đánh dấu message đã đọc
-   */
-  async markMessageAsRead(messageId: string, userId: string): Promise<IMessage> {
-    const message = await Message.findById(messageId);
+		if (!conversation) {
+			throw ApiError.notFound("Conversation not found");
+		}
 
-    if (!message) {
-      throw ApiError.notFound('Message not found');
-    }
+		const isParticipant = conversation.participants.some(
+			(p) => p.id === userId
+		);
 
-    // Kiểm tra user có phải là participant không
-    const conversation = await Conversation.findById(message.conversationId);
+		if (!isParticipant) {
+			throw ApiError.forbidden(
+				"You are not a participant of this conversation"
+			);
+		}
 
-    if (!conversation) {
-      throw ApiError.notFound('Conversation not found');
-    }
+		// Không thể đánh dấu message của chính mình
+		if (message.sender.id === userId) {
+			throw ApiError.badRequest("Cannot mark your own message as read");
+		}
 
-    const isParticipant = conversation.participants.some((p) => p.id === userId);
+		await message.markAsRead(userId);
 
-    if (!isParticipant) {
-      throw ApiError.forbidden('You are not a participant of this conversation');
-    }
+		// Giảm unread count
+		await this.conversationService.updateUnreadCount(
+			message.conversationId.toString(),
+			userId,
+			false
+		);
 
-    // Không thể đánh dấu message của chính mình
-    if (message.sender.id === userId) {
-      throw ApiError.badRequest('Cannot mark your own message as read');
-    }
+		return message;
+	}
 
-    await message.markAsRead(userId);
+	/**
+	 * Đánh dấu tất cả messages trong conversation đã đọc
+	 */
+	async markAllMessagesAsRead(
+		conversationId: string,
+		userId: string
+	): Promise<void> {
+		// Kiểm tra user có quyền không
+		const conversation = await Conversation.findById(conversationId);
 
-    // Giảm unread count
-    await this.conversationService.updateUnreadCount(
-      message.conversationId.toString(),
-      userId,
-      false
-    );
+		if (!conversation) {
+			throw ApiError.notFound("Conversation not found");
+		}
 
-    return message;
-  }
+		const isParticipant = conversation.participants.some(
+			(p) => p.id === userId
+		);
 
-  /**
-   * Đánh dấu tất cả messages trong conversation đã đọc
-   */
-  async markAllMessagesAsRead(conversationId: string, userId: string): Promise<void> {
-    // Kiểm tra user có quyền không
-    const conversation = await Conversation.findById(conversationId);
+		if (!isParticipant) {
+			throw ApiError.forbidden(
+				"You are not a participant of this conversation"
+			);
+		}
 
-    if (!conversation) {
-      throw ApiError.notFound('Conversation not found');
-    }
+		// Lấy tất cả unread messages (không phải của user)
+		const unreadMessages = await Message.find({
+			conversationId,
+			"sender.id": { $ne: userId },
+			"readBy.participantId": { $ne: userId },
+		});
 
-    const isParticipant = conversation.participants.some((p) => p.id === userId);
+		// Đánh dấu từng message
+		for (const message of unreadMessages) {
+			await message.markAsRead(userId);
+		}
 
-    if (!isParticipant) {
-      throw ApiError.forbidden('You are not a participant of this conversation');
-    }
+		// Reset unread count
+		await this.conversationService.resetUnreadCount(conversationId, userId);
+	}
 
-    // Lấy tất cả unread messages (không phải của user)
-    const unreadMessages = await Message.find({
-      conversationId,
-      'sender.id': { $ne: userId },
-      'readBy.participantId': { $ne: userId },
-    });
+	/**
+	 * Lấy message theo ID
+	 */
+	async getMessageById(messageId: string): Promise<IMessage> {
+		const message = await Message.findById(messageId);
 
-    // Đánh dấu từng message
-    for (const message of unreadMessages) {
-      await message.markAsRead(userId);
-    }
+		if (!message) {
+			throw ApiError.notFound("Message not found");
+		}
 
-    // Reset unread count
-    await this.conversationService.resetUnreadCount(conversationId, userId);
-  }
-
-  /**
-   * Lấy message theo ID
-   */
-  async getMessageById(messageId: string): Promise<IMessage> {
-    const message = await Message.findById(messageId);
-
-    if (!message) {
-      throw ApiError.notFound('Message not found');
-    }
-
-    return message;
-  }
+		return message;
+	}
 }
-

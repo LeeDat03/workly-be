@@ -19,6 +19,8 @@ export interface IMessage extends Document {
 	readBy: IReadBy[];
 	createdAt: Date;
 	updatedAt: Date;
+	// Instance methods
+	markAsRead(participantId: string): Promise<IMessage>;
 }
 
 const SenderSchema = new Schema<ISender>(

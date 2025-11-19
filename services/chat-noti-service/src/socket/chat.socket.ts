@@ -7,6 +7,8 @@ import {
 	IMessageReadData,
 	ParticipantType,
 } from "../types";
+import jwt, { Jwt } from "jsonwebtoken";
+import { config } from "../config";
 
 export class ChatSocket {
 	private io: Server;
@@ -14,7 +16,8 @@ export class ChatSocket {
 	private conversationService: ConversationService;
 
 	// Map để track users online và rooms họ đang ở
-	private onlineUsers: Map<string, string> = new Map(); // userId -> socketId
+	private onlineUsers: Map<string, { socketId: string; userType: string }> =
+		new Map(); // userId -> {socketId, userType}
 	private userRooms: Map<string, Set<string>> = new Map(); // socketId -> Set of conversationIds
 
 	constructor(io: Server) {
@@ -26,22 +29,20 @@ export class ChatSocket {
 
 	private initializeSocketHandlers(): void {
 		this.io.on("connection", (socket: Socket) => {
-			logger.info(`Client connected: ${socket.id}`);
-
-			// Authenticate socket connection
 			this.handleAuthentication(socket);
 
-			// Join conversation room
+			// Get online users
+			socket.on("get_online_users", () =>
+				this.handleGetOnlineUsers(socket)
+			);
+
 			socket.on("join_conversation", (data) =>
 				this.handleJoinConversation(socket, data)
 			);
-
-			// Leave conversation room
 			socket.on("leave_conversation", (data) =>
 				this.handleLeaveConversation(socket, data)
 			);
 
-			// Send message
 			socket.on("send_message", (data) =>
 				this.handleSendMessage(socket, data)
 			);
@@ -68,27 +69,71 @@ export class ChatSocket {
 	 * Xác thực socket connection
 	 */
 	private handleAuthentication(socket: Socket): void {
-		const { userId, userType } = socket.handshake.auth as ISocketData;
+		console.log("socket.handshake", socket.handshake);
 
-		if (!userId || !userType) {
+		const {
+			token,
+			userId: overrideUserId,
+			userType: overrideUserType,
+		} = socket.handshake.auth as ISocketData & {
+			userId?: string;
+			userType?: string;
+		};
+		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
+		console.log("decoded", decoded);
+
+		if (!decoded.id || !decoded.role) {
 			logger.warn(`Unauthenticated socket connection: ${socket.id}`);
 			socket.disconnect();
 			return;
 		}
 
+		// Use override identity if provided (company mode), otherwise use JWT identity
+		const actualUserId = overrideUserId || decoded.id;
+		const actualUserType = overrideUserType || decoded.role;
+
+		if (overrideUserId && overrideUserType) {
+			console.log("🔄 Socket using identity override:", {
+				jwtUserId: decoded.id,
+				jwtUserType: decoded.role,
+				overrideUserId,
+				overrideUserType,
+			});
+		} else {
+			console.log("✅ Socket using JWT identity:", {
+				userId: decoded.id,
+				userType: decoded.role,
+			});
+		}
+
 		// Store user info in socket data
-		socket.data.userId = userId;
-		socket.data.userType = userType;
+		socket.data.userId = actualUserId;
+		socket.data.userType = actualUserType;
 
 		// Track online user
-		this.onlineUsers.set(userId, socket.id);
-
-		logger.info(
-			`User ${userId} (${userType}) authenticated on socket ${socket.id}`
-		);
+		this.onlineUsers.set(actualUserId, {
+			socketId: socket.id,
+			userType: actualUserType,
+		});
 
 		// Emit user online status to all connections
-		socket.broadcast.emit("user_online", { userId, userType });
+		socket.broadcast.emit("user_online", {
+			userId: actualUserId,
+			userType: actualUserType,
+		});
+
+		// Send updated online users list to all clients
+		this.io.emit("online_users_list", {
+			users: this.getOnlineUsersWithDetails(),
+		});
+	}
+
+	/**
+	 * Get list of online users
+	 */
+	private handleGetOnlineUsers(socket: Socket): void {
+		const onlineUsers = this.getOnlineUsersWithDetails();
+		socket.emit("online_users_list", { users: onlineUsers });
 	}
 
 	/**
@@ -130,6 +175,12 @@ export class ChatSocket {
 
 			logger.info(`User ${userId} joined conversation ${conversationId}`);
 
+			// Emit success to the user who joined
+			socket.emit("join_conversation_success", {
+				conversationId,
+				message: "Successfully joined conversation",
+			});
+
 			// Notify others in the room
 			socket.to(conversationId).emit("user_joined_conversation", {
 				userId,
@@ -137,7 +188,11 @@ export class ChatSocket {
 			});
 		} catch (error) {
 			logger.error("Error joining conversation:", error);
-			socket.emit("error", { message: "Failed to join conversation" });
+			const errorMessage =
+				error instanceof Error
+					? error.message
+					: "Failed to join conversation";
+			socket.emit("error", { message: errorMessage });
 		}
 	}
 
@@ -201,6 +256,7 @@ export class ChatSocket {
 			this.io.to(conversationId).emit("new_message", {
 				message,
 				conversationId,
+				userId,
 			});
 
 			logger.info(
@@ -286,6 +342,11 @@ export class ChatSocket {
 			// Notify all about user offline
 			socket.broadcast.emit("user_offline", { userId });
 
+			// Send updated online users list to all clients
+			this.io.emit("online_users_list", {
+				users: this.getOnlineUsersWithDetails(),
+			});
+
 			logger.info(`User ${userId} disconnected`);
 		}
 
@@ -300,6 +361,21 @@ export class ChatSocket {
 	 */
 	public getOnlineUsers(): string[] {
 		return Array.from(this.onlineUsers.keys());
+	}
+
+	/**
+	 * Get online users with details
+	 */
+	public getOnlineUsersWithDetails(): Array<{
+		userId: string;
+		userType: string;
+	}> {
+		return Array.from(this.onlineUsers.entries()).map(
+			([userId, { userType }]) => ({
+				userId,
+				userType,
+			})
+		);
 	}
 
 	/**

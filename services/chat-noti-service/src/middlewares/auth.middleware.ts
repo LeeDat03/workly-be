@@ -1,6 +1,9 @@
 import { Response, NextFunction } from "express";
 import { ApiError } from "../utils";
+import jwt, { Jwt } from "jsonwebtoken";
 import { IAuthRequest } from "../types";
+import { UnauthorizedError } from "../utils/appError";
+import { config } from "../config";
 
 /**
  * Middleware để xác thực người dùng
@@ -14,28 +17,58 @@ export const authenticate = async (
 ): Promise<void> => {
 	try {
 		// Lấy token từ header
-		const authHeader = req.headers.authorization;
+		let token = "";
+		console.log("req?.cookies", req?.cookies);
 
-		if (!authHeader || !authHeader.startsWith("Bearer ")) {
-			throw ApiError.unauthorized("No token provided");
+		if (req?.cookies?.token) {
+			token = req.cookies.token.trim();
+		} else {
+			const authHeader = req.headers.authorization;
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				token = authHeader?.split(" ")[1].trim();
+			}
 		}
 
-		const token = authHeader.substring(7);
-
-		// TODO: Implement JWT verification
-		// Hiện tại mock data từ header để test
-		const userId = req.headers["x-user-id"] as string;
-		const userType = req.headers["x-user-type"] as string;
-
-		if (!userId || !userType) {
-			throw ApiError.unauthorized("Invalid token");
+		if (!token) {
+			throw new UnauthorizedError(
+				"You are not logged in. Please log in to get access."
+			);
 		}
 
-		// Gắn user info vào request
-		req.user = {
-			id: userId,
-			type: userType as any,
-		};
+		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
+		console.log("decoded", decoded);
+
+		if (!decoded) {
+			throw new UnauthorizedError("Invalid token, please log in again.");
+		}
+
+		// Check for identity override headers (for company chat)
+		const overrideUserId = req.headers["x-user-id"] as string;
+		const overrideUserType = req.headers["x-user-type"] as string;
+
+		if (overrideUserId && overrideUserType) {
+			console.log("🔄 Using identity override from headers:", {
+				jwtUserId: decoded.id,
+				jwtUserType: decoded.role,
+				overrideUserId,
+				overrideUserType,
+			});
+
+			req.user = {
+				id: overrideUserId,
+				type: overrideUserType as any,
+			};
+		} else {
+			console.log("✅ Using JWT identity:", {
+				userId: decoded.id,
+				userType: decoded.role,
+			});
+
+			req.user = {
+				id: decoded.id,
+				type: decoded.role,
+			};
+		}
 
 		next();
 	} catch (error) {
