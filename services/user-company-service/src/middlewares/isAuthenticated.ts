@@ -11,7 +11,16 @@ export const isAuthenticated = async (
 	next: NextFunction,
 ) => {
 	try {
-		let token = req.headers.authorization;
+		let token;
+
+		if (req.cookies.token) {
+			token = req.cookies.token.trim();
+		} else {
+			const authHeader = req.headers.authorization;
+			if (authHeader && authHeader.startsWith("Bearer ")) {
+				token = authHeader.split(" ")[1].trim();
+			}
+		}
 
 		if (req.cookies.token) {
 			token = req.cookies.token.trim();

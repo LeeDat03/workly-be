@@ -27,6 +27,7 @@ router.patch(
 	validate(updateUserProfileSchema),
 	userController.updateBasicProfile,
 );
+
 router.patch(
 	"/me/skills",
 	validate(updateUserSkillsSchema),
