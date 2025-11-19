@@ -37,4 +37,8 @@ export const config = {
 		apiSecret: process.env.CLOUDINARY_API_SECRET!,
 		defaultFolder: process.env.CLOUDINARY_DEFAULT_FOLDER!,
 	},
+	cookie: {
+		name: "workly_token",
+		maxAge: 24 * 60 * 60 * 1000 * 90,
+	},
 } as const;
