@@ -9,6 +9,7 @@ import {
 	updateUserIndustriesSchema,
 	updateEducationSchema,
 } from "../validators/user.validator";
+import upload from "../middlewares/checkUpload";
 
 const router = Router();
 
@@ -34,6 +35,15 @@ router.patch(
 	"/educations",
 	validate(updateEducationSchema),
 	userController.updateUserEducations,
+);
+router.patch(
+	"/media",
+	isAuthenticated,
+	upload.fields([
+		{ name: "avatar", maxCount: 1 },
+		{ name: "background", maxCount: 1 },
+	]),
+	userController.updateUserMedia,
 );
 router.patch(
 	"/change-password",

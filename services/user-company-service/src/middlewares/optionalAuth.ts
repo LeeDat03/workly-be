@@ -32,12 +32,10 @@ export const optionalAuth = async (
 				config.jwt.secret,
 			) as jwt.JwtPayload;
 
-			console.log(decoded);
 			const currentUser = await UserModel.findOne({
 				where: { userId: decoded.id },
 				plain: true,
 			});
-			console.log(currentUser);
 
 			if (currentUser) {
 				(req as LoggedInUserRequest).user = {
