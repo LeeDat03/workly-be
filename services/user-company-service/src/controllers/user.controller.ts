@@ -29,6 +29,7 @@ import {
 	unfollowUser,
 } from "../services/follow.service";
 import { parsePaginationQuery } from "../utils/pagination";
+import { clearCookie } from "./auth.controller";
 
 const updateRelations = async <T extends keyof typeof UserModel.relationships>(
 	user: any,
@@ -365,6 +366,8 @@ export const deleteMe = async (
 		await user.delete({
 			detach: true,
 		});
+
+		clearCookie(res);
 
 		res.status(200).json({
 			success: true,
