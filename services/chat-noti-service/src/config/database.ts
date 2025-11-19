@@ -35,23 +35,25 @@ const initializeDatabase = async (): Promise<void> => {
 			logger.info("✓ Collection 'messages' already exists");
 		}
 
-		// Tạo indexes cho conversations
-		const conversationsCollection = db.collection("conversations");
-		await conversationsCollection.createIndex({ "participants.id": 1 });
-		await conversationsCollection.createIndex({ lastMessageAt: -1 });
-		logger.info("✓ Created indexes for 'conversations' collection");
+		// Drop existing indexes để tránh conflict (nếu cần)
+		try {
+			const conversationsCollection = db.collection("conversations");
+			const existingIndexes = await conversationsCollection.indexes();
 
-		// Tạo indexes cho messages
-		const messagesCollection = db.collection("messages");
-		await messagesCollection.createIndex({
-			conversationId: 1,
-			createdAt: -1,
-		});
-		await messagesCollection.createIndex({
-			conversationId: 1,
-			"readBy.participantId": 1,
-		});
-		logger.info("✓ Created indexes for 'messages' collection");
+			// Xóa các index cũ (trừ _id index)
+			for (const index of existingIndexes) {
+				if (index.name && index.name !== "_id_") {
+					await conversationsCollection.dropIndex(index.name);
+					logger.info(`✓ Dropped old index: ${index.name}`);
+				}
+			}
+		} catch (error: any) {
+			// Ignore error nếu collection chưa có indexes
+			logger.debug("No indexes to drop:", error.message);
+		}
+
+		// Indexes sẽ được tự động tạo bởi Mongoose từ schema definitions
+		logger.info("✓ Indexes will be created automatically by Mongoose");
 
 		logger.info("✅ Database initialization completed successfully");
 	} catch (error) {

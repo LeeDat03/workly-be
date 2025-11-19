@@ -103,14 +103,58 @@ ConversationSchema.statics.findByParticipant = async function (
 	page: number = 1,
 	limit: number = 20
 ): Promise<IConversation[]> {
-	return this.find({
-		"participants.id": participantId,
-		"participants.type": participantType,
-	})
+	// Use $elemMatch to ensure BOTH id AND type belong to the SAME participant
+	const query = {
+		participants: {
+			$elemMatch: {
+				id: participantId,
+				type: participantType, // Already uppercase from frontend
+			},
+		},
+	};
+
+	console.log(
+		"🔍 [findByParticipant] Query:",
+		JSON.stringify(query, null, 2)
+	);
+	console.log("🔍 [findByParticipant] Params:", {
+		participantId,
+		participantType,
+		page,
+		limit,
+	});
+
+	const results = await this.find(query)
 		.populate("lastMessage")
 		.sort({ lastMessageAt: -1 })
 		.skip((page - 1) * limit)
 		.limit(limit);
+
+	console.log("📨 [findByParticipant] Results count:", results.length);
+	if (results.length > 0) {
+		console.log(
+			"📨 [findByParticipant] First result participants:",
+			results[0].participants
+		);
+	}
+
+	// Also check what's actually in DB (for debugging)
+	const allConversations = await this.find({
+		"participants.id": participantId,
+	}).limit(5);
+	console.log(
+		"🗄️ [findByParticipant] All conversations with this ID (first 5):",
+		JSON.stringify(
+			allConversations.map((c: any) => ({
+				_id: c._id,
+				participants: c.participants,
+			})),
+			null,
+			2
+		)
+	);
+
+	return results;
 };
 
 interface IConversationModel extends Model<IConversation> {
