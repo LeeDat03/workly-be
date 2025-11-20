@@ -13,7 +13,7 @@ export interface Comment {
 export interface CreateCommentDTO {
     postId: string;
     parentId?: string; //null -> root comment
-    authorId: ObjectId;
+    authorId: string;
     content: string;
     mediaFile?: string;
 }
@@ -25,6 +25,7 @@ export interface CommentResponse {
     mediaFile?: string;
     replyCount: number;
     parentId?: string; //null -> root comment
+    author?: object | null
 }
 
 export interface UpdateCommentDTO {

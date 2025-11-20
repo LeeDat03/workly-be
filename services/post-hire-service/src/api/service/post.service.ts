@@ -30,6 +30,7 @@ import {
 } from "@/config/job.constant";
 import { QueueService } from "@/api/service/queue.service";
 import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
+import { ICommentRepository } from "../repository/comment.repository";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -38,15 +39,17 @@ export interface IPostService {
 	getPostDetail(id: ObjectId): Promise<PostResponse>;
 	getAllPost(
 		input: IPaginationInput,
-		userId: ObjectId,
+		userId: string,
 	): Promise<PagingList<PostResponse>>;
 }
 
 export class PostService implements IPostService {
 	private postRepository: IPostRepository;
+	private commentRepository: ICommentRepository;
 
-	constructor(postRepository: IPostRepository) {
+	constructor(postRepository: IPostRepository, commentRepository: ICommentRepository) {
 		this.postRepository = postRepository;
+		this.commentRepository = commentRepository;
 	}
 
 	public createPost = async (
@@ -111,40 +114,68 @@ export class PostService implements IPostService {
 
 		return mapToPostResponse(post);
 	};
-
 	public getAllPost = async (
 		input: IPaginationInput,
-		userId: ObjectId
+		userId: string
 	): Promise<PagingList<PostResponse>> => {
-		// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
-		let result: PagingList<WithId<Document>>;
-		// result = (await RedisAdapter.get(cacheKey)) as PagingList<
-		// 	WithId<Document>
-		// >;
-		// console.log("map1", result.data);
-		result = await this.postRepository.getPagingPostByUserId(
+		// Lấy danh sách post
+		const result = await this.postRepository.getPagingPostByUserId(
 			input,
 			userId
 		);
-		// if (!result) {
-		// 	result = await this.postRepository.getPagingPostByUserId(
-		// 		input,
-		// 		userId
-		// 	);
-		// 	console.log("map", result.data);
 
-		// 	await RedisAdapter.set(cacheKey, result, 36000);
-		// }
+		// Lấy postIds để query comment
+		const postIds = result.data.map((post) => post._id.toString());
 
+		// Đếm comment cho từng post
+		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
+
+		// Map data với số lượng comment
 		const mappedData = result.data.map((item) => {
-			return mapToPostResponse(item);
-		})
+			const postResponse = mapToPostResponse(item);
+			return {
+				...postResponse,
+				totalComments: commentCounts[item._id.toString()] || 0,
+			};
+		});
 
 		return {
 			...result,
 			data: mappedData,
 		};
 	};
+	// public getAllPost = async (
+	// 	input: IPaginationInput,
+	// 	userId: string
+	// ): Promise<PagingList<PostResponse>> => {
+	// 	// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
+	// 	let result: PagingList<WithId<Document>>;
+	// 	// result = (await RedisAdapter.get(cacheKey)) as PagingList<
+	// 	// 	WithId<Document>
+	// 	// >;
+	// 	// console.log("map1", result.data);
+	// 	result = await this.postRepository.getPagingPostByUserId(
+	// 		input,
+	// 		userId
+	// 	);
+	// 	// if (!result) {
+	// 	// 	result = await this.postRepository.getPagingPostByUserId(
+	// 	// 		input,
+	// 	// 		userId
+	// 	// 	);
+	// 	// 	console.log("map", result.data);
+
+	// 	// 	await RedisAdapter.set(cacheKey, result, 36000);
+	// 	// }
+	// 	const mappedData = result.data.map((item) => {
+	// 		return mapToPostResponse(item);
+	// 	})
+
+	// 	return {
+	// 		...result,
+	// 		data: mappedData,
+	// 	};
+	// };
 
 	public getAllFileMedia = async (): Promise<string[]> => {
 		const posts = await this.postRepository.getAll();

@@ -7,14 +7,14 @@ import {
 	createComment,
 	updateComment,
 } from "@/api/validation/comment.validator";
+import { isAuthenticated } from "../middlewares/authentication.middleware";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
-
+	router.use(isAuthenticated)
 	const postController = ControllerContainer.getPostController();
 
 	router.get("/test", (req, res) => {
-		console.log(req);
 		res.send({ a: "abc" });
 	});
 

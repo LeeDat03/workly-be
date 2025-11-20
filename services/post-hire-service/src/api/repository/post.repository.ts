@@ -13,6 +13,7 @@ import {
 	WithId,
 } from "mongodb";
 import { IPaginationInput, PagingList } from "../model/common.model";
+import { TimeHelper } from "@/util/time.util";
 
 export interface IPostRepository {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -25,7 +26,7 @@ export interface IPostRepository {
 	getPostDetail(id: ObjectId): Promise<WithId<Document> | null>;
 	getPagingPostByUserId(
 		input: IPaginationInput,
-		userId: ObjectId
+		userId: string
 	): Promise<PagingList<WithId<Document>>>;
 }
 
@@ -37,7 +38,7 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async createPost(post: CreatePostDTO): Promise<InsertOneResult> {
-		const result = await this.postCollection.post.insertOne({ ...post, createdAt: new Date() });
+		const result = await this.postCollection.post.insertOne({ ...post, created_at: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') });
 		return result;
 	}
 
@@ -108,7 +109,7 @@ export class PostRepository implements IPostRepository {
 
 	public async getPagingPostByUserId(
 		input: IPaginationInput,
-		userId: ObjectId
+		userId: string
 	): Promise<PagingList<WithId<Document>>> {
 		const page = input.page ?? 1;
 		const size = input.size ?? 10;
@@ -116,7 +117,7 @@ export class PostRepository implements IPostRepository {
 		const [data, total] = await Promise.all([
 			this.postCollection.post
 				.find({ author_id: userId })
-				.sort({ createdAt: -1 })
+				.sort({ created_at: -1 })
 				.skip(skip)
 				.limit(size)
 				.toArray(),

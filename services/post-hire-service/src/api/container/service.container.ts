@@ -16,7 +16,8 @@ export class ServiceContainer {
         console.log('🔧 Initializing ServiceContainer...');
 
         this.postService = new PostService(
-            RepositoryContainer.getPostRepository()
+            RepositoryContainer.getPostRepository(),
+            RepositoryContainer.getCommentRepository()
         );
         this.commentService = new CommentService(
             RepositoryContainer.getCommentRepository(),
@@ -29,7 +30,7 @@ export class ServiceContainer {
 
     static getPostService(): IPostService {
         if (!this.postService) {
-            this.postService = new PostService(RepositoryContainer.getPostRepository());
+            this.postService = new PostService(RepositoryContainer.getPostRepository(), RepositoryContainer.getCommentRepository());
         }
         return this.postService;
     }

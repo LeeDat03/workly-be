@@ -9,6 +9,7 @@ import logger from "@/common/logger";
 import { createPostRoutes } from "./routes/post.routes";
 import { ResponseMiddleware } from "./middlewares/response.middleware";
 import { PublicPath } from "@/config/app.constant";
+import cookieParser from 'cookie-parser';
 
 export class ExpressServer {
 	private server?: Express;
@@ -84,6 +85,8 @@ export class ExpressServer {
 	}
 
 	private setupStandardMiddlewares(server: Express) {
+		server.use(cookieParser());
+
 		server.use(
 			bodyParser.json({
 				verify: (req: any, res, buf) => {

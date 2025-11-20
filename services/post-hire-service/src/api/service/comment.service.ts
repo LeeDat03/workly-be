@@ -39,10 +39,8 @@ export class CommentService implements ICommentService {
     }
 
     public createComment = async (data: CreateCommentDTO): Promise<InsertOneResult> => {
-        console.log(data);
 
         const isPostExisted = await this.postRepository.getPostDetail(new ObjectId(data.postId));
-        console.log(isPostExisted);
 
         if (!isPostExisted) {
             throw new APIError(

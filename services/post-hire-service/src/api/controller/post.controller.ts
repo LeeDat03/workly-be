@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
-import { AuthorType, CreatePostDTO, UpdatePostDTO } from "@/api/model/post.model";
+import { AuthorType, CreatePostDTO, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
-import { IPaginationInput } from "../model/common.model";
+import { IPaginationInput, PagingList } from "../model/common.model";
 
 import path from "path";
 import fs from "fs";
+import axios from "axios";
 
 export class PostController {
 	private postService: IPostService;
@@ -21,7 +22,7 @@ export class PostController {
 		next: NextFunction
 	) => {
 		try {
-			const body = { ...req.body, author_id: new ObjectId("69104f33ace675418225c6f1"), author_type: AuthorType.USER } as CreatePostDTO;
+			const body = { ...req.body, author_id: req.user!!.userId, author_type: AuthorType.USER } as CreatePostDTO;
 			const result = await this.postService.createPost(body);
 			res.sendJson(result);
 		} catch (error) {
@@ -128,9 +129,32 @@ export class PostController {
 			const input = req.query as IPaginationInput;
 			const data = await this.postService.getAllPost(
 				input,
-				new ObjectId("69104f33ace675418225c6f1")
+				req.user!!.userId
 			);
-			res.sendJson(data);
+
+			const userIds = data.data.map(post => post.author_id);
+			if (userIds.length > 0) {
+				const response = await axios.post(
+					`http://localhost:8000/api/v1/users/bulk-info`,
+					{ userIds },
+					{
+						headers: {
+							Cookie: req.headers.cookie,
+							Authorization: req.headers.authorization,
+						},
+						withCredentials: true,
+					}
+				);
+				const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
+				const postsWithAuthor = data.data.map(post => ({
+					...post,
+					author: usersMap.get(post.author_id) || null
+				}));
+				res.sendJson(postsWithAuthor);
+
+			} else {
+				res.sendJson(data)
+			}
 		} catch (error) {
 			logger.error(`PostController.getAll: `, error);
 			next(error);

@@ -1,12 +1,14 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { CommentResponse, CreateCommentDTO, UpdateCommentDTO } from "../model/comment.model";
 import { Document, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
+import { TimeHelper } from "@/util/time.util";
 
 export interface ICommentRepository {
     createComment(data: CreateCommentDTO): Promise<InsertOneResult>
     getCommentById(id: ObjectId): Promise<CommentResponse | null>
     updateComment(data: UpdateCommentDTO, id: ObjectId): Promise<UpdateResult>
     getAllComment(postId: string): Promise<CommentResponse[]>
+    countCommentsByPostIds(postId: string[]): Promise<Record<string, number>>
 }
 
 export class CommentRepository implements ICommentRepository {
@@ -30,7 +32,7 @@ export class CommentRepository implements ICommentRepository {
 
         return {
             id: item._id.toString(),
-            authorId: item.content,
+            authorId: item.authorId,
             content: item.content,
             mediaFile: item.mediaFile,
             replyCount: replyCount,
@@ -38,7 +40,7 @@ export class CommentRepository implements ICommentRepository {
         };
     };
     public createComment = async (data: CreateCommentDTO): Promise<InsertOneResult> => {
-        return await this.commentCollection.comment.insertOne({ ...data, createdAt: new Date() })
+        return await this.commentCollection.comment.insertOne({ ...data, created_at: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') })
     }
 
     public getCommentById = async (id: ObjectId): Promise<CommentResponse | null> => {
@@ -78,6 +80,42 @@ export class CommentRepository implements ICommentRepository {
         return data;
     }
 
+    public countCommentsByPostIds = async (
+        postIds: string[]
+    ): Promise<Record<string, number>> => {
+        const pipeline = [
+            {
+                $match: {
+                    postId: { $in: postIds }
+                }
+            },
+            {
+                $group: {
+                    _id: "$postId",
+                    count: { $sum: 1 }
+                }
+            }
+        ];
+
+        const results = await this.commentCollection.comment
+            .aggregate(pipeline)
+            .toArray();
+
+        // Convert thành object: { postId: count }
+        const countMap: Record<string, number> = {};
+        results.forEach((item) => {
+            countMap[item._id] = item.count;
+        });
+
+        // Đảm bảo tất cả postIds đều có giá trị (0 nếu không có comment)
+        postIds.forEach((id) => {
+            if (!(id in countMap)) {
+                countMap[id] = 0;
+            }
+        });
+
+        return countMap;
+    }
 
     // public getPagingRootComment = async (input: IPaginationInput, postId: ObjectId): Promise<PagingList<CommentResponse>> => {
     //     const page = input.page ?? 1;
