@@ -5,6 +5,7 @@ import { isAuthenticated, optionalAuth } from "../middlewares";
 const router = Router();
 
 router.get("/", userController.getAllUsers);
+router.get("/bulk-info", userController.getUsersByIds);
 router.get("/:id", userController.getUserById);
 
 // FOLLOW

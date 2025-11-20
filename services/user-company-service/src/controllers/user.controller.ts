@@ -21,7 +21,10 @@ import {
 	getUserProfile,
 	updateRelationsWithQuery,
 } from "../services/user.service";
-import { UpdateEducationSchema } from "../validators/user.validator";
+import {
+	toUserFollowDTO,
+	UpdateEducationSchema,
+} from "../validators/user.validator";
 import {
 	checkIfUserFollowsUser,
 	countUserFollowers,
@@ -89,6 +92,40 @@ export const getAllUsers = async (
 				page,
 				limit,
 			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getUsersByIds = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { userIds } = req.body as { userIds?: string[] };
+
+		if (!Array.isArray(userIds) || userIds.length === 0) {
+			throw new BadRequestError("userIds must be a non-empty array");
+		}
+
+		const users = await UserModel.findMany({
+			where: {
+				userId: {
+					[Op.in]: userIds,
+				},
+			},
+			plain: true,
+		});
+
+		const userInfos = users.map((user) => {
+			return toUserFollowDTO(user);
+		});
+
+		res.status(200).json({
+			success: true,
+			data: userInfos,
 		});
 	} catch (error) {
 		next(error);
@@ -532,6 +569,7 @@ const isFollowing = async (req: Request, res: Response, next: NextFunction) => {
 
 export default {
 	getAllUsers,
+	getUsersByIds,
 	getUserById,
 	getMe,
 	deleteMe,
