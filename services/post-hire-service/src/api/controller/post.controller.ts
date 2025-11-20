@@ -7,7 +7,6 @@ import { IPaginationInput } from "../model/common.model";
 
 import path from "path";
 import fs from "fs";
-import mime from "mime-types";
 
 export class PostController {
 	private postService: IPostService;

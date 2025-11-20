@@ -7,7 +7,6 @@ import {
 	createComment,
 	updateComment,
 } from "@/api/validation/comment.validator";
-import { log } from "console";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
