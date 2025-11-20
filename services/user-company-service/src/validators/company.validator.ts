@@ -15,16 +15,16 @@ export const createCompanySchema = z.object({
 	size: z.enum(Object.values(CompanySize)),
 	description: z.string().optional(),
 	website: z.url({ message: "Website must be a valid url" }).optional(),
-	logoUrl: z
-		.url({
-			message: "LogoURL must be valid",
-		})
-		.optional(),
-	bannerUrl: z
-		.url({
-			message: "BannerURL must be valid",
-		})
-		.optional(),
+	// logoUrl: z
+	// 	.url({
+	// 		message: "LogoURL must be valid",
+	// 	})
+	// 	.optional(),
+	// bannerUrl: z
+	// 	.url({
+	// 		message: "BannerURL must be valid",
+	// 	})
+	// 	.optional(),
 });
 
 export const updateCompanySchema = z.object({
@@ -41,18 +41,18 @@ export const updateCompanySchema = z.object({
 		.url({ message: "Website must be a valid url" })
 		.or(z.literal(""))
 		.optional(),
-	logoUrl: z
-		.url({
-			message: "LogoURL must be valid",
-		})
-		.or(z.literal(""))
-		.optional(),
-	bannerUrl: z
-		.url({
-			message: "BannerURL must be valid",
-		})
-		.or(z.literal(""))
-		.optional(),
+	// logoUrl: z
+	// 	.url({
+	// 		message: "LogoURL must be valid",
+	// 	})
+	// 	.or(z.literal(""))
+	// 	.optional(),
+	// bannerUrl: z
+	// 	.url({
+	// 		message: "BannerURL must be valid",
+	// 	})
+	// 	.or(z.literal(""))
+	// 	.optional(),
 });
 
 export type UpdateCompanySchema = z.infer<typeof updateCompanySchema>;

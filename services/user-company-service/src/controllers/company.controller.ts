@@ -17,6 +17,15 @@ import {
 } from "../utils/appError";
 import { LoggedInUserRequest } from "../types";
 import { database } from "../config/database";
+import { cloudinaryService } from "../services/upload/cloudinary.service";
+import {
+	checkIfUserFollowsCompany,
+	countCompanyFollowers,
+	followCompany,
+	getCompanyFollowers,
+	unfollowCompany,
+} from "../services/follow.service";
+import { parsePaginationQuery } from "../utils/pagination";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
@@ -51,6 +60,34 @@ const checkCompanyAccess = async (userId: string, companyId: string) => {
 		isOwner: record.get("isOwner") || false,
 		isAdmin: record.get("isAdmin") || false,
 	};
+};
+
+// TODO: HANDLE TRANSACTION
+const updateCompanyImage = async (
+	companyId: string,
+	file: Express.Multer.File,
+	type: "logo" | "banner",
+) => {
+	const { url } = await cloudinaryService.upload({
+		file,
+		sourceId: companyId,
+		fileType: type,
+		overwrite: true,
+	});
+
+	const result = await CompanyModel.update(
+		{
+			[type === "logo" ? "logoUrl" : "bannerUrl"]: url,
+		},
+		{
+			where: {
+				companyId,
+			},
+			return: true,
+		},
+	);
+
+	return result[0][0].dataValues;
 };
 
 const createCompany = async (
@@ -176,20 +213,28 @@ const getCompanyById = async (
 			throw new NotFoundError("Company not found");
 		}
 
-		const [ownerRelationship, industryRelationship] = await Promise.all([
-			company.findRelationships({ alias: "Owner" }),
-			company.findRelationships({ alias: "Industry" }),
-		]);
-		const companyProfile = toCompanyProfileDTO(
-			company.dataValues,
-			extractRelationshipData(ownerRelationship),
-			extractRelationshipData(industryRelationship),
-		);
+		const [ownerRelationship, industryRelationship, followersCount] =
+			await Promise.all([
+				company.findRelationships({ alias: "Owner" }),
+				company.findRelationships({ alias: "Industry" }),
+				countCompanyFollowers(companyId),
+			]);
+
+		const companyProfile = {
+			...toCompanyProfileDTO(
+				company.dataValues,
+				extractRelationshipData(ownerRelationship),
+				extractRelationshipData(industryRelationship),
+			),
+		};
 
 		res.status(200).json({
 			status: "success",
 			data: {
-				...companyProfile,
+				company: {
+					...companyProfile.company,
+					followersCount,
+				},
 			},
 		});
 	} catch (error) {
@@ -240,53 +285,157 @@ const updateCompany = async (
 			}
 		}
 
-		// Handle industry relationship update
-		if (data.industryId) {
-			const industry = await IndustryModel.findOne({
-				where: {
-					industryId: data.industryId,
-				},
-			});
-			if (!industry) {
-				throw new BadRequestError("Industry does not exist");
+		const neogma = database.getNeogma();
+		const session = neogma.driver.session();
+		const transaction = session.beginTransaction();
+
+		try {
+			if (data.industryId) {
+				const industry = await IndustryModel.findOne({
+					where: {
+						industryId: data.industryId,
+					},
+				});
+				if (!industry) {
+					throw new BadRequestError("Industry does not exist");
+				}
+
+				await transaction.run(
+					`
+					MATCH (c:Company {companyId: $companyId})
+					OPTIONAL MATCH (c)-[r:IN]->(:Industry)
+					DELETE r
+					WITH c
+					MATCH (i:Industry {industryId: $industryId})
+					MERGE (c)-[:IN]->(i)
+					`,
+					{
+						companyId,
+						industryId: data.industryId,
+					},
+				);
 			}
 
-			const neogma = database.getNeogma();
-			await neogma.queryRunner.run(
+			const { industryId, ...companyUpdateData } = data;
+
+			// Update company properties
+			const updateResult = await transaction.run(
 				`
 				MATCH (c:Company {companyId: $companyId})
-				OPTIONAL MATCH (c)-[r:IN]->(:Industry)
-				DELETE r
-				WITH c
-				MATCH (i:Industry {industryId: $industryId})
-				MERGE (c)-[:IN]->(i)
+				SET c += $updateData
+				RETURN c
 				`,
 				{
 					companyId,
-					industryId: data.industryId,
+					updateData: companyUpdateData,
 				},
+			);
+
+			if (updateResult.records.length === 0) {
+				throw new NotFoundError("Company not found during update");
+			}
+
+			await transaction.commit();
+
+			// const result = await CompanyModel.findOne({
+			// 	where: {
+			// 		companyId,
+			// 	},
+			// });
+
+			// if (!result) {
+			// 	throw new NotFoundError("Company not found after update");
+			// }
+
+			// const companyProfile = toCompanyProfileDTO(result.dataValues);
+
+			res.status(200).json({
+				status: "success",
+				message: "Company updated successfully",
+				// data: companyProfile,
+			});
+		} catch (error) {
+			await transaction.rollback();
+			throw error;
+		} finally {
+			await session.close();
+		}
+
+		return;
+	} catch (error) {
+		next(error);
+	}
+};
+
+const updateCompanyMedia = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id: companyId } = req.params;
+		const updates: {
+			logo?: Express.Multer.File;
+			banner?: Express.Multer.File;
+		} = {};
+
+		if (req.files && !Array.isArray(req.files)) {
+			if (req.files.logo && Array.isArray(req.files.logo)) {
+				updates.logo = req.files.logo[0];
+			}
+			if (req.files.banner && Array.isArray(req.files.banner)) {
+				updates.banner = req.files.banner[0];
+			}
+		}
+
+		if (!updates.logo && !updates.banner) {
+			throw new BadRequestError("Logo or banner is required");
+		}
+
+		const company = await CompanyModel.findOne({
+			where: {
+				companyId,
+			},
+		});
+		if (!company) {
+			throw new NotFoundError("Company not found");
+		}
+
+		const { isOwner, isAdmin } = await checkCompanyAccess(
+			req.user!.userId,
+			companyId,
+		);
+		if (!isOwner && !isAdmin) {
+			throw new ForbiddenError(
+				"You must be the owner or an admin of this company to perform this action",
 			);
 		}
 
-		const { industryId, ...companyUpdateData } = data;
+		const updatePromises = [];
+		if (updates.logo) {
+			updatePromises.push(
+				updateCompanyImage(companyId, updates.logo, "logo"),
+			);
+		}
+		if (updates.banner) {
+			updatePromises.push(
+				updateCompanyImage(companyId, updates.banner, "banner"),
+			);
+		}
 
-		const result = await CompanyModel.update(
-			{
-				...companyUpdateData,
-			},
-			{
-				where: {
-					companyId,
-				},
-				return: true,
-			},
-		);
-		const companyProfile = toCompanyProfileDTO(result[0][0].dataValues);
+		const updateResults = await Promise.all(updatePromises);
+		const finalResult = updateResults[updateResults.length - 1];
 
-		res.status(200).json({
+		const messages = [];
+		if (updates.logo) messages.push("logo");
+		if (updates.banner) messages.push("banner");
+
+		return res.status(200).json({
 			status: "success",
-			message: "Company updated successfully",
-			data: companyProfile,
+			message: `Company ${messages.join(" and ")} updated successfully`,
+			data: {
+				company: finalResult,
+			},
 		});
 	} catch (error) {
 		next(error);
@@ -327,10 +476,123 @@ const deleteCompany = async (
 	}
 };
 
+const follow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+
+		await followCompany(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Followed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const unfollow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+
+		await unfollowCompany(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Unfollowed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const isFollowing = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { id: companyId } = req.params;
+		if (!companyId) {
+			throw new BadRequestError("Company ID is required");
+		}
+
+		const user = (req as any).user;
+		if (!user || !user.userId) {
+			return res.status(200).json({
+				success: true,
+				data: {
+					isFollowing: false,
+				},
+			});
+		}
+
+		const isFollowingCompany = await checkIfUserFollowsCompany(
+			user.userId,
+			companyId,
+		);
+
+		res.status(200).json({
+			success: true,
+			data: {
+				isFollowing: isFollowingCompany,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id: companyId } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+		if (!companyId) {
+			throw new BadRequestError("Company ID is required");
+		}
+
+		const { followers, pagination } = await getCompanyFollowers(
+			companyId,
+			paginationQuery,
+		);
+
+		res.status(200).json({
+			success: true,
+			data: {
+				followers,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	createCompany,
 	getAllCompanies,
 	getCompanyById,
 	updateCompany,
 	deleteCompany,
+	updateCompanyMedia,
+	follow,
+	unfollow,
+	isFollowing,
+	getFollowers,
 };

@@ -153,3 +153,5 @@ export const getCompanyModel = (neogma: Neogma) => {
 
 	return CompanyModel;
 };
+
+export type CompanyModelType = typeof CompanyModel;

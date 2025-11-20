@@ -10,16 +10,22 @@ import { config } from "../config";
 import { LoggedInUserRequest } from "../types";
 import { OAuthSchema } from "../validators/oauth.validator";
 
-const setCookie = (res: Response, token: string) => {
-	res.cookie("token", token, {
+export const setCookie = (res: Response, token: string) => {
+	res.cookie(config.cookie.name, token, {
 		httpOnly: true,
 		secure: config.env === "production",
 		sameSite: "strict",
-		maxAge: 24 * 60 * 60 * 1000 * 90,
+		maxAge: config.cookie.maxAge,
 	});
 };
 
-const COOKIE_NAME = "access_token";
+export const clearCookie = (res: Response) => {
+	res.clearCookie(config.cookie.name, {
+		httpOnly: true,
+		sameSite: "lax",
+		secure: config.env === "production",
+	});
+};
 
 const signup = async (
 	req: Request<{}, {}, CreateUserSchema>,
@@ -62,12 +68,11 @@ const signin = async (
 };
 
 const signout = (req: Request, res: Response) => {
-	res.clearCookie(COOKIE_NAME, {
-		httpOnly: true,
-		sameSite: "lax",
-		secure: config.env === "production",
+	clearCookie(res);
+	res.status(200).json({
+		success: true,
+		message: "Signed out successfully",
 	});
-	res.status(200).json({ success: true, message: "Signed out successfully" });
 };
 
 const handleOAuth = async (
@@ -117,7 +122,14 @@ const resetPassword = async (
 		const { token } = req.params as { token: string };
 		const { newPassword } = req.body;
 		const result = await authService.resetPassword(token, newPassword);
-		res.status(200).json({ success: true, ...result });
+
+		if (result.token) {
+			setCookie(res, result.token);
+		}
+		res.status(200).json({
+			success: true,
+			...result,
+		});
 	} catch (error) {
 		next(error);
 	}

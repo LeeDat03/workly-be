@@ -28,3 +28,9 @@ export interface LoggedInUserRequest extends Request {
 export interface OwnerCompanyRequest extends LoggedInUserRequest {
 	company?: CompanyInstance;
 }
+
+export interface IPagination {
+	page: number;
+	limit: number;
+	search: string;
+}

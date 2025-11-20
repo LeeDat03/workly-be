@@ -67,6 +67,16 @@ interface IUserRelatedNodes {
 			description: string;
 		}
 	>;
+	FollowingUser: ModelRelatedNodesI<
+		typeof UserModel,
+		UserInstance,
+		{
+			Timestamp: number;
+		},
+		{
+			timestamp: number;
+		}
+	>;
 }
 
 export type UserInstance = NeogmaInstance<UserProperties, IUserRelatedNodes>;
@@ -180,6 +190,22 @@ export const getUserModel = (neogma: Neogma) => {
 		},
 		neogma,
 	);
+	// Add self-referential relationship after model is created
+	UserModel.relationships.FollowingUser = {
+		model: UserModel,
+		direction: "out",
+		name: "FOLLOWING_USER",
+		properties: {
+			Timestamp: {
+				property: "timestamp",
+				schema: {
+					type: "number",
+					required: true,
+				},
+			},
+		},
+	};
+
 	UserModel.beforeCreate = (instance) => {
 		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();

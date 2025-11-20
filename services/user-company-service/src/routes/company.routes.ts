@@ -1,10 +1,11 @@
 import { Router } from "express";
 
-import { isAuthenticated, validate } from "../middlewares";
+import { isAuthenticated, validate, optionalAuth } from "../middlewares";
 import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
 import { createCompanySchema, updateCompanySchema } from "../validators";
+import upload from "../middlewares/checkUpload";
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.post(
 router.get("/", companyController.getAllCompanies);
 router.get("/:id", companyController.getCompanyById);
 
+// ADMIN ACCESS - ADMIN ACTION
 router.patch(
 	"/:id",
 	isAuthenticated,
@@ -24,7 +26,24 @@ router.patch(
 	companyController.updateCompany,
 );
 
-// OWNER ACCESS
+router.patch(
+	"/:id/media",
+	isAuthenticated,
+	upload.fields([
+		{ name: "logo", maxCount: 1 },
+		{ name: "banner", maxCount: 1 },
+	]),
+	companyController.updateCompanyMedia,
+);
+
+// FOLLOW
+router.get("/:id/followers", companyController.getFollowers);
+router.post("/:id/follow", isAuthenticated, companyController.follow);
+router.delete("/:id/follow", isAuthenticated, companyController.unfollow);
+
+router.get("/:id/is-following", optionalAuth, companyController.isFollowing);
+
+// OWNER ACCESS - OWNER ACTION
 const ownerRoutes = Router({ mergeParams: true });
 ownerRoutes.use(isAuthenticated, isCompanyOwner);
 
