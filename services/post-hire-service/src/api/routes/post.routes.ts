@@ -57,5 +57,15 @@ export function createPostRoutes(): Router {
 		commentController.updateComment
 	);
 
+	router.get(
+		"/comment/list/:postId",
+		commentController.getAllComment
+	)
+
+	router.get(
+		"/comment/:commentId",
+		commentController.getCommentById
+	)
+
 	return router;
 }

@@ -37,7 +37,7 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async createPost(post: CreatePostDTO): Promise<InsertOneResult> {
-		const result = await this.postCollection.post.insertOne(post);
+		const result = await this.postCollection.post.insertOne({ ...post, createdAt: new Date() });
 		return result;
 	}
 
@@ -102,7 +102,7 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async getAll(): Promise<any[]> {
-		const result = await this.postCollection.post.find().toArray();
+		const result = await this.postCollection.post.find().sort({ createdAt: -1 }).toArray();
 		return result;
 	}
 

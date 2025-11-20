@@ -102,8 +102,8 @@ export class UploadMiddleware {
 
                     files.forEach((file, index) => {
                         let fileUrl = `/uploads/${file.filename}`;
-                        if (file.mimetype.startsWith('image/')) { fileUrl = `/images/${file.filename}`; uploadedUrls.push({ url: fileUrl, type: MediaType.IMAGE }) };
-                        if (file.mimetype.startsWith('video/')) { fileUrl = `/videos/${file.filename}`; uploadedUrls.push({ url: fileUrl, type: MediaType.VIDEO }) };
+                        if (file.mimetype.startsWith('image/')) { uploadedUrls.push({ url: file.filename, type: MediaType.IMAGE }) };
+                        if (file.mimetype.startsWith('video/')) { uploadedUrls.push({ url: file.filename, type: MediaType.VIDEO }) };
                     });
 
                     res.json({ code: 200, results: uploadedUrls });

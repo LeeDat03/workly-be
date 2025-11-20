@@ -81,6 +81,8 @@ export class PostController {
 		res: Response,
 		next: NextFunction
 	) => {
+		console.log("streaming....");
+
 		const videoPath = path.join(
 			__dirname,
 			"../../../uploads/videos",
@@ -97,7 +99,8 @@ export class PostController {
 			// Không có range => gửi toàn bộ video
 			res.writeHead(200, {
 				"Content-Length": fileSize,
-				"Content-Type": mime.lookup(videoPath) || "video/mp4",
+				"Content-Type": "video/mp4",
+				"Access-Control-Allow-Origin": "*",
 			});
 			fs.createReadStream(videoPath).pipe(res);
 			return;
@@ -114,7 +117,8 @@ export class PostController {
 			"Content-Range": `bytes ${start}-${end}/${fileSize}`,
 			"Accept-Ranges": "bytes",
 			"Content-Length": chunkSize,
-			"Content-Type": mime.lookup(videoPath) || "video/mp4",
+			"Content-Type": "video/mp4",
+			"Access-Control-Allow-Origin": "*",
 		});
 
 		fileStream.pipe(res);

@@ -1,12 +1,12 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { CommentResponse, CreateCommentDTO, UpdateCommentDTO } from "../model/comment.model";
 import { Document, InsertOneResult, ObjectId, UpdateResult, WithId } from "mongodb";
-import { IPaginationInput, PagingList } from "../model/common.model";
 
 export interface ICommentRepository {
     createComment(data: CreateCommentDTO): Promise<InsertOneResult>
-    getCommentDetail(id: ObjectId): Promise<WithId<Document> | null>
+    getCommentById(id: ObjectId): Promise<CommentResponse | null>
     updateComment(data: UpdateCommentDTO, id: ObjectId): Promise<UpdateResult>
+    getAllComment(postId: string): Promise<CommentResponse[]>
 }
 
 export class CommentRepository implements ICommentRepository {
@@ -19,12 +19,35 @@ export class CommentRepository implements ICommentRepository {
         this.commentCollection = commentCollection
     }
 
+    private convertComment = async (
+        item: WithId<Document>,
+        commentCollection: any
+    ): Promise<CommentResponse> => {
+
+        const replyCount = await commentCollection.countDocuments({
+            parentId: item._id,
+        });
+
+        return {
+            id: item._id.toString(),
+            authorId: item.content,
+            content: item.content,
+            mediaFile: item.mediaFile,
+            replyCount: replyCount,
+            parentId: item.parentId
+        };
+    };
     public createComment = async (data: CreateCommentDTO): Promise<InsertOneResult> => {
-        return await this.commentCollection.comment.insertOne(data)
+        return await this.commentCollection.comment.insertOne({ ...data, createdAt: new Date() })
     }
 
-    public getCommentDetail = async (id: ObjectId): Promise<WithId<Document> | null> => {
-        return await this.commentCollection.comment.findOne({ _id: id })
+    public getCommentById = async (id: ObjectId): Promise<CommentResponse | null> => {
+        const doc = await this.commentCollection.comment.findOne({ _id: id })
+
+        if (!doc) return null;
+
+
+        return await this.convertComment(doc, this.commentCollection.comment);
     }
 
     public updateComment = async (data: UpdateCommentDTO, id: ObjectId): Promise<UpdateResult> => {
@@ -42,69 +65,82 @@ export class CommentRepository implements ICommentRepository {
             }
         )
     }
-
-    public getPagingRootComment = async (input: IPaginationInput, postId: ObjectId): Promise<PagingList<CommentResponse>> => {
-        const page = input.page ?? 1;
-        const size = input.size ?? 10;
-        const skip = (page - 1) * size;
+    public getAllComment = async (postId: string): Promise<CommentResponse[]> => {
         let query: any = { postId: postId };
+        console.log(query);
 
-        const [result, total] = await Promise.all([
-            this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
-            this.commentCollection.comment.countDocuments(),
-        ]);
+        const result = await this.commentCollection.comment.find(query).sort({ createdAt: -1 }).toArray();
+
         const data = await Promise.all(
-            result.map(async (item) => {
-                const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
-                return {
-                    authorId: item.content,
-                    content: item.content,
-                    mediaFile: item.mediaFile,
-                    replyCount: countSubComment,
-                };
-            })
+            result.map(item => this.convertComment(item, this.commentCollection.comment)
+            )
         );
-        return {
-            data,
-            pagination: {
-                page,
-                size,
-                total,
-                totalPages: Math.ceil(total / size),
-            },
-        };
+        return data;
     }
-    public getPagingComment = async (input: IPaginationInput, parentId: ObjectId): Promise<PagingList<CommentResponse>> => {
-        const page = input.page ?? 1;
-        const size = input.size ?? 10;
-        const skip = (page - 1) * size;
-        let query: any = { parentId: parentId };
 
-        const [result, total] = await Promise.all([
-            this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
-            this.commentCollection.comment.countDocuments(),
-        ]);
 
-        const data = await Promise.all(
-            result.map(async (item) => {
-                const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
-                return {
-                    authorId: item.content,
-                    content: item.content,
-                    mediaFile: item.mediaFile,
-                    replyCount: countSubComment,
-                };
-            })
-        )
+    // public getPagingRootComment = async (input: IPaginationInput, postId: ObjectId): Promise<PagingList<CommentResponse>> => {
+    //     const page = input.page ?? 1;
+    //     const size = input.size ?? 10;
+    //     const skip = (page - 1) * size;
+    //     let query: any = { postId: postId };
 
-        return {
-            data,
-            pagination: {
-                page,
-                size,
-                total,
-                totalPages: Math.ceil(total / size),
-            },
-        };
-    }
+    //     const [result, total] = await Promise.all([
+    //         this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
+    //         this.commentCollection.comment.countDocuments(),
+    //     ]);
+    //     const data = await Promise.all(
+    //         result.map(async (item) => {
+    //             const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
+    //             return {
+    //                 authorId: item.content,
+    //                 content: item.content,
+    //                 mediaFile: item.mediaFile,
+    //                 replyCount: countSubComment,
+    //             };
+    //         })
+    //     );
+    //     return {
+    //         data,
+    //         pagination: {
+    //             page,
+    //             size,
+    //             total,
+    //             totalPages: Math.ceil(total / size),
+    //         },
+    //     };
+    // }
+    // public getPagingComment = async (input: IPaginationInput, parentId: ObjectId): Promise<PagingList<CommentResponse>> => {
+    //     const page = input.page ?? 1;
+    //     const size = input.size ?? 10;
+    //     const skip = (page - 1) * size;
+    //     let query: any = { parentId: parentId };
+
+    //     const [result, total] = await Promise.all([
+    //         this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
+    //         this.commentCollection.comment.countDocuments(),
+    //     ]);
+
+    //     const data = await Promise.all(
+    //         result.map(async (item) => {
+    //             const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
+    //             return {
+    //                 authorId: item.content,
+    //                 content: item.content,
+    //                 mediaFile: item.mediaFile,
+    //                 replyCount: countSubComment,
+    //             };
+    //         })
+    //     )
+
+    //     return {
+    //         data,
+    //         pagination: {
+    //             page,
+    //             size,
+    //             total,
+    //             totalPages: Math.ceil(total / size),
+    //         },
+    //     };
+    // }
 }
