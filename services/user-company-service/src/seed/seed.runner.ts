@@ -7,6 +7,7 @@ import {
 	seedIndustry,
 	seedSkill,
 	seedSchool,
+	seedLocation,
 } from "./index";
 
 const runSeeder = async () => {
@@ -19,14 +20,14 @@ const runSeeder = async () => {
 		await initModels(database.getNeogma());
 		console.log("✅ Models initialized successfully\n");
 
+		await seedLocation();
+		await seedIndustry();
+
 		await seedSkill();
 		await seedSchool();
-		await seedIndustry();
-		await seedUser(10);
-		await seedCompany(10);
+		await seedCompany();
 
-		// Add more seed functions here as needed
-		// await seedJob();
+		await seedUser(10);
 
 		console.log("\n✅ All seeding completed successfully!");
 	} catch (error) {

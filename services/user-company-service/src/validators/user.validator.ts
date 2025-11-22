@@ -2,7 +2,6 @@ import { z } from "zod";
 import { Degree, UserProperties, UserRole } from "../models/user.model";
 import { IndustryProperties } from "../models/industry.model";
 import { SkillProperties } from "../models/skill.model";
-import { SchoolProperties } from "../models/school.model";
 
 const passwordRegex =
 	/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -62,6 +61,18 @@ export const updateEducationSchema = z.array(
 	}),
 );
 
+export const updateWorkExperienceSchema = z.array(
+	z.object({
+		companyId: z.string().min(1, "Company ID is required"),
+		title: z.string().min(1, "Title is required"),
+		startDate: z.iso.datetime("Start date must be a valid ISO datetime"),
+		endDate: z.iso
+			.datetime("End date must be a valid ISO datetime")
+			.optional(),
+		description: z.string().optional(),
+	}),
+);
+
 export const changePasswordSchema = z
 	.object({
 		currentPassword: z.string().min(1, "Current password is required"),
@@ -79,6 +90,8 @@ export const changePasswordSchema = z
 		path: ["confirmNewPassword"],
 	});
 
+////////////////////////////////////////////////////////////
+// Schemas
 export type CreateUserSchema = z.infer<typeof createUserSchema>;
 export type UpdateUserProfileSchema = z.infer<typeof updateUserProfileSchema>;
 export type UpdateUserIndustriesSchema = z.infer<
@@ -86,8 +99,13 @@ export type UpdateUserIndustriesSchema = z.infer<
 >;
 export type UpdateUserSkillsSchema = z.infer<typeof updateUserSkillsSchema>;
 export type UpdateEducationSchema = z.infer<typeof updateEducationSchema>;
+export type UpdateWorkExperienceSchema = z.infer<
+	typeof updateWorkExperienceSchema
+>;
 export type ChangePasswordSchema = z.infer<typeof changePasswordSchema>;
 
+////////////////////////////////////////////////////////////
+// DTOs
 export const toUserBasicDTO = (user: UserProperties) => {
 	return {
 		userId: user.userId,

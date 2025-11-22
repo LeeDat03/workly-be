@@ -24,6 +24,7 @@ import {
 import {
 	toUserFollowDTO,
 	UpdateEducationSchema,
+	UpdateWorkExperienceSchema,
 } from "../validators/user.validator";
 import {
 	checkIfUserFollowsUser,
@@ -280,6 +281,39 @@ export const updateUserEducations = async (
 		res.status(200).json({
 			success: true,
 			message: "Education updated successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateUserWorkExperiences = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const workExperiencesData: UpdateWorkExperienceSchema = req.body;
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		await updateRelationsWithQuery(
+			userId,
+			"WORKS_AT",
+			"Company",
+			"companyId",
+			workExperiencesData.map((e) => e.companyId),
+			workExperiencesData.map((e) => {
+				const { companyId, ...rest } = e;
+				return rest;
+			}),
+		);
+		res.status(200).json({
+			success: true,
+			message: "Work experiences updated successfully",
 		});
 	} catch (error) {
 		next(error);
@@ -577,6 +611,7 @@ export default {
 	updateUserSkills,
 	updateUserIndustries,
 	updateUserEducations,
+	updateUserWorkExperiences,
 	changeMyPassword,
 	follow,
 	unfollow,

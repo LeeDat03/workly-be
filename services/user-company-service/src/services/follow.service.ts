@@ -31,7 +31,7 @@ export const followUser = async (currId: string, targetId: string) => {
 		MATCH (u1:User {userId: $currId})
 		MATCH (u2:User {userId: $targetId})
 		MERGE (u1)-[r:FOLLOWING_USER]->(u2)
-		ON CREATE SET r.timestamp = datetime()
+		ON CREATE SET r.createdAt = datetime()
 		RETURN r
 		`,
 		{ currId, targetId },
@@ -70,7 +70,7 @@ export const getUserFollowers = async (
 		`
 		MATCH (u:User)-[r:FOLLOWING_USER]->(f:User {userId: $userId})
 		RETURN u, r
-		ORDER BY r.timestamp DESC
+		ORDER BY r.createdAt DESC
 		SKIP $offset
 		LIMIT $queryLimit
 		`,
@@ -89,7 +89,7 @@ export const getUserFollowers = async (
 		const user = toUserBasicDTO(userNode.properties);
 		return {
 			...user,
-			followedAt: new Date(relationship.properties.timestamp),
+			followedAt: new Date(relationship.properties.createdAt),
 		};
 	});
 
@@ -113,7 +113,7 @@ export const getUserFollowing = async (
 		`
 		MATCH (u:User {userId: $userId})-[r:FOLLOWING_USER]->(f:User)
 		RETURN f, r
-		ORDER BY r.timestamp DESC
+		ORDER BY r.createdAt DESC
 		SKIP $offset
 		LIMIT $queryLimit
 		`,
@@ -127,7 +127,7 @@ export const getUserFollowing = async (
 		const user = toUserBasicDTO(userNode.properties);
 		return {
 			...user,
-			followedAt: new Date(relationship.properties.timestamp),
+			followedAt: new Date(relationship.properties.createdAt),
 		};
 	});
 
@@ -203,7 +203,7 @@ export const followCompany = async (userId: string, companyId: string) => {
 		MATCH (u:User {userId: $userId})
 		MATCH (c:Company {companyId: $companyId})
 		MERGE (u)-[r:FOLLOWING_COMPANY]->(c)
-		ON CREATE SET r.timestamp = datetime()
+		ON CREATE SET r.createdAt = datetime()
 		RETURN r
 		`,
 		{ userId, companyId },
@@ -242,7 +242,7 @@ export const getCompanyFollowers = async (
 		`
 		MATCH (u:User)-[r:FOLLOWING_COMPANY]->(c:Company {companyId: $companyId})
 		RETURN u, r
-		ORDER BY r.timestamp DESC
+		ORDER BY r.createdAt DESC
 		SKIP $offset
 		LIMIT $queryLimit
 		`,
@@ -256,7 +256,7 @@ export const getCompanyFollowers = async (
 		const user = toUserFollowDTO(userNode.properties);
 		return {
 			...user,
-			followedAt: new Date(relationship.properties.timestamp),
+			followedAt: new Date(relationship.properties.createdAt),
 		};
 	});
 

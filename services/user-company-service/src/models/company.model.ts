@@ -9,6 +9,12 @@ import { nanoid } from "nanoid";
 import { IndustryModel, UserModel } from ".";
 import { UserInstance } from "./user.model";
 import { IndustryInstance } from "./industry.model";
+import { logger } from "../utils";
+import {
+	getLocationModel,
+	LocationInstance,
+	LocationModelType,
+} from "./location.models";
 
 export enum CompanyRoleRequestStatus {
 	PENDING = "PENDING",
@@ -40,6 +46,7 @@ export interface CompanyProperties {
 
 interface ICompanyRelatedNodes {
 	Owner: ModelRelatedNodesI<typeof UserModel, UserInstance, {}, {}>;
+	Location: ModelRelatedNodesI<LocationModelType, LocationInstance, {}, {}>;
 	Industry: ModelRelatedNodesI<
 		typeof IndustryModel,
 		IndustryInstance,
@@ -73,7 +80,7 @@ export const getCompanyModel = (neogma: Neogma) => {
 	if (CompanyModel) {
 		return CompanyModel;
 	}
-
+	const LocationModel = getLocationModel(neogma);
 	CompanyModel = ModelFactory<CompanyProperties, ICompanyRelatedNodes>(
 		{
 			label: "Company",
@@ -110,6 +117,11 @@ export const getCompanyModel = (neogma: Neogma) => {
 					direction: "out",
 					name: "IN",
 				},
+				Location: {
+					model: LocationModel,
+					direction: "out",
+					name: "LOCATED_IN",
+				},
 				CompanyRoleRequest: {
 					model: UserModel,
 					direction: "in",
@@ -140,16 +152,31 @@ export const getCompanyModel = (neogma: Neogma) => {
 	CompanyModel.beforeCreate = (instance) => {
 		instance.companyId = nanoid(12);
 	};
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT comapany_id_unique IF NOT EXISTS
-		FOR (c:Company)
-		REQUIRE c.companyId IS UNIQUE
-	`);
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT company_name_unique IF NOT EXISTS
-		FOR (c:Company)
-		REQUIRE c.name IS UNIQUE
-	`);
+
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT comapany_id_unique IF NOT EXISTS
+				FOR (c:Company)
+				REQUIRE c.companyId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn(
+				"Company companyId constraint creation warning:",
+				error,
+			);
+		}
+
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT company_name_unique IF NOT EXISTS
+				FOR (c:Company)
+				REQUIRE c.name IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("Company name constraint creation warning:", error);
+		}
+	})();
 
 	return CompanyModel;
 };

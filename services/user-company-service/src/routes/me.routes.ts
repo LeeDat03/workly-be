@@ -8,6 +8,7 @@ import {
 	updateUserSkillsSchema,
 	updateUserIndustriesSchema,
 	updateEducationSchema,
+	updateWorkExperienceSchema,
 } from "../validators/user.validator";
 import upload from "../middlewares/checkUpload";
 
@@ -36,6 +37,12 @@ router.patch(
 	validate(updateEducationSchema),
 	userController.updateUserEducations,
 );
+router.patch(
+	"/work-experiences",
+	validate(updateWorkExperienceSchema),
+	userController.updateUserWorkExperiences,
+);
+
 router.patch(
 	"/media",
 	isAuthenticated,
