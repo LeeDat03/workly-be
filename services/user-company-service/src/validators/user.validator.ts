@@ -51,6 +51,7 @@ export const updateUserSkillsSchema = z.object({
 export const updateEducationSchema = z.array(
 	z.object({
 		schoolId: z.string().min(1, "schoolId là bắt buộc"),
+		schoolName: z.string().optional(),
 		degree: z.enum(Object.values(Degree)),
 		major: z.string().min(1, "Chuyên ngành là bắt buộc"),
 		startDate: z.iso.datetime("Ngày bắt đầu phải là ISO datetime"),
@@ -64,6 +65,7 @@ export const updateEducationSchema = z.array(
 export const updateWorkExperienceSchema = z.array(
 	z.object({
 		companyId: z.string().min(1, "Company ID is required"),
+		companyName: z.string().optional(),
 		title: z.string().min(1, "Title is required"),
 		startDate: z.iso.datetime("Start date must be a valid ISO datetime"),
 		endDate: z.iso
