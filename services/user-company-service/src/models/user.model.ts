@@ -16,6 +16,12 @@ import {
 	getSchoolModel,
 } from "./school.model";
 import { nanoid } from "nanoid";
+import { logger } from "../utils";
+import {
+	getLocationModel,
+	LocationInstance,
+	LocationModelType,
+} from "./location.models";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
@@ -47,6 +53,7 @@ export interface UserProperties {
 }
 
 interface IUserRelatedNodes {
+	Location: ModelRelatedNodesI<LocationModelType, LocationInstance, {}, {}>;
 	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
 	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
 	Education: ModelRelatedNodesI<
@@ -71,10 +78,10 @@ interface IUserRelatedNodes {
 		typeof UserModel,
 		UserInstance,
 		{
-			Timestamp: number;
+			CreatedAt: number;
 		},
 		{
-			timestamp: number;
+			createdAt: string;
 		}
 	>;
 }
@@ -89,6 +96,7 @@ export const getUserModel = (neogma: Neogma) => {
 	if (UserModel) {
 		return UserModel;
 	}
+	const LocationModel = getLocationModel(neogma);
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
 	const SchoolModel = getSchoolModel(neogma);
@@ -136,6 +144,11 @@ export const getUserModel = (neogma: Neogma) => {
 			},
 			primaryKeyField: "userId",
 			relationships: {
+				Location: {
+					model: LocationModel,
+					direction: "out",
+					name: "LOCATED_IN",
+				},
 				Industry: {
 					model: IndustryModel,
 					direction: "out",
@@ -196,8 +209,8 @@ export const getUserModel = (neogma: Neogma) => {
 		direction: "out",
 		name: "FOLLOWING_USER",
 		properties: {
-			Timestamp: {
-				property: "timestamp",
+			CreatedAt: {
+				property: "createdAt",
 				schema: {
 					type: "number",
 					required: true,
@@ -213,16 +226,27 @@ export const getUserModel = (neogma: Neogma) => {
 		instance.role = UserRole.USER;
 	};
 
-	neogma.queryRunner.run(`
-	        CREATE CONSTRAINT user_id_unique IF NOT EXISTS
-	        FOR (u:User)
-	        REQUIRE u.userId IS UNIQUE
-	    `);
-	neogma.queryRunner.run(`
-	        CREATE CONSTRAINT user_email_unique IF NOT EXISTS
-	        FOR (u:User)
-	        REQUIRE u.email IS UNIQUE
-	    `);
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+				FOR (u:User)
+				REQUIRE u.userId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("User userId constraint creation warning:", error);
+		}
+
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT user_email_unique IF NOT EXISTS
+				FOR (u:User)
+				REQUIRE u.email IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("User email constraint creation warning:", error);
+		}
+	})();
 
 	return UserModel;
 };

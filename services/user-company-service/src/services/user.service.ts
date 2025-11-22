@@ -138,7 +138,8 @@ export const updateRelationsWithQuery = async (
 
 			// 3. Create the new relationships
 			if (newIds.length > 0) {
-				const isMerge = targetLabel !== "School";
+				const isMerge =
+					targetLabel !== "School" && targetLabel !== "Company";
 				const mergeClause = isMerge ? "MERGE" : "CREATE";
 
 				const items = newIds.map((id, idx) => ({
