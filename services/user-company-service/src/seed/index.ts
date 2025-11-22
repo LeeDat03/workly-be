@@ -9,6 +9,7 @@ import {
 	SCHOOL_DATA,
 	SKILL_DATA,
 } from "./seed.data";
+import { UNLISTED_COMPANY } from "../utils/constants";
 
 const getRandomItems = <T>(arr: T[], min: number, max: number): T[] => {
 	const count = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -85,6 +86,20 @@ export const seedCompany = async (): Promise<void> => {
 	console.log("🌱 Starting to seed companies...");
 
 	const neogma = database.getNeogma();
+
+	// Seed UNLISTED company
+	await neogma.queryRunner.run(
+		`
+		CREATE (company:Company {
+			companyId: $companyId,
+			name: $companyName
+		})
+		`,
+		{
+			companyId: UNLISTED_COMPANY.companyId,
+			companyName: UNLISTED_COMPANY.companyName,
+		},
+	);
 
 	// Prepare companies with generated IDs
 	const companies = COMPANY_DATA.map((company) => ({

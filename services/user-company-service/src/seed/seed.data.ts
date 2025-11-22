@@ -1,4 +1,5 @@
 import { CompanySize } from "../models/company.model";
+import { UNLISTED_SCHOOL } from "../utils/constants";
 
 export const LOCATION_DATA = [
 	{ locationId: "an_giang", name: "An Giang" },
@@ -88,6 +89,7 @@ export const SCHOOL_DATA = [
 	{ schoolId: "tdtu", name: "Ton Duc Thang University" },
 	{ schoolId: "duy_tan", name: "Duy Tan University" },
 	{ schoolId: "usth", name: "University of Science and Technology of Hanoi" },
+	{ schoolId: UNLISTED_SCHOOL.schoolId, name: UNLISTED_SCHOOL.schoolName },
 ];
 
 export const COMPANY_DATA = [
