@@ -1,5 +1,6 @@
 import {
 	CreatePostDTO,
+	DeletePost,
 	Post,
 	PostResponse,
 	UpdatePostDTO,
@@ -28,6 +29,7 @@ export interface IPostRepository {
 		input: IPaginationInput,
 		userId: string
 	): Promise<PagingList<WithId<Document>>>;
+	deletePost(post: DeletePost): Promise<boolean>
 }
 
 export class PostRepository implements IPostRepository {
@@ -35,6 +37,11 @@ export class PostRepository implements IPostRepository {
 
 	constructor(postCollection: DatabaseAdapter) {
 		this.postCollection = postCollection;
+	}
+
+	public async deletePost(post: DeletePost): Promise<boolean> {
+		const result = await this.postCollection.post.deleteOne({ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type });
+		return result.deletedCount > 0;
 	}
 
 	public async createPost(post: CreatePostDTO): Promise<InsertOneResult> {
@@ -111,8 +118,8 @@ export class PostRepository implements IPostRepository {
 		input: IPaginationInput,
 		userId: string
 	): Promise<PagingList<WithId<Document>>> {
-		const page = input.page ?? 1;
-		const size = input.size ?? 10;
+		const page = Number(input.page) ?? 1;
+		const size = Number(input.size) ?? 10;
 		const skip = (page - 1) * size;
 		const [data, total] = await Promise.all([
 			this.postCollection.post
@@ -123,6 +130,7 @@ export class PostRepository implements IPostRepository {
 				.toArray(),
 			this.postCollection.post.countDocuments(),
 		]);
+
 		return {
 			data,
 			pagination: {

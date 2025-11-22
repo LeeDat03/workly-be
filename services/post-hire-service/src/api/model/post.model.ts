@@ -38,7 +38,11 @@ export interface CreatePostDTO {
     media_url: MediaItem[];
     visibility: PostVisibilityType;
 }
-
+export interface DeletePost {
+    postId: string;
+    author_id: string;
+    author_type: AuthorType;
+}
 export interface UpdatePostDTO {
     content?: string;
     media_url?: {

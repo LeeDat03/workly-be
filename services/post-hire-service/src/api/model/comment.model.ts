@@ -1,4 +1,5 @@
 import { ObjectId } from "bson/bson";
+import { FeelingResponse } from "./like.model";
 
 export interface Comment {
     _id: ObjectId;
@@ -25,7 +26,8 @@ export interface CommentResponse {
     mediaFile?: string;
     replyCount: number;
     parentId?: string; //null -> root comment
-    author?: object | null
+    author?: object | null;
+    createdAt: string;
 }
 
 export interface UpdateCommentDTO {

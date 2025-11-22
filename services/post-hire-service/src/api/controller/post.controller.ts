@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
-import { AuthorType, CreatePostDTO, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
+import { AuthorType, CreatePostDTO, DeletePost, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
 import { IPaginationInput, PagingList } from "../model/common.model";
 
@@ -30,6 +30,23 @@ export class PostController {
 			next(error);
 		}
 	};
+	public deletePost = async (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) => {
+		try {
+			const body = { ...req.body, author_id: req.user!!.userId, author_type: AuthorType.USER } as DeletePost;
+			console.log(req.body);
+
+			const result = await this.postService.deletePost(body);
+			res.sendJson(result);
+		} catch (error) {
+			logger.error(`PostController.delete: `, error);
+			next(error);
+		}
+	};
+
 
 	public uploadFile = async (
 		req: Request,
@@ -124,13 +141,14 @@ export class PostController {
 		fileStream.pipe(res);
 	};
 
-	public getMyPost = async (req: Request, res: Response, next: NextFunction) => {
+	public getPostByUserId = async (req: Request, res: Response, next: NextFunction) => {
 		try {
 			const input = req.query as IPaginationInput;
 			const data = await this.postService.getAllPost(
 				input,
-				req.user!!.userId
+				req.query.userId as string
 			);
+
 
 			const userIds = data.data.map(post => post.author_id);
 			if (userIds.length > 0) {
@@ -145,12 +163,14 @@ export class PostController {
 						withCredentials: true,
 					}
 				);
+
 				const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
 				const postsWithAuthor = data.data.map(post => ({
 					...post,
 					author: usersMap.get(post.author_id) || null
 				}));
-				res.sendJson(postsWithAuthor);
+
+				res.sendJson({ data: postsWithAuthor, pagination: data.pagination });
 
 			} else {
 				res.sendJson(data)
@@ -160,10 +180,4 @@ export class PostController {
 			next(error);
 		}
 	};
-
-	public deletePost = async (
-		req: Request,
-		res: Response,
-		next: NextFunction
-	) => { };
 }

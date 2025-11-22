@@ -6,6 +6,7 @@ import { APIError } from "@/common/error/api.error";
 import { StatusCode } from "@/common/errors";
 import path from "path";
 import { FileUtil } from "@/util/fileUtil";
+import { ILikeRepository } from "../repository/like.repository";
 
 export interface ICommentService {
     createComment(data: CreateCommentDTO): Promise<InsertOneResult>
@@ -17,12 +18,15 @@ export interface ICommentService {
 export class CommentService implements ICommentService {
     private commentRepository: ICommentRepository;
     private postRepository: IPostRepository;
+    private likeRepository: ILikeRepository;
     constructor(
         commentRepository: ICommentRepository,
-        postRepository: IPostRepository
+        postRepository: IPostRepository,
+        likeRepository: ILikeRepository
     ) {
         this.commentRepository = commentRepository;
-        this.postRepository = postRepository
+        this.postRepository = postRepository;
+        this.likeRepository = likeRepository
     }
 
     public getCommentById = async (commentId: string): Promise<CommentResponse> => {
@@ -89,7 +93,13 @@ export class CommentService implements ICommentService {
         return result;
     }
     public getAllComment = async (postId: string): Promise<CommentResponse[]> => {
-        return await this.commentRepository.getAllComment(postId)
-    }
+        const listComments = await this.commentRepository.getAllComment(postId)
+        const commentIds = listComments.map(c => c.id.toString());
+        const likesMap = await this.likeRepository.getAllLikeByListComment(commentIds);
 
+        return listComments.map(comment => ({
+            ...comment,
+            likes: likesMap[comment.id.toString()] || [],
+        }));;
+    }
 }

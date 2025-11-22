@@ -76,6 +76,11 @@ export class DatabaseAdapter {
 		return this.collection("comment");
 	}
 
+	get like() {
+		return this.collection("like");
+	}
+
+
 	// Transaction support
 	async withTransaction(
 		callback: (session: any) => Promise<any>

@@ -1,6 +1,7 @@
 import { IPostRepository } from "@/api/repository/post.repository";
 import {
 	CreatePostDTO,
+	DeletePost,
 	mapToPostResponse,
 	MediaItem,
 	MediaType,
@@ -31,6 +32,7 @@ import {
 import { QueueService } from "@/api/service/queue.service";
 import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 import { ICommentRepository } from "../repository/comment.repository";
+import { ILikeRepository } from "../repository/like.repository";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -41,16 +43,32 @@ export interface IPostService {
 		input: IPaginationInput,
 		userId: string,
 	): Promise<PagingList<PostResponse>>;
+	deletePost(
+		post: DeletePost
+	): Promise<Boolean>
+
 }
 
 export class PostService implements IPostService {
 	private postRepository: IPostRepository;
 	private commentRepository: ICommentRepository;
+	private likeRepository: ILikeRepository
 
-	constructor(postRepository: IPostRepository, commentRepository: ICommentRepository) {
+	constructor(postRepository: IPostRepository, commentRepository: ICommentRepository, likeRepository: ILikeRepository) {
 		this.postRepository = postRepository;
 		this.commentRepository = commentRepository;
+		this.likeRepository = likeRepository
 	}
+
+	public deletePost = async (
+		post: DeletePost
+	): Promise<Boolean> => {
+		const result = await this.postRepository.deletePost(post);
+		if (!result) {
+			throw new APIError({ message: "post.notfound", status: StatusCode.REQUEST_NOT_FOUND });
+		}
+		return result;
+	};
 
 	public createPost = async (
 		post: CreatePostDTO
@@ -124,20 +142,23 @@ export class PostService implements IPostService {
 			userId
 		);
 
+
 		// Lấy postIds để query comment
 		const postIds = result.data.map((post) => post._id.toString());
 
 		// Đếm comment cho từng post
 		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
-
+		const likePosts = await this.likeRepository.getAllLikeByListPost(postIds)
 		// Map data với số lượng comment
 		const mappedData = result.data.map((item) => {
 			const postResponse = mapToPostResponse(item);
 			return {
 				...postResponse,
 				totalComments: commentCounts[item._id.toString()] || 0,
+				totalLikes: likePosts[item._id.toString()] || [],
 			};
 		});
+
 
 		return {
 			...result,

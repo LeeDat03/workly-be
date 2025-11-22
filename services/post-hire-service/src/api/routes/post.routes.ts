@@ -8,6 +8,7 @@ import {
 	updateComment,
 } from "@/api/validation/comment.validator";
 import { isAuthenticated } from "../middlewares/authentication.middleware";
+import { LikeController } from "../controller/like.controller";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
@@ -18,6 +19,10 @@ export function createPostRoutes(): Router {
 		res.send({ a: "abc" });
 	});
 
+	router.post(
+		"/delete",
+		postController.deletePost
+	);
 	router.post(
 		"/create",
 		validateRequest(createPost),
@@ -38,7 +43,7 @@ export function createPostRoutes(): Router {
 
 	router.get("/read/:id", postController.getPostDetail);
 
-	router.get("/myPost", postController.getMyPost);
+	router.get("/myPost", postController.getPostByUserId);
 
 	router.get("/video/:filename", postController.getStreamVideo);
 
@@ -64,6 +69,21 @@ export function createPostRoutes(): Router {
 	router.get(
 		"/comment/:commentId",
 		commentController.getCommentById
+	)
+
+	//like
+	const likeController = ControllerContainer.getLikeController();
+
+	router.post(
+		"/like", likeController.likePost
+	)
+
+	router.post(
+		"/unlike", likeController.unlikePost
+	)
+
+	router.get(
+		"/like/list", likeController.getAllLikePost
 	)
 
 	return router;

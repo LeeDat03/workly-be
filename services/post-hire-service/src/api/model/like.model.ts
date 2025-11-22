@@ -1,11 +1,8 @@
 import { ObjectId } from "bson/bson";
 
 export enum FeelingType {
-	LIKE = "LIKE",
-	LOVE = "LOVE",
-	SMILE = "SMILE",
-	ANGRY = "ANGRY",
-	SAD = "SAD",
+	POST = 'POST',
+	COMMENT = 'COMMENT',
 }
 
 export interface Feeling {
@@ -16,3 +13,11 @@ export interface Feeling {
 	type: FeelingType;
 	createdAt: Date;
 }
+
+export interface FeelingResponse {
+	postId: string;
+	commentId: string;
+	authorId: string;
+	type: FeelingType;
+}
+

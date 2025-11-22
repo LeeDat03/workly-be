@@ -36,11 +36,12 @@ export class CommentRepository implements ICommentRepository {
             content: item.content,
             mediaFile: item.mediaFile,
             replyCount: replyCount,
-            parentId: item.parentId
+            parentId: item.parentId,
+            createdAt: item.createdAt
         };
     };
     public createComment = async (data: CreateCommentDTO): Promise<InsertOneResult> => {
-        return await this.commentCollection.comment.insertOne({ ...data, created_at: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') })
+        return await this.commentCollection.comment.insertOne({ ...data, createdAt: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') })
     }
 
     public getCommentById = async (id: ObjectId): Promise<CommentResponse | null> => {
