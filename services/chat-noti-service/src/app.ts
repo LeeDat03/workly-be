@@ -18,7 +18,25 @@ export class App {
 		this.httpServer = createServer(this.app);
 		this.io = new Server(this.httpServer, {
 			cors: {
-				origin: config.cors.allowedOrigins,
+				origin: (origin, callback) => {
+					// Allow requests with no origin
+					if (!origin) return callback(null, true);
+
+					// In development, allow all localhost origins
+					if (
+						config.nodeEnv === "development" &&
+						origin.includes("localhost")
+					) {
+						return callback(null, true);
+					}
+
+					// Check against allowed origins
+					if (config.cors.allowedOrigins.includes(origin)) {
+						callback(null, true);
+					} else {
+						callback(null, false);
+					}
+				},
 				methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 				allowedHeaders: [
 					"Content-Type",
@@ -40,7 +58,25 @@ export class App {
 		// CORS - Allow specific origins with credentials
 		this.app.use(
 			cors({
-				origin: config.cors.allowedOrigins,
+				origin: (origin, callback) => {
+					// Allow requests with no origin (like mobile apps or curl)
+					if (!origin) return callback(null, true);
+
+					// In development, allow all localhost origins
+					if (
+						config.nodeEnv === "development" &&
+						origin.includes("localhost")
+					) {
+						return callback(null, true);
+					}
+
+					// Check against allowed origins
+					if (config.cors.allowedOrigins.includes(origin)) {
+						callback(null, true);
+					} else {
+						callback(new Error("Not allowed by CORS"));
+					}
+				},
 				credentials: true,
 				methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 				allowedHeaders: [

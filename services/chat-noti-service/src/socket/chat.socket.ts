@@ -79,53 +79,63 @@ export class ChatSocket {
 			userId?: string;
 			userType?: string;
 		};
-		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
-		console.log("decoded", decoded);
+		
+		try {
+			const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
+			console.log("decoded", decoded);
 
-		if (!decoded.id || !decoded.role) {
-			logger.warn(`Unauthenticated socket connection: ${socket.id}`);
+			if (!decoded || !decoded.id) {
+				logger.warn(`Invalid JWT token: ${socket.id}`);
+				socket.disconnect();
+				return;
+			}
+
+			// Default to USER type if no role in JWT (for backward compatibility)
+			const jwtUserType = (decoded as any).role || "USER";
+
+			// Use override identity if provided (company mode), otherwise use JWT identity
+			const actualUserId = overrideUserId || decoded.id;
+			const actualUserType = overrideUserType || jwtUserType;
+
+			if (overrideUserId && overrideUserType) {
+				console.log("🔄 Socket using identity override:", {
+					jwtUserId: decoded.id,
+					jwtUserType,
+					overrideUserId,
+					overrideUserType,
+				});
+			} else {
+				console.log("✅ Socket using JWT identity:", {
+					userId: decoded.id,
+					userType: jwtUserType,
+				});
+			}
+
+			// Store user info in socket data
+			socket.data.userId = actualUserId;
+			socket.data.userType = actualUserType;
+
+			// Track online user
+			this.onlineUsers.set(actualUserId, {
+				socketId: socket.id,
+				userType: actualUserType,
+			});
+
+			// Emit user online status to all connections
+			socket.broadcast.emit("user_online", {
+				userId: actualUserId,
+				userType: actualUserType,
+			});
+
+			// Send updated online users list to all clients
+			this.io.emit("online_users_list", {
+				users: this.getOnlineUsersWithDetails(),
+			});
+		} catch (error) {
+			logger.error(`Socket authentication error: ${error}`);
 			socket.disconnect();
 			return;
 		}
-
-		// Use override identity if provided (company mode), otherwise use JWT identity
-		const actualUserId = overrideUserId || decoded.id;
-		const actualUserType = overrideUserType || decoded.role;
-
-		if (overrideUserId && overrideUserType) {
-			console.log("🔄 Socket using identity override:", {
-				jwtUserId: decoded.id,
-				jwtUserType: decoded.role,
-				overrideUserId,
-				overrideUserType,
-			});
-		} else {
-			console.log("✅ Socket using JWT identity:", {
-				userId: decoded.id,
-				userType: decoded.role,
-			});
-		}
-
-		// Store user info in socket data
-		socket.data.userId = actualUserId;
-		socket.data.userType = actualUserType;
-
-		// Track online user
-		this.onlineUsers.set(actualUserId, {
-			socketId: socket.id,
-			userType: actualUserType,
-		});
-
-		// Emit user online status to all connections
-		socket.broadcast.emit("user_online", {
-			userId: actualUserId,
-			userType: actualUserType,
-		});
-
-		// Send updated online users list to all clients
-		this.io.emit("online_users_list", {
-			users: this.getOnlineUsersWithDetails(),
-		});
 	}
 
 	/**
