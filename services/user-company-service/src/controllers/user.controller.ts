@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response, NextFunction } from "express";
 import {
-	toUserProfileDTO,
 	UpdateUserProfileSchema,
 	UpdateUserSkillsSchema,
 	UpdateUserIndustriesSchema,
@@ -15,8 +14,6 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "../utils/appError";
-import { IndustryProperties } from "../models/industry.model";
-import { SkillProperties } from "../models/skill.model";
 import {
 	getUserProfile,
 	updateRelationsWithQuery,
@@ -24,6 +21,7 @@ import {
 import {
 	toUserFollowDTO,
 	UpdateEducationSchema,
+	UpdateWorkExperienceSchema,
 } from "../validators/user.validator";
 import {
 	checkIfUserFollowsUser,
@@ -36,6 +34,7 @@ import {
 import { parsePaginationQuery } from "../utils/pagination";
 import { clearCookie } from "./auth.controller";
 import { cloudinaryService } from "../services/upload/cloudinary.service";
+import { UNLISTED_COMPANY, UNLISTED_SCHOOL } from "../utils/constants";
 
 // TODO: HANDLE TRANSACTION
 const updateUserImage = async (
@@ -264,6 +263,18 @@ export const updateUserEducations = async (
 			throw new NotFoundError("User not found");
 		}
 
+		const unlistedSchools = educationsData.filter(
+			(e) => e.schoolId === UNLISTED_SCHOOL.schoolId,
+		);
+		const missingSchoolName = unlistedSchools.some(
+			(e) => !e.schoolName || e.schoolName.trim() === "",
+		);
+		if (missingSchoolName) {
+			throw new BadRequestError(
+				"School name is required for unlisted schools",
+			);
+		}
+
 		await updateRelationsWithQuery(
 			userId,
 			"ATTEND_SCHOOL",
@@ -280,6 +291,54 @@ export const updateUserEducations = async (
 		res.status(200).json({
 			success: true,
 			message: "Education updated successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateUserWorkExperiences = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const workExperiencesData: UpdateWorkExperienceSchema = req.body;
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		// Validate for UNLISTED companies
+		const unlistedCompanies = workExperiencesData.filter(
+			(e) => e.companyId === UNLISTED_COMPANY.companyId,
+		);
+		const missingCompanyName = unlistedCompanies.some(
+			(e) => !e.companyName || e.companyName.trim() === "",
+		);
+
+		console.log(unlistedCompanies, missingCompanyName);
+		if (missingCompanyName) {
+			throw new BadRequestError(
+				"Company name is required for unlisted companies",
+			);
+		}
+
+		await updateRelationsWithQuery(
+			userId,
+			"WORKS_AT",
+			"Company",
+			"companyId",
+			workExperiencesData.map((e) => e.companyId),
+			workExperiencesData.map((e) => {
+				const { companyId, ...rest } = e;
+				return rest;
+			}),
+		);
+		res.status(200).json({
+			success: true,
+			message: "Work experiences updated successfully",
 		});
 	} catch (error) {
 		next(error);
@@ -577,6 +636,7 @@ export default {
 	updateUserSkills,
 	updateUserIndustries,
 	updateUserEducations,
+	updateUserWorkExperiences,
 	changeMyPassword,
 	follow,
 	unfollow,

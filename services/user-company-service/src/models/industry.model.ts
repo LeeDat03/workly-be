@@ -1,5 +1,5 @@
 import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
-import { nanoid } from "nanoid";
+import { logger } from "../utils";
 
 export interface IndustryProperties {
 	industryId: string;
@@ -37,20 +37,30 @@ export const getIndustryModel = (neogma: Neogma) => {
 		neogma,
 	);
 
-	IndustryModel.beforeCreate = (instance) => {
-		instance.industryId = nanoid(12);
-	};
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT industry_id_unique IF NOT EXISTS
+				FOR (i:Industry)
+				REQUIRE i.industryId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn(
+				"Industry industryId constraint creation warning:",
+				error,
+			);
+		}
 
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT industry_id_unique IF NOT EXISTS
-		FOR (i:Industry)
-		REQUIRE i.industryId IS UNIQUE
-	`);
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT industry_name_unique IF NOT EXISTS
-		FOR (i:Industry)
-		REQUIRE i.name IS UNIQUE
-	`);
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT industry_name_unique IF NOT EXISTS
+				FOR (i:Industry)
+				REQUIRE i.name IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("Industry name constraint creation warning:", error);
+		}
+	})();
 
 	return IndustryModel;
 };

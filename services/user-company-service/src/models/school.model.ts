@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
+import { logger } from "../utils";
 
 export interface SchoolProperties {
 	schoolId: string;
@@ -39,16 +40,28 @@ export const getSchoolModel = (neogma: Neogma) => {
 		instance.schoolId = nanoid(12);
 	};
 
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT school_id_unique IF NOT EXISTS
-		FOR (s:School)
-		REQUIRE s.schoolId IS UNIQUE
-	`);
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT school_name_unique IF NOT EXISTS
-		FOR (s:School)
-		REQUIRE s.name IS UNIQUE
-	`);
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT school_id_unique IF NOT EXISTS
+				FOR (s:School)
+				REQUIRE s.schoolId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("School schoolId constraint creation warning:", error);
+		}
+
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT school_name_unique IF NOT EXISTS
+				FOR (s:School)
+				REQUIRE s.name IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("School name constraint creation warning:", error);
+		}
+	})();
+
 	return SchoolModel;
 };
 
