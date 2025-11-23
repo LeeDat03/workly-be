@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { Request, Response, NextFunction } from "express";
 import {
-	toUserProfileDTO,
 	UpdateUserProfileSchema,
 	UpdateUserSkillsSchema,
 	UpdateUserIndustriesSchema,
@@ -15,88 +14,52 @@ import {
 	NotFoundError,
 	UnauthorizedError,
 } from "../utils/appError";
-import { IndustryProperties } from "../models/industry.model";
-import { SkillProperties } from "../models/skill.model";
 import {
 	getUserProfile,
 	updateRelationsWithQuery,
 } from "../services/user.service";
-import { UpdateEducationSchema } from "../validators/user.validator";
+import {
+	toUserFollowDTO,
+	UpdateEducationSchema,
+	UpdateWorkExperienceSchema,
+} from "../validators/user.validator";
+import {
+	checkIfUserFollowsUser,
+	countUserFollowers,
+	followUser,
+	getUserFollowers,
+	getUserFollowing,
+	unfollowUser,
+} from "../services/follow.service";
+import { parsePaginationQuery } from "../utils/pagination";
+import { clearCookie } from "./auth.controller";
+import { cloudinaryService } from "../services/upload/cloudinary.service";
+import { UNLISTED_COMPANY, UNLISTED_SCHOOL } from "../utils/constants";
 
-const updateRelations = async <T extends keyof typeof UserModel.relationships>(
-	user: any,
-	alias: T,
-	newIds: string[] | undefined,
-	Model: any,
-	idField: string,
+// TODO: HANDLE TRANSACTION
+const updateUserImage = async (
+	userId: string,
+	file: Express.Multer.File,
+	type: "avatar" | "background",
 ) => {
-	if (newIds === undefined) return;
+	const { url } = await cloudinaryService.upload({
+		file,
+		sourceId: userId,
+		fileType: type,
+		overwrite: true,
+	});
 
-	const currentRels = await user.findRelationships({ alias });
-	const currentIds = currentRels.map(
-		(rel: any) => rel.target.dataValues[idField],
+	const result = await UserModel.update(
+		{
+			[type === "avatar" ? "avatarUrl" : "bgCoverUrl"]: url,
+		},
+		{
+			where: { userId },
+			return: true,
+		},
 	);
 
-	const toDelete = currentIds.filter((id: any) => !newIds.includes(id));
-	for (const id of toDelete) {
-		await UserModel.deleteRelationships({
-			alias,
-			where: {
-				source: { userId: user.userId },
-				target: { [idField]: id },
-			},
-		});
-	}
-
-	const toAdd = newIds.filter((id) => !currentIds.includes(id));
-	for (const id of toAdd) {
-		const item = await Model.findOne({ where: { [idField]: id } });
-		if (item) {
-			await user.relateTo({ alias, where: { [idField]: id } });
-		}
-	}
-};
-
-const getFullUserProfile = async (userId: string) => {
-	const user = await UserModel.findOne({ where: { userId } });
-	if (!user) {
-		throw new NotFoundError("User not found");
-	}
-
-	const [industryRels, skillRels] = await Promise.all([
-		user.findRelationships({ alias: "Industry" }),
-		user.findRelationships({ alias: "Skill" }),
-	]);
-
-	const industryData = industryRels.map((rel: any) => rel.target.dataValues);
-	const skillData = skillRels.map((rel: any) => rel.target.dataValues);
-
-	// const educationData = [];
-
-	// const educationRels = await user.findRelationships({ alias: "Education" });
-
-	// for (const eduRel of educationRels) {
-	// 	const education = eduRel.target;
-	// 	if (!education) continue;
-
-	// 	const schoolRels = await education.findRelationships({
-	// 		alias: "School",
-	// 	});
-	// 	const schoolData =
-	// 		schoolRels.length > 0 ? schoolRels[0].target.dataValues : null;
-
-	// 	educationData.push({
-	// 		...education.dataValues,
-	// 		school: schoolData,
-	// 	});
-	// }
-
-	return toUserProfileDTO(
-		user.dataValues,
-		industryData as IndustryProperties[],
-		skillData as SkillProperties[],
-		// educationData as any[],
-	);
+	return result[0][0].dataValues;
 };
 
 // TODO: optimize
@@ -134,6 +97,40 @@ export const getAllUsers = async (
 	}
 };
 
+export const getUsersByIds = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { userIds } = req.body as { userIds?: string[] };
+
+		if (!Array.isArray(userIds) || userIds.length === 0) {
+			throw new BadRequestError("userIds must be a non-empty array");
+		}
+
+		const users = await UserModel.findMany({
+			where: {
+				userId: {
+					[Op.in]: userIds,
+				},
+			},
+			plain: true,
+		});
+
+		const userInfos = users.map((user) => {
+			return toUserFollowDTO(user);
+		});
+
+		res.status(200).json({
+			success: true,
+			data: userInfos,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const getUserById = async (
 	req: Request,
 	res: Response,
@@ -150,7 +147,12 @@ export const getUserById = async (
 			throw new BadRequestError("User ID is required");
 		}
 
-		const userProfile = await getUserProfile(id, relationsArray);
+		const [userProfile, followersCount] = await Promise.all([
+			getUserProfile(id, relationsArray),
+			countUserFollowers(id),
+		]);
+		userProfile.user.followersCount = followersCount;
+
 		res.status(200).json({
 			success: true,
 			data: userProfile,
@@ -261,6 +263,18 @@ export const updateUserEducations = async (
 			throw new NotFoundError("User not found");
 		}
 
+		const unlistedSchools = educationsData.filter(
+			(e) => e.schoolId === UNLISTED_SCHOOL.schoolId,
+		);
+		const missingSchoolName = unlistedSchools.some(
+			(e) => !e.schoolName || e.schoolName.trim() === "",
+		);
+		if (missingSchoolName) {
+			throw new BadRequestError(
+				"School name is required for unlisted schools",
+			);
+		}
+
 		await updateRelationsWithQuery(
 			userId,
 			"ATTEND_SCHOOL",
@@ -277,6 +291,54 @@ export const updateUserEducations = async (
 		res.status(200).json({
 			success: true,
 			message: "Education updated successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateUserWorkExperiences = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const workExperiencesData: UpdateWorkExperienceSchema = req.body;
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		// Validate for UNLISTED companies
+		const unlistedCompanies = workExperiencesData.filter(
+			(e) => e.companyId === UNLISTED_COMPANY.companyId,
+		);
+		const missingCompanyName = unlistedCompanies.some(
+			(e) => !e.companyName || e.companyName.trim() === "",
+		);
+
+		console.log(unlistedCompanies, missingCompanyName);
+		if (missingCompanyName) {
+			throw new BadRequestError(
+				"Company name is required for unlisted companies",
+			);
+		}
+
+		await updateRelationsWithQuery(
+			userId,
+			"WORKS_AT",
+			"Company",
+			"companyId",
+			workExperiencesData.map((e) => e.companyId),
+			workExperiencesData.map((e) => {
+				const { companyId, ...rest } = e;
+				return rest;
+			}),
+		);
+		res.status(200).json({
+			success: true,
+			message: "Work experiences updated successfully",
 		});
 	} catch (error) {
 		next(error);
@@ -484,6 +546,8 @@ export const deleteMe = async (
 			detach: true,
 		});
 
+		clearCookie(res);
+
 		res.status(200).json({
 			success: true,
 			message: "User deleted successfully",
@@ -494,8 +558,202 @@ export const deleteMe = async (
 	}
 };
 
+const updateUserMedia = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const updates: {
+			avatar?: Express.Multer.File;
+			background?: Express.Multer.File;
+		} = {};
+
+		if (req.files && !Array.isArray(req.files)) {
+			if (req.files.avatar && Array.isArray(req.files.avatar)) {
+				updates.avatar = req.files.avatar[0];
+			}
+			if (req.files.background && Array.isArray(req.files.background)) {
+				updates.background = req.files.background[0];
+			}
+		}
+
+		if (!updates.avatar && !updates.background) {
+			throw new BadRequestError("Avatar or background is required");
+		}
+
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) {
+			throw new NotFoundError("User not found");
+		}
+
+		const updatePromises = [];
+		if (updates.avatar) {
+			updatePromises.push(
+				updateUserImage(userId, updates.avatar, "avatar"),
+			);
+		}
+		if (updates.background) {
+			updatePromises.push(
+				updateUserImage(userId, updates.background, "background"),
+			);
+		}
+
+		const updateResults = await Promise.all(updatePromises);
+		const finalResult = updateResults[updateResults.length - 1];
+
+		const messages = [];
+		if (updates.avatar) messages.push("avatar");
+		if (updates.background) messages.push("background");
+
+		res.status(200).json({
+			success: true,
+			message: `User ${messages.join(" and ")} updated successfully`,
+			data: {
+				user: finalResult,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const follow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+		if (userId === targetId) {
+			throw new BadRequestError("You cannot follow yourself");
+		}
+
+		await followUser(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Followed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const unfollow = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const { id: targetId } = req.params;
+		if (!targetId) {
+			throw new BadRequestError("Target ID is required");
+		}
+		if (userId === targetId) {
+			throw new BadRequestError("You cannot unfollow yourself");
+		}
+
+		await unfollowUser(userId, targetId);
+
+		res.status(200).json({
+			success: true,
+			message: "Unfollowed successfully",
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowers = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+
+		if (!id) {
+			throw new BadRequestError("User ID is required");
+		}
+		const { followers, pagination } = await getUserFollowers(
+			id,
+			paginationQuery,
+		);
+		res.status(200).json({
+			success: true,
+			data: {
+				followers,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const getFollowing = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { id } = req.params;
+		const paginationQuery = parsePaginationQuery(req.query);
+		if (!id) {
+			throw new BadRequestError("User ID is required");
+		}
+		const { following, pagination } = await getUserFollowing(
+			id,
+			paginationQuery,
+		);
+		res.status(200).json({
+			success: true,
+			data: {
+				following,
+				pagination,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const isFollowing = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { id } = req.params;
+		const user = (req as any).user;
+		if (!user || !user.userId || user.userId === id) {
+			return res.status(200).json({
+				success: true,
+				data: {
+					isFollowing: false,
+				},
+			});
+		}
+
+		const isFollowingUser = await checkIfUserFollowsUser(user.userId, id);
+		res.status(200).json({
+			success: true,
+			data: {
+				isFollowing: isFollowingUser,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	getAllUsers,
+	getUsersByIds,
 	getUserById,
 	getMe,
 	deleteMe,
@@ -506,5 +764,12 @@ export default {
 	updateUserSkills,
 	updateUserIndustries,
 	updateUserEducations,
+	updateUserWorkExperiences,
 	changeMyPassword,
+	follow,
+	unfollow,
+	getFollowers,
+	getFollowing,
+	updateUserMedia,
+	isFollowing,
 };

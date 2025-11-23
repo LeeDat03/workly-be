@@ -16,6 +16,12 @@ import {
 	getSchoolModel,
 } from "./school.model";
 import { nanoid } from "nanoid";
+import { logger } from "../utils";
+import {
+	getLocationModel,
+	LocationInstance,
+	LocationModelType,
+} from "./location.models";
 
 export enum UserRole {
 	ADMIN = "ADMIN",
@@ -47,6 +53,7 @@ export interface UserProperties {
 }
 
 interface IUserRelatedNodes {
+	Location: ModelRelatedNodesI<LocationModelType, LocationInstance, {}, {}>;
 	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
 	Skill: ModelRelatedNodesI<SkillModelType, SkillInstance, {}, {}>;
 	Education: ModelRelatedNodesI<
@@ -67,6 +74,16 @@ interface IUserRelatedNodes {
 			description: string;
 		}
 	>;
+	FollowingUser: ModelRelatedNodesI<
+		typeof UserModel,
+		UserInstance,
+		{
+			CreatedAt: number;
+		},
+		{
+			createdAt: string;
+		}
+	>;
 }
 
 export type UserInstance = NeogmaInstance<UserProperties, IUserRelatedNodes>;
@@ -79,6 +96,7 @@ export const getUserModel = (neogma: Neogma) => {
 	if (UserModel) {
 		return UserModel;
 	}
+	const LocationModel = getLocationModel(neogma);
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
 	const SchoolModel = getSchoolModel(neogma);
@@ -126,6 +144,11 @@ export const getUserModel = (neogma: Neogma) => {
 			},
 			primaryKeyField: "userId",
 			relationships: {
+				Location: {
+					model: LocationModel,
+					direction: "out",
+					name: "LOCATED_IN",
+				},
 				Industry: {
 					model: IndustryModel,
 					direction: "out",
@@ -180,6 +203,22 @@ export const getUserModel = (neogma: Neogma) => {
 		},
 		neogma,
 	);
+	// Add self-referential relationship after model is created
+	UserModel.relationships.FollowingUser = {
+		model: UserModel,
+		direction: "out",
+		name: "FOLLOWING_USER",
+		properties: {
+			CreatedAt: {
+				property: "createdAt",
+				schema: {
+					type: "number",
+					required: true,
+				},
+			},
+		},
+	};
+
 	UserModel.beforeCreate = (instance) => {
 		instance.userId = nanoid(12);
 		instance.createdAt = new Date().toISOString();
@@ -187,16 +226,27 @@ export const getUserModel = (neogma: Neogma) => {
 		instance.role = UserRole.USER;
 	};
 
-	neogma.queryRunner.run(`
-	        CREATE CONSTRAINT user_id_unique IF NOT EXISTS
-	        FOR (u:User)
-	        REQUIRE u.userId IS UNIQUE
-	    `);
-	neogma.queryRunner.run(`
-	        CREATE CONSTRAINT user_email_unique IF NOT EXISTS
-	        FOR (u:User)
-	        REQUIRE u.email IS UNIQUE
-	    `);
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+				FOR (u:User)
+				REQUIRE u.userId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("User userId constraint creation warning:", error);
+		}
+
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT user_email_unique IF NOT EXISTS
+				FOR (u:User)
+				REQUIRE u.email IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("User email constraint creation warning:", error);
+		}
+	})();
 
 	return UserModel;
 };

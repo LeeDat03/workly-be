@@ -1,5 +1,5 @@
-import { nanoid } from "nanoid";
 import { ModelFactory, Neogma, NeogmaInstance } from "neogma";
+import { logger } from "../utils";
 
 export interface SkillProperties {
 	skillId: string;
@@ -36,19 +36,33 @@ export const getSkillModel = (neogma: Neogma) => {
 	);
 
 	SkillModel.beforeCreate = (instance) => {
-		instance.skillId = nanoid(12);
+		instance.skillId = instance.name
+			.trim()
+			.toLowerCase()
+			.replace(/ /g, "_");
 	};
 
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
-		FOR (s:Skill)
-		REQUIRE s.skillId IS UNIQUE
-	`);
-	neogma.queryRunner.run(`
-		CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
-		FOR (s:Skill)
-		REQUIRE s.name IS UNIQUE
-	`);
+	(async () => {
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT skill_id_unique IF NOT EXISTS
+				FOR (s:Skill)
+				REQUIRE s.skillId IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("Skill skillId constraint creation warning:", error);
+		}
+
+		try {
+			await neogma.queryRunner.run(`
+				CREATE CONSTRAINT skill_name_unique IF NOT EXISTS
+				FOR (s:Skill)
+				REQUIRE s.name IS UNIQUE
+			`);
+		} catch (error) {
+			logger.warn("Skill name constraint creation warning:", error);
+		}
+	})();
 
 	return SkillModel;
 };

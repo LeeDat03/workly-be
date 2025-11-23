@@ -13,17 +13,8 @@ export const isAuthenticated = async (
 	try {
 		let token;
 
-		if (req.cookies.token) {
-			token = req.cookies.token.trim();
-		} else {
-			const authHeader = req.headers.authorization;
-			if (authHeader && authHeader.startsWith("Bearer ")) {
-				token = authHeader.split(" ")[1].trim();
-			}
-		}
-
-		if (req.cookies.token) {
-			token = req.cookies.token.trim();
+		if (req.cookies?.workly_token) {
+			token = req.cookies.workly_token.trim();
 		} else {
 			const authHeader = req.headers.authorization;
 			if (authHeader && authHeader.startsWith("Bearer ")) {
