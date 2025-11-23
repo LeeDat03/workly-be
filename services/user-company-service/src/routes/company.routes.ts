@@ -18,6 +18,9 @@ router.post(
 router.get("/", companyController.getAllCompanies);
 router.get("/:id", companyController.getCompanyById);
 
+router.get("/:id/check-access", optionalAuth, companyController.checkAccess);
+
+//////////////////////////////////////////////////////////////
 // ADMIN ACCESS - ADMIN ACTION
 router.patch(
 	"/:id",
@@ -36,6 +39,7 @@ router.patch(
 	companyController.updateCompanyMedia,
 );
 
+/////////////////////////////////////////////////////////////////
 // FOLLOW
 router.get("/:id/followers", companyController.getFollowers);
 router.post("/:id/follow", isAuthenticated, companyController.follow);
@@ -43,6 +47,7 @@ router.delete("/:id/follow", isAuthenticated, companyController.unfollow);
 
 router.get("/:id/is-following", optionalAuth, companyController.isFollowing);
 
+//////////////////////////////////////////////////////////////////
 // OWNER ACCESS - OWNER ACTION
 const ownerRoutes = Router({ mergeParams: true });
 ownerRoutes.use(isAuthenticated, isCompanyOwner);
