@@ -35,40 +35,42 @@ export const authenticate = async (
 			);
 		}
 
-		const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
-		console.log("decoded", decoded);
+	const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
+	console.log("decoded", decoded);
 
-		if (!decoded) {
-			throw new UnauthorizedError("Invalid token, please log in again.");
-		}
+	if (!decoded || !decoded.id) {
+		throw new UnauthorizedError("Invalid token, please log in again.");
+	}
 
-		// Check for identity override headers (for company chat)
-		const overrideUserId = req.headers["x-user-id"] as string;
-		const overrideUserType = req.headers["x-user-type"] as string;
+	// Check for identity override headers (for company chat)
+	const overrideUserId = req.headers["x-user-id"] as string;
+	const overrideUserType = req.headers["x-user-type"] as string;
 
-		if (overrideUserId && overrideUserType) {
-			console.log("🔄 Using identity override from headers:", {
-				jwtUserId: decoded.id,
-				jwtUserType: decoded.role,
-				overrideUserId,
-				overrideUserType,
-			});
+	if (overrideUserId && overrideUserType) {
+		console.log("🔄 Using identity override from headers:", {
+			jwtUserId: decoded.id,
+			overrideUserId,
+			overrideUserType,
+		});
 
-			req.user = {
-				id: overrideUserId,
-				type: overrideUserType as any,
-			};
-		} else {
-			console.log("✅ Using JWT identity:", {
-				userId: decoded.id,
-				userType: decoded.role,
-			});
+		req.user = {
+			id: overrideUserId,
+			type: overrideUserType as any,
+		};
+	} else {
+		// Default to USER type if no role in JWT (for backward compatibility)
+		const userType = (decoded as any).role || "USER";
+		
+		console.log("✅ Using JWT identity:", {
+			userId: decoded.id,
+			userType,
+		});
 
-			req.user = {
-				id: decoded.id,
-				type: decoded.role,
-			};
-		}
+		req.user = {
+			id: decoded.id,
+			type: userType,
+		};
+	}
 
 		next();
 	} catch (error) {
