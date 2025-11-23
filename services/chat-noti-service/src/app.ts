@@ -103,11 +103,8 @@ export class App {
 	}
 
 	private initializeRoutes(): void {
-		// Serve static files from examples directory
-		this.app.use("/examples", express.static("examples"));
-
-		// API routes
-		this.app.use("/api", routes);
+		// API routes - version 1
+		this.app.use("/api/v1", routes);
 
 		// Root endpoint
 		this.app.get("/", (req: any, res: any) => {
@@ -116,10 +113,9 @@ export class App {
 				message: "Welcome to Workly Chat Service",
 				version: "1.0.0",
 				endpoints: {
-					health: "/api/health",
-					conversations: "/api/conversations",
-					messages: "/api/messages",
-					testClient: "/examples/socket-client.html",
+					health: "/api/v1/health",
+					conversations: "/api/v1/conversations",
+					messages: "/api/v1/messages",
 				},
 			});
 		});

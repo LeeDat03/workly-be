@@ -31,11 +31,11 @@ RUN npm ci --only=production
 COPY --from=builder /app/dist ./dist
 
 # Expose port
-EXPOSE 3003
+EXPOSE 8005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3003/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:8005/api/v1/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the application
 CMD ["node", "dist/index.js"]
