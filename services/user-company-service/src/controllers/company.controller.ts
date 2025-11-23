@@ -584,10 +584,84 @@ const getFollowers = async (
 	}
 };
 
+const getCompaniesByIds = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { companyIds } = req.body as { companyIds?: string[] };
+
+		if (!Array.isArray(companyIds) || companyIds.length === 0) {
+			throw new BadRequestError("companyId must be a non-empty array");
+		}
+
+		const companies = await CompanyModel.findMany({
+			where: {
+				companyId: {
+					[Op.in]: companyIds,
+				},
+			},
+			plain: true,
+		});
+
+		res.status(200).json({
+			success: true,
+			data: companies,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+const checkAccess = async (req: Request, res: Response, next: NextFunction) => {
+	try {
+		const { id: companyId } = req.params;
+		if (!companyId) {
+			throw new BadRequestError("Company ID is required");
+		}
+
+		const user = (req as any).user;
+		if (!user || !user.userId) {
+			return res.status(200).json({
+				success: true,
+				data: {
+					isAccess: false,
+					message: "You must be logged in to check access",
+				},
+			});
+		}
+
+		const company = await CompanyModel.findOne({
+			where: {
+				companyId,
+			},
+		});
+		if (!company) {
+			throw new NotFoundError("Company not found");
+		}
+
+		const { isOwner, isAdmin } = await checkCompanyAccess(
+			user.userId,
+			companyId,
+		);
+
+		return res.status(200).json({
+			success: true,
+			data: {
+				isAccess: isOwner || isAdmin,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	createCompany,
 	getAllCompanies,
 	getCompanyById,
+	getCompaniesByIds,
 	updateCompany,
 	deleteCompany,
 	updateCompanyMedia,
@@ -595,4 +669,5 @@ export default {
 	unfollow,
 	isFollowing,
 	getFollowers,
+	checkAccess,
 };
