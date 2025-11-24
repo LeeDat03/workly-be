@@ -31,6 +31,8 @@ const visibility = Joi.string()
 export const createPost = {
     body: wrapSchema(
         Joi.object<CreatePostDTO>({
+            author_id: Joi.any(),
+            author_type: Joi.any(),
             content: Joi.string()
                 .min(1)
                 .max(10000)

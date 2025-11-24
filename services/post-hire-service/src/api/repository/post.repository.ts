@@ -123,7 +123,7 @@ export class PostRepository implements IPostRepository {
 		const skip = (page - 1) * size;
 		const [data, total] = await Promise.all([
 			this.postCollection.post
-				.find({ author_id: userId })
+				.find({ author_id: userId, author_type: input.author_type })
 				.sort({ created_at: -1 })
 				.skip(skip)
 				.limit(size)

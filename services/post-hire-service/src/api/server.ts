@@ -98,8 +98,8 @@ export class ExpressServer {
 	}
 	private configureRoutes(server: Express) {
 		server.use(PublicPath.PUBLIC_FILES, express.static("uploads"));
-		const routes = createPostRoutes();
-		server.use(routes);
+		const postRoutes = createPostRoutes();
+		server.use("/api/v1/posts", postRoutes);
 	}
 	private setupErrorHandlers(server: Express) {
 		// // if error is not an instanceOf APIError, convert it.

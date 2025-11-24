@@ -4,6 +4,7 @@ export interface IPaginationInput {
 	page?: number;
 	size?: number;
 	startIndex?: number;
+	author_type?: string;
 	sortField?: string;
 	sortOrder?: number; //0: asc, 1: desc
 	startAt?: DateString;
