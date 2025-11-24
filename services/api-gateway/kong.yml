@@ -31,6 +31,7 @@ routes:
           - /api/v1/posts
           - /api/v1/jobs
           - /api/v1/feed
+      strip_path: false
 
     - name: route-for-chat-notification
       service: chat-notification-service
