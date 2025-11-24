@@ -34,13 +34,15 @@ export interface Post {
 }
 
 export interface CreatePostDTO {
-    author_type: AuthorType;
-    author_id: ObjectId | string;
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
 }
-
+export interface DeletePost {
+    postId: string;
+    author_id: string;
+    author_type: AuthorType;
+}
 export interface UpdatePostDTO {
     content?: string;
     media_url?: {
@@ -57,6 +59,7 @@ export interface PostResponse {
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
+    created_at: string
 }
 
 export function mapToPostResponse(doc: WithId<Document>): PostResponse {
@@ -67,5 +70,13 @@ export function mapToPostResponse(doc: WithId<Document>): PostResponse {
         content: doc.content,
         media_url: doc.media_url,
         visibility: doc.visibility,
+        created_at: doc.created_at,
     };
+}
+
+export interface User {
+    userId: string;
+    name: string;
+    avatarUrl?: string;
+    email?: string;
 }
