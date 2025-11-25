@@ -2,11 +2,14 @@ import { PostController } from "@/api/controller/post.controller";
 import { ServiceContainer } from "@/api/container/service.container";
 import { CommentController } from "@/api/controller/comment.controller";
 import { LikeController } from "../controller/like.controller";
+import { JobController } from "../controller/job.controller";
 
 export class ControllerContainer {
     private static postController: PostController;
     private static commentController: CommentController;
     private static likeController: LikeController;
+    private static jobController: JobController;
+
     private static isInitialized = false;
 
     static async initialize(): Promise<void> {
@@ -25,6 +28,9 @@ export class ControllerContainer {
         )
         this.likeController = new LikeController(
             ServiceContainer.getLikeService()
+        )
+        this.jobController = new JobController(
+            ServiceContainer.getJobService()
         )
         this.isInitialized = true;
 
@@ -49,5 +55,11 @@ export class ControllerContainer {
             this.likeController = new LikeController(ServiceContainer.getLikeService());
         }
         return this.likeController;
+    }
+    static getJobController(): JobController {
+        if (!this.jobController) {
+            this.jobController = new JobController(ServiceContainer.getJobService());
+        }
+        return this.jobController;
     }
 }

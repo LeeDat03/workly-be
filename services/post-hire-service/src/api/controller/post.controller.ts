@@ -3,7 +3,7 @@ import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
 import { AuthorType, Company, CreatePostDTO, DeletePost, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
-import { IPaginationInput, PagingList } from "../model/common.model";
+import { IPaginationInput, PagingList, PostSearch } from "../model/common.model";
 
 import path from "path";
 import fs from "fs";
@@ -143,7 +143,7 @@ export class PostController {
 
 	public getPostByUserId = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const input = req.query as IPaginationInput;
+			const input = req.query as PostSearch;
 			const data = await this.postService.getAllPost(
 				input,
 				req.query.userId as string
