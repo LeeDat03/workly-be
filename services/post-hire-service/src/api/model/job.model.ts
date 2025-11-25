@@ -10,3 +10,8 @@ export interface Job {
     companyId: string;
     status: boolean;
 }
+
+export type GetPostJobDetailInput = {
+    jobId: string;
+    companyId: string;
+};

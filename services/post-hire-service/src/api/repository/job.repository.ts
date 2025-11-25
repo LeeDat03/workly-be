@@ -1,10 +1,16 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { JobSearch, PagingList } from "../model/common.model";
-import { Job } from "../model/job.model";
+import { GetPostJobDetailInput, Job } from "../model/job.model";
+import { DeleteResult, InsertOneResult, ObjectId } from "mongodb";
+import { TimeHelper } from "@/util/time.util";
 
 
 export interface IJobRepository {
+    createJob(input: any): Promise<InsertOneResult>
     getPagingJobsByCompanyId(input: JobSearch): Promise<PagingList<Job>>
+    deleteJob(input: any): Promise<Boolean>
+    getPostJobDetail(input: GetPostJobDetailInput): Promise<Job | null>
+    updateJob(input: any): Promise<Boolean>
 }
 
 export class JobRepository implements IJobRepository {
@@ -15,9 +21,44 @@ export class JobRepository implements IJobRepository {
     ) {
         this.jobCollection = jobCollection
     }
-    async getPagingJobsByCompanyId(input: JobSearch): Promise<PagingList<Job>> {
+    async updateJob(input: any): Promise<boolean> {
+        const { jobId, companyId, ...rest } = input;
+
+        const updateFields: any = {};
+
+        for (const [key, value] of Object.entries(rest)) {
+            if (value !== undefined && value !== null) {
+                updateFields[key] = value;
+            }
+        }
+
+        if (Object.keys(updateFields).length === 0) {
+            return false;
+        }
+
+        const result = await this.jobCollection.job.updateOne(
+            { _id: new ObjectId(jobId as string), companyId: companyId },
+            { $set: updateFields }
+        );
+
+        return result.modifiedCount > 0;
+    }
+    async deleteJob(input: any): Promise<Boolean> {
         console.log(input);
 
+        const result = await this.jobCollection.job.deleteOne({ companyId: input.companyId, _id: new ObjectId(input.jobId as string) })
+        return result.deletedCount > 0;
+    }
+    async createJob(input: any): Promise<InsertOneResult> {
+        const result = await this.jobCollection.job.insertOne({ ...input, createdAt: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') });
+        return result;
+    }
+
+    async getPostJobDetail(input: GetPostJobDetailInput): Promise<Job | null> {
+        return await this.jobCollection.job.findOne<Job>({ companyId: input.companyId, _id: new ObjectId(input.jobId) })
+    }
+
+    async getPagingJobsByCompanyId(input: JobSearch): Promise<PagingList<Job>> {
         // 1. Parse pagination params
         const page = input.page || 1;
         const size = input.size || 10;

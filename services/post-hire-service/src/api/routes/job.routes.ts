@@ -14,7 +14,10 @@ export function createJobRoutes(): Router {
     });
 
     router.get("/myJob", jobController.getJobsByCompanyId);
-
+    router.post("/create", jobController.createJobPost);
+    router.delete("/delete", jobController.deleteJobPost);
+    router.get("/detail", jobController.getPostJobDetail);
+    router.post("/update", jobController.updateCompanyJob);
 
     return router;
 }
