@@ -16,6 +16,7 @@ router.post(
 	companyController.createCompany,
 );
 router.get("/", companyController.getAllCompanies);
+router.get("/my-companies", isAuthenticated, companyController.getMyCompanies);
 router.get("/:id", companyController.getCompanyById);
 
 router.get("/:id/check-access", optionalAuth, companyController.checkAccess);

@@ -6,7 +6,7 @@ import {
 	UpdateUserIndustriesSchema,
 	ChangePasswordSchema,
 } from "../validators";
-import { UserModel } from "../models";
+import { UserModel, SkillModel, SchoolModel, IndustryModel } from "../models";
 import { Op } from "neogma";
 import { LoggedInUserRequest } from "../types";
 import {
@@ -366,6 +366,131 @@ export const getMe = async (
 	}
 };
 
+export const getAllSkills = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const page = Number(req.query.page) || 1;
+		const limit = Math.min(Number(req.query.limit) || 10, 20);
+		const skip = (page - 1) * limit;
+		const search = String(req.query.search || "");
+
+		const whereCondition: any = {};
+		if (search) {
+			whereCondition.name = {
+				[Op.contains]: search,
+			};
+		}
+
+		const rawSkills = await SkillModel.findMany({
+			where: whereCondition,
+			limit: limit,
+			skip: skip,
+			order: [["name", "ASC"]],
+		});
+
+		const cleanSkills = rawSkills.map((skill: any) => skill.dataValues);
+
+		res.status(200).json({
+			success: true,
+			message: "Skills retrieved successfully",
+			data: cleanSkills,
+			pagination: {
+				page,
+				limit,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getAllIndustries = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const page = Number(req.query.page) || 1;
+		const limit = Math.min(Number(req.query.limit) || 10, 20);
+		const skip = (page - 1) * limit;
+		const search = String(req.query.search || "");
+
+		const whereCondition: any = {};
+		if (search) {
+			whereCondition.name = {
+				[Op.contains]: search,
+			};
+		}
+
+		const rawIndustries = await IndustryModel.findMany({
+			where: whereCondition,
+			limit: limit,
+			skip: skip,
+			order: [["name", "ASC"]],
+		});
+
+		const cleanIndustries = rawIndustries.map(
+			(industry: any) => industry.dataValues,
+		);
+
+		res.status(200).json({
+			success: true,
+			message: "Industries retrieved successfully",
+			data: cleanIndustries,
+			pagination: {
+				page,
+				limit,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const getAllSchools = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const page = Number(req.query.page) || 1;
+		const limit = Math.min(Number(req.query.limit) || 10, 20);
+		const skip = (page - 1) * limit;
+		const search = String(req.query.search || "");
+
+		const whereCondition: any = {};
+		if (search) {
+			whereCondition.name = {
+				[Op.contains]: search,
+			};
+		}
+
+		const rawSchools = await SchoolModel.findMany({
+			where: whereCondition,
+			limit: limit,
+			skip: skip,
+			order: [["name", "ASC"]],
+		});
+
+		const cleanSchools = rawSchools.map((school: any) => school.dataValues);
+
+		res.status(200).json({
+			success: true,
+			message: "Skills retrieved successfully",
+			data: cleanSchools,
+			pagination: {
+				page,
+				limit,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export const changeMyPassword = async (
 	req: LoggedInUserRequest,
 	res: Response,
@@ -633,6 +758,9 @@ export default {
 	getMe,
 	deleteMe,
 	updateBasicProfile,
+	getAllSkills,
+	getAllIndustries,
+	getAllSchools,
 	updateUserSkills,
 	updateUserIndustries,
 	updateUserEducations,
