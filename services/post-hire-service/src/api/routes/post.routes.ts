@@ -8,7 +8,6 @@ import {
 	updateComment,
 } from "@/api/validation/comment.validator";
 import { isAuthenticated } from "../middlewares/authentication.middleware";
-import { LikeController } from "../controller/like.controller";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();

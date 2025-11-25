@@ -657,6 +657,77 @@ const checkAccess = async (req: Request, res: Response, next: NextFunction) => {
 	}
 };
 
+const getMyCompanies = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const userId = req.user!.userId;
+		const neogma = database.getNeogma();
+
+		const ownedResult = await neogma.queryRunner.run(
+			`
+			MATCH (u:User {userId: $userId})-[:OWNS]->(c:Company)
+			OPTIONAL MATCH (c)-[:IN]->(i:Industry)
+			WITH c, i
+			OPTIONAL MATCH (c)<-[:FOLLOWS]-(follower:User)
+			RETURN c as company, i as industry, 'OWNER' as role, count(DISTINCT follower) as followersCount
+			`,
+			{ userId },
+		);
+
+		const adminResult = await neogma.queryRunner.run(
+			`
+			MATCH (u:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c:Company)
+			WHERE r.status = $approvedStatus
+			OPTIONAL MATCH (c)-[:IN]->(i:Industry)
+			WITH c, i
+			OPTIONAL MATCH (c)<-[:FOLLOWS]-(follower:User)
+			RETURN c as company, i as industry, 'ADMIN' as role, count(DISTINCT follower) as followersCount
+			`,
+			{
+				userId,
+				approvedStatus: CompanyRoleRequestStatus.APPROVED,
+			},
+		);
+
+		const allRecords = [...ownedResult.records, ...adminResult.records];
+
+		console.log("📊 Total records found:", allRecords.length);
+
+		const companies = allRecords.map((record) => {
+			const company = record.get("company").properties;
+			const industry = record.get("industry")
+				? record.get("industry").properties
+				: null;
+			const role = record.get("role");
+			const followersCount = record.get("followersCount").toNumber();
+
+			return {
+				...company,
+				industry,
+				role,
+				followersCount,
+			};
+		});
+
+		console.log("📦 Companies formatted:", companies.length);
+
+		companies.sort((a, b) => a.name.localeCompare(b.name));
+
+		res.status(200).json({
+			success: true,
+			data: {
+				companies,
+			},
+		});
+	} catch (error) {
+		console.error("Error in getMyCompanies:", error);
+		next(error);
+	}
+};
+
 export default {
 	createCompany,
 	getAllCompanies,
@@ -670,4 +741,5 @@ export default {
 	isFollowing,
 	getFollowers,
 	checkAccess,
+	getMyCompanies,
 };

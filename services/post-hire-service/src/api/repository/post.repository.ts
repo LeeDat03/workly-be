@@ -13,7 +13,7 @@ import {
 	UpdateResult,
 	WithId,
 } from "mongodb";
-import { IPaginationInput, PagingList } from "../model/common.model";
+import { IPaginationInput, PagingList, PostSearch } from "../model/common.model";
 import { TimeHelper } from "@/util/time.util";
 
 export interface IPostRepository {
@@ -115,7 +115,7 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async getPagingPostByUserId(
-		input: IPaginationInput,
+		input: PostSearch,
 		userId: string
 	): Promise<PagingList<WithId<Document>>> {
 		const page = Number(input.page) ?? 1;
@@ -123,7 +123,7 @@ export class PostRepository implements IPostRepository {
 		const skip = (page - 1) * size;
 		const [data, total] = await Promise.all([
 			this.postCollection.post
-				.find({ author_id: userId })
+				.find({ author_id: userId, author_type: input.author_type })
 				.sort({ created_at: -1 })
 				.skip(skip)
 				.limit(size)

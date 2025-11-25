@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from "express";
 import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
-import { AuthorType, CreatePostDTO, DeletePost, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
+import { AuthorType, Company, CreatePostDTO, DeletePost, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
-import { IPaginationInput, PagingList } from "../model/common.model";
+import { IPaginationInput, PagingList, PostSearch } from "../model/common.model";
 
 import path from "path";
 import fs from "fs";
@@ -22,7 +22,7 @@ export class PostController {
 		next: NextFunction
 	) => {
 		try {
-			const body = { ...req.body, author_id: req.user!!.userId, author_type: AuthorType.USER } as CreatePostDTO;
+			const body = req.body as CreatePostDTO;
 			const result = await this.postService.createPost(body);
 			res.sendJson(result);
 		} catch (error) {
@@ -36,7 +36,7 @@ export class PostController {
 		next: NextFunction
 	) => {
 		try {
-			const body = { ...req.body, author_id: req.user!!.userId, author_type: AuthorType.USER } as DeletePost;
+			const body = req.body as DeletePost;
 			console.log(req.body);
 
 			const result = await this.postService.deletePost(body);
@@ -143,17 +143,21 @@ export class PostController {
 
 	public getPostByUserId = async (req: Request, res: Response, next: NextFunction) => {
 		try {
-			const input = req.query as IPaginationInput;
+			const input = req.query as PostSearch;
 			const data = await this.postService.getAllPost(
 				input,
 				req.query.userId as string
 			);
-
+			console.log(input.author_type);
 
 			const userIds = data.data.map(post => post.author_id);
-			if (userIds.length > 0) {
+			if (userIds.length === 0) {
+				return res.sendJson(data);
+			}
+
+			if (input.author_type === "USER") {
 				const response = await axios.post(
-					`http://localhost:8000/api/v1/users/bulk-info`,
+					`http://localhost:8000/api/v1/internals/users/get-batch`,
 					{ userIds },
 					{
 						headers: {
@@ -172,8 +176,29 @@ export class PostController {
 
 				res.sendJson({ data: postsWithAuthor, pagination: data.pagination });
 
-			} else {
-				res.sendJson(data)
+			}
+			if (input.author_type === "COMPANY") {
+
+				const response = await axios.post(
+					`http://localhost:8000/api/v1/internals/companies/get-batch`,
+					{ companyIds: userIds },
+					{
+						headers: {
+							Cookie: req.headers.cookie,
+							Authorization: req.headers.authorization,
+						},
+						withCredentials: true,
+					}
+				);
+
+				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, company]));
+				const postsWithAuthor = data.data.map(post => ({
+					...post,
+					author: companiesMap.get(post.author_id) || null
+				}));
+
+				res.sendJson({ data: postsWithAuthor, pagination: data.pagination });
+
 			}
 		} catch (error) {
 			logger.error(`PostController.getAll: `, error);

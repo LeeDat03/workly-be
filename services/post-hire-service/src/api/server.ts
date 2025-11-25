@@ -10,6 +10,7 @@ import { createPostRoutes } from "./routes/post.routes";
 import { ResponseMiddleware } from "./middlewares/response.middleware";
 import { PublicPath } from "@/config/app.constant";
 import cookieParser from 'cookie-parser';
+import { createJobRoutes } from "./routes/job.routes";
 
 export class ExpressServer {
 	private server?: Express;
@@ -98,17 +99,13 @@ export class ExpressServer {
 	}
 	private configureRoutes(server: Express) {
 		server.use(PublicPath.PUBLIC_FILES, express.static("uploads"));
-		const routes = createPostRoutes();
-		server.use(routes);
+		const postRoutes = createPostRoutes();
+		const jobRoutes = createJobRoutes();
+		server.use("/api/v1/posts", postRoutes);
+		server.use("/api/v1/jobs", jobRoutes);
+
 	}
 	private setupErrorHandlers(server: Express) {
-		// // if error is not an instanceOf APIError, convert it.
-		// server.use(ResponseMiddleware.converter);
-
-		// // catch 404 and forward to error handler
-		// server.use(ResponseMiddleware.notFound);
-
-		// error handler, send stacktrace only during development
 		server.use(ResponseMiddleware.handler);
 	}
 }

@@ -34,6 +34,8 @@ export interface Post {
 }
 
 export interface CreatePostDTO {
+    author_id: string;
+    author_type: string;
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
@@ -76,6 +78,12 @@ export function mapToPostResponse(doc: WithId<Document>): PostResponse {
 
 export interface User {
     userId: string;
+    name: string;
+    avatarUrl?: string;
+    email?: string;
+}
+export interface Company {
+    companyId: string;
     name: string;
     avatarUrl?: string;
     email?: string;
