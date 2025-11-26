@@ -1,6 +1,6 @@
 import logger from '@/common/logger';
 import { Queue } from 'bull';
-import { Router } from './router';
+// import { Router } from './router';
 
 /**
  * Abstraction around bull processor
@@ -21,6 +21,6 @@ export class WorkerServer {
     }
 
     private async registerQueues(): Promise<void> {
-        this.queues = await Router.register();
+        // this.queues = await Router.register();
     }
 }

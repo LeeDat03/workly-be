@@ -56,7 +56,7 @@ export class CommentController {
                         withCredentials: true,
                     }
                 );
-                const usersMap = new Map(response.data.data.map((user: any) => [user.userId, { id: user.userId, name: user.name, imageUrl: user.avatarUrl }]));
+                const usersMap = new Map(response.data.data.map((user: any) => [user.userId, user]));
                 const commentsWithAuthor = result.map(post => ({
                     ...post,
                     author: usersMap.get(post.authorId) || null

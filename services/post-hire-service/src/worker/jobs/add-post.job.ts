@@ -5,12 +5,12 @@ import { ADD_POST_JOB as JOB_NAME } from "@/config/job.constant";
 import { DoneCallback, Job, Queue } from "bull";
 
 export class AddPostJob {
-	static async register(): Promise<Queue<unknown>> {
-		logger.info(`Listening to queue: ${JOB_NAME}`);
-		const queue = await QueueService.getQueue<JobPost>(JOB_NAME);
-		await queue.process(this.handler);
-		return queue;
-	}
+	// static async register(): Promise<Queue<unknown>> {
+	// 	logger.info(`Listening to queue: ${JOB_NAME}`);
+	// 	// const queue = await QueueService.getQueue<JobPost>(JOB_NAME);
+	// 	await queue.process(this.handler);
+	// 	return queue;
+	// }
 
 	public static async handler(
 		job: Job<any>,
