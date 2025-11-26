@@ -2,11 +2,13 @@ import { IPostService, PostService } from "@/api/service/post.service";
 import { RepositoryContainer } from "@/api/container/repository.container";
 import { CommentService, ICommentService } from "@/api/service/comment.service";
 import { ILikeService, LikeService } from "../service/like.service";
+import { IJobService, JobService } from "../service/job.service";
 
 export class ServiceContainer {
     private static postService: IPostService;
     private static commentService: ICommentService;
     private static likeService: ILikeService;
+    private static jobService: IJobService;
     private static isInitialized = false;
 
     static async initialize(): Promise<void> {
@@ -29,6 +31,9 @@ export class ServiceContainer {
         )
         this.likeService = new LikeService(
             RepositoryContainer.getLikeRepository()
+        )
+        this.jobService = new JobService(
+            RepositoryContainer.getJobRepository()
         )
         this.isInitialized = true;
 
@@ -54,5 +59,11 @@ export class ServiceContainer {
             this.likeService = new LikeService(RepositoryContainer.getLikeRepository());
         }
         return this.likeService;
+    }
+    static getJobService(): IJobService {
+        if (!this.jobService) {
+            this.jobService = new JobService(RepositoryContainer.getJobRepository());
+        }
+        return this.jobService;
     }
 }

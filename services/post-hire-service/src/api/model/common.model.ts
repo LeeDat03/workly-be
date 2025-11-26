@@ -6,8 +6,21 @@ export interface IPaginationInput {
 	startIndex?: number;
 	sortField?: string;
 	sortOrder?: number; //0: asc, 1: desc
-	startAt?: DateString;
-	endAt?: DateString;
+	startAt?: string;
+	endAt?: string;
+}
+
+export interface PostSearch extends IPaginationInput {
+	author_type?: string;
+}
+
+export interface JobSearch extends IPaginationInput {
+	skills: string;
+	industries: string;
+	search: string;
+	searchType: string;
+	jobType: string;
+	companyId: string;
 }
 
 export interface PaginationInfo {

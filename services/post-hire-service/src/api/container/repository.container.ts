@@ -2,11 +2,13 @@ import { IPostRepository, PostRepository } from "@/api/repository/post.repositor
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { CommentRepository, ICommentRepository } from "@/api/repository/comment.repository";
 import { ILikeRepository, likeRepository } from "../repository/like.repository";
+import { IJobRepository, JobRepository } from "../repository/job.repository";
 
 export class RepositoryContainer {
     private static postRepository: IPostRepository;
     private static commentRepository: ICommentRepository;
-    private static likeRepository: ILikeRepository
+    private static likeRepository: ILikeRepository;
+    private static jobRepository: IJobRepository
 
     private static isInitialized = false;
 
@@ -26,6 +28,7 @@ export class RepositoryContainer {
         this.postRepository = new PostRepository(dbAdapter);
         this.commentRepository = new CommentRepository(dbAdapter);
         this.likeRepository = new likeRepository(dbAdapter)
+        this.jobRepository = new JobRepository(dbAdapter)
         this.isInitialized = true;
 
         console.log('✅ RepositoryContainer initialized successfully');
@@ -49,5 +52,11 @@ export class RepositoryContainer {
             throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
         }
         return this.likeRepository;
+    }
+    static getJobRepository(): IJobRepository {
+        if (!this.isInitialized) {
+            throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
+        }
+        return this.jobRepository;
     }
 }

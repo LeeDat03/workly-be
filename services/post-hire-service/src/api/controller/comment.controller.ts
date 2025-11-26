@@ -46,7 +46,7 @@ export class CommentController {
             const userIds = result.map(comment => comment.authorId);
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `http://localhost:8000/api/v1/users/bulk-info`,
+                    `http://localhost:8003/api/v1/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {
@@ -56,7 +56,7 @@ export class CommentController {
                         withCredentials: true,
                     }
                 );
-                const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
+                const usersMap = new Map(response.data.data.map((user: any) => [user.userId, user]));
                 const commentsWithAuthor = result.map(post => ({
                     ...post,
                     author: usersMap.get(post.authorId) || null
@@ -80,7 +80,7 @@ export class CommentController {
             const userIds = [result.authorId];
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `http://localhost:8000/api/v1/users/bulk-info`,
+                    `http://localhost:8003/api/v1/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {
@@ -90,6 +90,8 @@ export class CommentController {
                         withCredentials: true,
                     }
                 );
+                console.log("response", response);
+
                 const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
                 result.author = usersMap.get(result.authorId) || null
 

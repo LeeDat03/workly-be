@@ -31,6 +31,8 @@ const visibility = Joi.string()
 export const createPost = {
     body: wrapSchema(
         Joi.object<CreatePostDTO>({
+            author_id: Joi.any(),
+            author_type: Joi.any(),
             content: Joi.string()
                 .min(1)
                 .max(10000)
@@ -52,43 +54,6 @@ export const createPost = {
 
             visibility: visibility
                 .default('PUBLIC')
-        })
-    )
-};
-
-
-export const updatePost = {
-    body: wrapSchema(
-        Joi.object<UpdatePostDTO>({
-            content: Joi.string()
-                .min(1)
-                .max(10000)
-                .optional()
-                .messages({
-                    'string.empty': 'Content must not be empty',
-                    'string.min': 'Content must be at least 1 character long',
-                    'string.max': 'Content must not exceed 10,000 characters'
-                }),
-
-            media_url: Joi.object({
-                add: Joi.array()
-                    .items(mediaItem)
-                    .max(10)
-                    .default([])
-                    .messages({
-                        'array.max': 'No more than 10 media items can be added'
-                    }),
-                delete: Joi.array()
-                    .items(mediaItem)
-                    .max(10)
-                    .default([])
-                    .messages({
-                        'array.max': 'No more than 10 media items can be deleted'
-                    })
-            })
-                .optional(),
-
-            visibility: visibility.optional()
         })
     )
 };

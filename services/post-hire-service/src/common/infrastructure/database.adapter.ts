@@ -79,7 +79,9 @@ export class DatabaseAdapter {
 	get like() {
 		return this.collection("like");
 	}
-
+	get job() {
+		return this.collection("job");
+	}
 
 	// Transaction support
 	async withTransaction(
