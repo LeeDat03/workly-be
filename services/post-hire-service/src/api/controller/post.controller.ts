@@ -69,8 +69,7 @@ export class PostController {
 	) => {
 		try {
 			const body = req.body as UpdatePostDTO;
-			const objectId = new ObjectId(req.params.id);
-			const result = await this.postService.updatePost(body, objectId, new ObjectId("123"));
+			const result = await this.postService.updatePost(body);
 			res.sendJson(result);
 		} catch (error) {
 			logger.error("PostController.updatePost", error);
@@ -157,7 +156,7 @@ export class PostController {
 
 			if (input.author_type === "USER") {
 				const response = await axios.post(
-					`http://localhost:8000/api/v1/internals/users/get-batch`,
+					`http://localhost:8003/api/v1/internals/users/get-batch`,
 					{ userIds },
 					{
 						headers: {
@@ -180,7 +179,7 @@ export class PostController {
 			if (input.author_type === "COMPANY") {
 
 				const response = await axios.post(
-					`http://localhost:8000/api/v1/internals/companies/get-batch`,
+					`http://localhost:8003/api/v1/internals/companies/get-batch`,
 					{ companyIds: userIds },
 					{
 						headers: {

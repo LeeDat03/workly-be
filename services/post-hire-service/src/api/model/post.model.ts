@@ -46,12 +46,13 @@ export interface DeletePost {
     author_type: AuthorType;
 }
 export interface UpdatePostDTO {
-    content?: string;
-    media_url?: {
-        add: MediaItem[],
-        delete: MediaItem[]
-    };
-    visibility?: PostVisibilityType;
+    postId: string;
+    author_id: string;
+    author_type: string;
+    content: string;
+    media_url_add: MediaItem[];
+    media_url_delete: any[];
+    visibility: PostVisibilityType;
 }
 
 export interface PostResponse {
