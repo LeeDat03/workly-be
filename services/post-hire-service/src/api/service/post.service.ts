@@ -45,7 +45,11 @@ export interface IPostService {
 	): Promise<PagingList<PostResponse>>;
 	deletePost(
 		post: DeletePost
-	): Promise<Boolean>
+	): Promise<Boolean>;
+	getPostsByAuthorIds(
+		input: IPaginationInput,
+		authorIds: string[]
+	): Promise<PagingList<PostResponse>>;
 
 }
 
@@ -202,5 +206,30 @@ export class PostService implements IPostService {
 			});
 		});
 		return mediaFiles;
+	};
+
+	public getPostsByAuthorIds = async (
+		input: IPaginationInput,
+		authorIds: string[]
+	): Promise<PagingList<PostResponse>> => {
+		const result = await this.postRepository.getPostsByAuthorIds(input, authorIds);
+
+		const postIds = result.data.map((post) => post._id.toString());
+
+		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
+		const likePosts = await this.likeRepository.getAllLikeByListPost(postIds)
+		const mappedData = result.data.map((item) => {
+			const postResponse = mapToPostResponse(item);
+			return {
+				...postResponse,
+				totalComments: commentCounts[item._id.toString()] || 0,
+				totalLikes: likePosts[item._id.toString()] || [],
+			};
+		});
+
+		return {
+			...result,
+			data: mappedData,
+		};
 	};
 }

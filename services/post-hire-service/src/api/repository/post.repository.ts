@@ -13,7 +13,11 @@ import {
 	UpdateResult,
 	WithId,
 } from "mongodb";
-import { IPaginationInput, PagingList, PostSearch } from "../model/common.model";
+import {
+	IPaginationInput,
+	PagingList,
+	PostSearch,
+} from "../model/common.model";
 import { TimeHelper } from "@/util/time.util";
 
 export interface IPostRepository {
@@ -27,7 +31,11 @@ export interface IPostRepository {
 		input: IPaginationInput,
 		userId: string
 	): Promise<PagingList<WithId<Document>>>;
-	deletePost(post: DeletePost): Promise<boolean>
+	deletePost(post: DeletePost): Promise<boolean>;
+	getPostsByAuthorIds(
+		input: IPaginationInput,
+		authorIds: string[]
+	): Promise<PagingList<WithId<Document>>>;
 }
 
 export class PostRepository implements IPostRepository {
@@ -38,12 +46,19 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async deletePost(post: DeletePost): Promise<boolean> {
-		const result = await this.postCollection.post.deleteOne({ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type });
+		const result = await this.postCollection.post.deleteOne({
+			_id: new ObjectId(post.postId),
+			author_id: post.author_id,
+			author_type: post.author_type,
+		});
 		return result.deletedCount > 0;
 	}
 
 	public async createPost(post: CreatePostDTO): Promise<InsertOneResult> {
-		const result = await this.postCollection.post.insertOne({ ...post, created_at: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') });
+		const result = await this.postCollection.post.insertOne({
+			...post,
+			created_at: TimeHelper.now().format("YYYY-MM-DD HH:mm:ss"),
+		});
 		return result;
 	}
 
@@ -106,7 +121,10 @@ export class PostRepository implements IPostRepository {
 	}
 
 	public async getAll(): Promise<any[]> {
-		const result = await this.postCollection.post.find().sort({ createdAt: -1 }).toArray();
+		const result = await this.postCollection.post
+			.find()
+			.sort({ createdAt: -1 })
+			.toArray();
 		return result;
 	}
 
@@ -127,6 +145,39 @@ export class PostRepository implements IPostRepository {
 			this.postCollection.post.countDocuments(),
 		]);
 
+		return {
+			data,
+			pagination: {
+				page,
+				size,
+				total,
+				totalPages: Math.ceil(total / size),
+			},
+		};
+	}
+
+	public async getPostsByAuthorIds(
+		input: IPaginationInput,
+		authorIds: string[]
+	): Promise<PagingList<WithId<Document>>> {
+		const page = Number(input.page) ?? 1;
+		const size = Number(input.size) ?? 10;
+		const skip = (page - 1) * size;
+
+		console.log("repo: ", page, size, skip, authorIds);
+		const [data, total] = await Promise.all([
+			this.postCollection.post
+				.find({
+					author_id: { $in: authorIds },
+				})
+				.sort({ created_at: -1 })
+				.skip(skip)
+				.limit(size)
+				.toArray(),
+			this.postCollection.post.countDocuments({
+				author_id: { $in: authorIds },
+			}),
+		]);
 		return {
 			data,
 			pagination: {

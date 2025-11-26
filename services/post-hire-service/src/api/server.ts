@@ -9,8 +9,9 @@ import logger from "@/common/logger";
 import { createPostRoutes } from "./routes/post.routes";
 import { ResponseMiddleware } from "./middlewares/response.middleware";
 import { PublicPath } from "@/config/app.constant";
-import cookieParser from 'cookie-parser';
+import cookieParser from "cookie-parser";
 import { createJobRoutes } from "./routes/job.routes";
+import { createFeedRoutes } from "./routes/feed.routes";
 
 export class ExpressServer {
 	private server?: Express;
@@ -101,9 +102,11 @@ export class ExpressServer {
 		server.use(PublicPath.PUBLIC_FILES, express.static("uploads"));
 		const postRoutes = createPostRoutes();
 		const jobRoutes = createJobRoutes();
+		const feedRoutes = createFeedRoutes();
+
 		server.use("/api/v1/posts", postRoutes);
 		server.use("/api/v1/jobs", jobRoutes);
-
+		server.use("/api/v1/feed", feedRoutes);
 	}
 	private setupErrorHandlers(server: Express) {
 		server.use(ResponseMiddleware.handler);
