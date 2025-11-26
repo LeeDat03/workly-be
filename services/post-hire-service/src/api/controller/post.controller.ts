@@ -69,8 +69,7 @@ export class PostController {
 	) => {
 		try {
 			const body = req.body as UpdatePostDTO;
-			const objectId = new ObjectId(req.params.id);
-			const result = await this.postService.updatePost(body, objectId, new ObjectId("123"));
+			const result = await this.postService.updatePost(body);
 			res.sendJson(result);
 		} catch (error) {
 			logger.error("PostController.updatePost", error);
@@ -157,7 +156,7 @@ export class PostController {
 
 			if (input.author_type === "USER") {
 				const response = await axios.post(
-					`http://localhost:8000/api/v1/internals/users/get-batch`,
+					`http://localhost:8003/api/v1/internals/users/get-batch`,
 					{ userIds },
 					{
 						headers: {
@@ -168,7 +167,7 @@ export class PostController {
 					}
 				);
 
-				const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
+				const usersMap = new Map(response.data.data.map((user: any) => [user.userId, { id: user.userId, name: user.name, imageUrl: user.avatarUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
 					...post,
 					author: usersMap.get(post.author_id) || null
@@ -180,7 +179,7 @@ export class PostController {
 			if (input.author_type === "COMPANY") {
 
 				const response = await axios.post(
-					`http://localhost:8000/api/v1/internals/companies/get-batch`,
+					`http://localhost:8003/api/v1/internals/companies/get-batch`,
 					{ companyIds: userIds },
 					{
 						headers: {
@@ -191,7 +190,7 @@ export class PostController {
 					}
 				);
 
-				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, company]));
+				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, { id: company.companyId, name: company.name, imageUrl: company.logoUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
 					...post,
 					author: companiesMap.get(post.author_id) || null
