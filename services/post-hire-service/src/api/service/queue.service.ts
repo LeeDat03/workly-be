@@ -5,26 +5,26 @@ import BullQueue, { JobStatusClean, Queue } from "bull";
 export class QueueService {
 	private static queues: Map<string, Queue> = new Map<string, Queue>();
 
-	static async getQueue<T = unknown>(jobName: string): Promise<Queue<T>> {
-		let queue = QueueService.queues.get(jobName);
-		if (!queue) {
-			queue = new BullQueue<T>(
-				jobName,
-				await RedisAdapter.getQueueOptions()
-			);
-			queue.on("failed", (job, error) => {
-				logger.error("Failed process job", { error, data: job });
-			});
-			queue.on("error", (error) => {
-				logger.error("Error process queue", {
-					error,
-					data: { jobName },
-				});
-			});
-			QueueService.queues.set(jobName, queue);
-		}
-		return queue;
-	}
+	// static async getQueue<T = unknown>(jobName: string): Promise<Queue<T>> {
+	// 	let queue = QueueService.queues.get(jobName);
+	// 	if (!queue) {
+	// 		queue = new BullQueue<T>(
+	// 			jobName,
+	// 			await RedisAdapter.getQueueOptions()
+	// 		);
+	// 		queue.on("failed", (job, error) => {
+	// 			logger.error("Failed process job", { error, data: job });
+	// 		});
+	// 		queue.on("error", (error) => {
+	// 			logger.error("Error process queue", {
+	// 				error,
+	// 				data: { jobName },
+	// 			});
+	// 		});
+	// 		QueueService.queues.set(jobName, queue);
+	// 	}
+	// 	return queue;
+	// }
 
 	static async closeAllQueues(): Promise<void> {
 		const promises: Promise<void>[] = [];

@@ -95,34 +95,34 @@ export class RedisAdapter {
 		return tmp;
 	}
 
-	static async getQueueOptions(): Promise<QueueOptions> {
-		if (!RedisAdapter.subscriber) {
-			RedisAdapter.subscriber = await RedisAdapter.connect(false, {
-				maxRetriesPerRequest: null,
-				enableReadyCheck: false,
-			});
-		}
-		return {
-			prefix: `Jobs:`,
-			defaultJobOptions: {
-				removeOnComplete: 1000,
-				removeOnFail: 1000,
-			},
-			createClient: (type) => {
-				switch (type) {
-					case "client":
-						return RedisAdapter.client;
-					case "subscriber":
-						return RedisAdapter.subscriber;
-					default:
-						return RedisAdapter.createClient({
-							maxRetriesPerRequest: null,
-							enableReadyCheck: false,
-						});
-				}
-			},
-		};
-	}
+	// static async getQueueOptions(): Promise<QueueOptions> {
+	// 	if (!RedisAdapter.subscriber) {
+	// 		RedisAdapter.subscriber = await RedisAdapter.connect(false, {
+	// 			maxRetriesPerRequest: 5,
+	// 			enableReadyCheck: false,
+	// 		});
+	// 	}
+	// 	return {
+	// 		prefix: `Jobs:`,
+	// 		defaultJobOptions: {
+	// 			removeOnComplete: 1000,
+	// 			removeOnFail: 1000,
+	// 		},
+	// 		createClient: (type) => {
+	// 			switch (type) {
+	// 				case "client":
+	// 					return RedisAdapter.client;
+	// 				case "subscriber":
+	// 					return RedisAdapter.subscriber;
+	// 				default:
+	// 					return RedisAdapter.createClient({
+	// 						maxRetriesPerRequest: null,
+	// 						enableReadyCheck: false,
+	// 					});
+	// 			}
+	// 		},
+	// 	};
+	// }
 
 	static serialize(value: unknown): string {
 		if (value) {

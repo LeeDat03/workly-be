@@ -75,11 +75,11 @@ export class PostService implements IPostService {
 	): Promise<InsertOneResult> => {
 		const result = await this.postRepository.createPost(post);
 		//add in to post_job
-		const queue = await QueueService.getQueue<JobPost>(JOB_NAME);
-		queue.add(
-			{ postId: result.insertedId },
-			{ removeOnComplete: true, removeOnFail: true }
-		);
+		// const queue = await QueueService.getQueue<JobPost>(JOB_NAME);
+		// queue.add(
+		// 	{ postId: result.insertedId },
+		// 	{ removeOnComplete: true, removeOnFail: true }
+		// );
 
 		return result;
 	};
