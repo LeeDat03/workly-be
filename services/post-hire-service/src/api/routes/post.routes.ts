@@ -1,11 +1,10 @@
 import express, { Router } from "express";
-import { createPost, updatePost } from "@/api/validation/post.validatior";
+import { createPost } from "@/api/validation/post.validatior";
 import { validateRequest } from "@/api/middlewares/validate.middleware";
 import { ControllerContainer } from "@/api/container/controller.container";
 import { UploadMiddleware } from "@/api/middlewares/upload.middleware";
 import {
 	createComment,
-	updateComment,
 } from "@/api/validation/comment.validator";
 import { isAuthenticated } from "../middlewares/authentication.middleware";
 
@@ -28,9 +27,8 @@ export function createPostRoutes(): Router {
 		postController.createPost
 	);
 
-	router.put(
-		"/update/:id",
-		validateRequest(updatePost),
+	router.post(
+		"/update",
 		postController.updatePost
 	);
 
@@ -55,8 +53,7 @@ export function createPostRoutes(): Router {
 	);
 
 	router.put(
-		"/comment/update/:id",
-		validateRequest(updateComment),
+		"/comment/update",
 		commentController.updateComment
 	);
 

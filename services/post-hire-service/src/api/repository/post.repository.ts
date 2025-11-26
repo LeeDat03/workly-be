@@ -21,8 +21,6 @@ export interface IPostRepository {
 	getAll(): Promise<any[]>;
 	updatePost(
 		post: UpdatePostDTO,
-		id: ObjectId,
-		userId: ObjectId
 	): Promise<UpdateResult>;
 	getPostDetail(id: ObjectId): Promise<WithId<Document> | null>;
 	getPagingPostByUserId(
@@ -51,14 +49,12 @@ export class PostRepository implements IPostRepository {
 
 	public async updatePost(
 		post: UpdatePostDTO,
-		id: ObjectId,
-		userId: ObjectId
 	): Promise<UpdateResult> {
 		return await this.postCollection.withTransaction(async (session) => {
 			let result;
 			const updatePushQuery: Record<string, any> = {
 				$push: {
-					media_url: { $each: [...(post.media_url?.add || [])] },
+					media_url: { $each: [...(post.media_url_add || [])] },
 				},
 			};
 			const updatePullQuery: Record<string, any> = {
@@ -66,25 +62,25 @@ export class PostRepository implements IPostRepository {
 					media_url: {
 						url: {
 							$in:
-								post.media_url?.delete?.map((i) => i.url) ?? [],
+								post.media_url_delete.map((i) => i.originalUrl) ?? [],
 						},
 					},
 				},
 			};
 
 			// Xóa media
-			if (post.media_url?.delete?.length) {
+			if (post.media_url_delete.length) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id, author_id: userId },
+					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
 					updatePullQuery,
 					{ session }
 				);
 			}
 
 			// Thêm media
-			if (post.media_url?.add?.length) {
+			if (post.media_url_add.length) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id, author_id: userId },
+					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
 					updatePushQuery,
 					{ session }
 				);
@@ -97,7 +93,7 @@ export class PostRepository implements IPostRepository {
 
 			if (Object.keys(updateFields).length > 0) {
 				result = await this.postCollection.post.updateOne(
-					{ _id: id, author_id: userId },
+					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
 					{ $set: updateFields },
 					{ session }
 				);

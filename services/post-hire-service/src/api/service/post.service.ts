@@ -37,7 +37,7 @@ import { ILikeRepository } from "../repository/like.repository";
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
 	getAllFileMedia(): Promise<string[]>;
-	updatePost(post: UpdatePostDTO, id: ObjectId, userId: ObjectId): Promise<UpdateResult>;
+	updatePost(updatePost: UpdatePostDTO): Promise<UpdateResult>;
 	getPostDetail(id: ObjectId): Promise<PostResponse>;
 	getAllPost(
 		input: IPaginationInput,
@@ -85,26 +85,24 @@ export class PostService implements IPostService {
 	};
 
 	public updatePost = async (
-		post: UpdatePostDTO,
-		id: ObjectId,
-		userId: ObjectId
+		updatePost: UpdatePostDTO
 	): Promise<UpdateResult> => {
-		const postExisted = await this.postRepository.getPostDetail(id);
+		const postExisted = await this.postRepository.getPostDetail(new ObjectId(updatePost.postId));
 		if (!postExisted) {
 			throw new APIError({
 				message: "post.notfound",
 				status: StatusCode.BAD_REQUEST,
 			});
 		}
-		const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}`;
-		const result = await this.postRepository.updatePost(post, id, userId);
-		await RedisAdapter.deleteKeysWithPrefix(cacheKey);
+		// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}`;
+		const result = await this.postRepository.updatePost(updatePost);
+		// await RedisAdapter.deleteKeysWithPrefix(cacheKey);
 
 		// delete old file
-		if (post.media_url?.delete && post.media_url.delete.length > 0) {
-			post.media_url.delete.forEach((item: MediaItem) => {
+		if (updatePost.media_url_delete && updatePost.media_url_delete.length > 0) {
+			updatePost.media_url_delete.forEach((item: any) => {
 				const TARGET_DIR =
-					item.type === MediaType.IMAGE
+					item.originalType === MediaType.IMAGE
 						? path.resolve(
 							__dirname,
 							"../../../uploads/posts/images"
@@ -113,7 +111,7 @@ export class PostService implements IPostService {
 							__dirname,
 							"../../../uploads/posts/videos"
 						);
-				const fullPath = path.join(TARGET_DIR, item.url);
+				const fullPath = path.join(TARGET_DIR, item.originalUrl);
 				FileUtil.deleteFilePath(fullPath);
 			});
 		}
@@ -143,13 +141,10 @@ export class PostService implements IPostService {
 		);
 
 
-		// Lấy postIds để query comment
 		const postIds = result.data.map((post) => post._id.toString());
 
-		// Đếm comment cho từng post
 		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
 		const likePosts = await this.likeRepository.getAllLikeByListPost(postIds)
-		// Map data với số lượng comment
 		const mappedData = result.data.map((item) => {
 			const postResponse = mapToPostResponse(item);
 			return {
