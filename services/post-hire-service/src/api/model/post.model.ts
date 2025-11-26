@@ -34,6 +34,8 @@ export interface Post {
 }
 
 export interface CreatePostDTO {
+    author_id: string;
+    author_type: string;
     content: string;
     media_url: MediaItem[];
     visibility: PostVisibilityType;
@@ -44,12 +46,13 @@ export interface DeletePost {
     author_type: AuthorType;
 }
 export interface UpdatePostDTO {
-    content?: string;
-    media_url?: {
-        add: MediaItem[],
-        delete: MediaItem[]
-    };
-    visibility?: PostVisibilityType;
+    postId: string;
+    author_id: string;
+    author_type: string;
+    content: string;
+    media_url_add: MediaItem[];
+    media_url_delete: any[];
+    visibility: PostVisibilityType;
 }
 
 export interface PostResponse {
@@ -78,5 +81,11 @@ export interface User {
     userId: string;
     name: string;
     avatarUrl?: string;
+    email?: string;
+}
+export interface Company {
+    companyId: string;
+    name: string;
+    logoUrl?: string;
     email?: string;
 }

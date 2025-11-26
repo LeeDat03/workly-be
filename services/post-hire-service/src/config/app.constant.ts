@@ -1,3 +1,3 @@
 export enum PublicPath {
-    PUBLIC_FILES = '/uploads',
+    PUBLIC_FILES = '/storage/uploads',
 }

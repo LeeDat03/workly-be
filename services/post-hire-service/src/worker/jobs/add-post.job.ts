@@ -26,8 +26,10 @@ export class AddPostJob {
 			//save into user_post
 			//push into timeline of friend
 			logger.debug(`Processed job ${JOB_NAME}-${job.id}`);
+			done()
 		} catch (error) {
 			logger.error(`Process ${JOB_NAME} error: `, error);
+			done(error as Error)
 		}
 	}
 }

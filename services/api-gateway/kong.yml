@@ -30,6 +30,7 @@ routes:
     - name: route-for-post-hire
       service: post-hire-service
       paths:
+          - /storage
           - /api/v1/posts
           - /api/v1/jobs
           - /api/v1/feed

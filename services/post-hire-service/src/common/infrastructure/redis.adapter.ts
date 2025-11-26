@@ -18,7 +18,7 @@ export class RedisAdapter {
 	static async connect(overrideClient = true, options = {}): Promise<Redis> {
 		const tmp = new ioredis(REDIS_URI, {
 			lazyConnect: true,
-			maxRetriesPerRequest: 10,
+			maxRetriesPerRequest: null,
 			retryStrategy: (times) => {
 				const delay = Math.min(times * 50, 2000);
 				if (times < 5) {
@@ -67,7 +67,7 @@ export class RedisAdapter {
 
 	static createClient(options = {}): Redis {
 		const tmp = new ioredis(REDIS_URI, {
-			maxRetriesPerRequest: 10,
+			maxRetriesPerRequest: null,
 			retryStrategy: (times) => {
 				const delay = Math.min(times * 50, 2000);
 				if (times < 5) {
