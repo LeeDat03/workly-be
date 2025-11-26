@@ -167,7 +167,7 @@ export class PostController {
 					}
 				);
 
-				const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
+				const usersMap = new Map(response.data.data.map((user: any) => [user.userId, { id: user.userId, name: user.name, imageUrl: user.avatarUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
 					...post,
 					author: usersMap.get(post.author_id) || null
@@ -190,7 +190,7 @@ export class PostController {
 					}
 				);
 
-				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, company]));
+				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, { id: company.companyId, name: company.name, imageUrl: company.logoUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
 					...post,
 					author: companiesMap.get(post.author_id) || null

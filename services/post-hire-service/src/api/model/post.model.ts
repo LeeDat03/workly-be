@@ -86,6 +86,6 @@ export interface User {
 export interface Company {
     companyId: string;
     name: string;
-    avatarUrl?: string;
+    logoUrl?: string;
     email?: string;
 }
