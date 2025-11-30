@@ -7,6 +7,7 @@ import {
 	updateUserProfileSchema,
 	updateUserSkillsSchema,
 	updateUserIndustriesSchema,
+	updateUserLocationSchema,
 	updateEducationSchema,
 	updateWorkExperienceSchema,
 } from "../validators/user.validator";
@@ -31,6 +32,11 @@ router.patch(
 	"/industries",
 	validate(updateUserIndustriesSchema),
 	userController.updateUserIndustries,
+);
+router.patch(
+	"/location",
+	validate(updateUserLocationSchema),
+	userController.updateUserLocation,
 );
 router.patch(
 	"/educations",

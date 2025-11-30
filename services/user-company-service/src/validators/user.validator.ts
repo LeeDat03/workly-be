@@ -48,6 +48,10 @@ export const updateUserSkillsSchema = z.object({
 	skillIds: z.array(z.string()).default([]),
 });
 
+export const updateUserLocationSchema = z.object({
+	locationId: z.string().optional(),
+});
+
 export const updateEducationSchema = z.array(
 	z.object({
 		schoolId: z.string().min(1, "schoolId là bắt buộc"),
@@ -100,6 +104,7 @@ export type UpdateUserIndustriesSchema = z.infer<
 	typeof updateUserIndustriesSchema
 >;
 export type UpdateUserSkillsSchema = z.infer<typeof updateUserSkillsSchema>;
+export type UpdateUserLocationSchema = z.infer<typeof updateUserLocationSchema>;
 export type UpdateEducationSchema = z.infer<typeof updateEducationSchema>;
 export type UpdateWorkExperienceSchema = z.infer<
 	typeof updateWorkExperienceSchema
@@ -132,6 +137,7 @@ export const toUserProfileDTO = (
 	industries?: IndustryProperties[],
 	skills?: SkillProperties[],
 	educations?: any[],
+	location?: any,
 ) => {
 	const {
 		password,
@@ -157,6 +163,12 @@ export const toUserProfileDTO = (
 					}))
 				: [],
 			educations: educations ? educations : [],
+			location: location
+				? {
+						locationId: location.locationId,
+						name: location.name,
+					}
+				: null,
 		},
 	};
 };

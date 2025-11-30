@@ -42,7 +42,14 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		promises.push(Promise.resolve([]));
 	}
 
-	const [industryRels, skillRels, educationRels] =
+	// ---------- Location ----------
+	if (isInclude("location")) {
+		promises.push(user.findRelationships({ alias: "Location" }));
+	} else {
+		promises.push(Promise.resolve([]));
+	}
+
+	const [industryRels, skillRels, educationRels, locationRels] =
 		await Promise.all(promises);
 
 	const industryData =
@@ -73,12 +80,15 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 						);
 					})
 			: [];
+	const locationData =
+		locationRels.length > 0 ? locationRels[0].target.dataValues : null;
 
 	return toUserProfileDTO(
 		user.dataValues,
 		industryData,
 		skillData,
 		educationData,
+		locationData,
 	);
 };
 
@@ -95,8 +105,13 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 export const updateRelationsWithQuery = async (
 	userId: string,
 	relationshipName: string,
-	targetLabel: "Industry" | "Skill" | "Company" | "School",
-	targetIdField: "industryId" | "skillId" | "companyId" | "schoolId",
+	targetLabel: "Industry" | "Skill" | "Company" | "School" | "Location",
+	targetIdField:
+		| "industryId"
+		| "skillId"
+		| "companyId"
+		| "schoolId"
+		| "locationId",
 	newIds?: string[],
 	relationshipProps?: Array<Record<string, unknown>>,
 ): Promise<void> => {
