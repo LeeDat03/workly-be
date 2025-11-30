@@ -138,6 +138,7 @@ export const toUserProfileDTO = (
 	skills?: SkillProperties[],
 	educations?: any[],
 	location?: any,
+	workExperiences?: any[],
 ) => {
 	const {
 		password,
@@ -169,6 +170,7 @@ export const toUserProfileDTO = (
 						name: location.name,
 					}
 				: null,
+			workExperiences: workExperiences ? workExperiences : [],
 		},
 	};
 };

@@ -15,6 +15,11 @@ import {
 	SchoolModelType,
 	getSchoolModel,
 } from "./school.model";
+import {
+	CompanyInstance,
+	CompanyModelType,
+	getCompanyModel,
+} from "./company.model";
 import { nanoid } from "nanoid";
 import { logger } from "../utils";
 import {
@@ -74,6 +79,24 @@ interface IUserRelatedNodes {
 			description: string;
 		}
 	>;
+	WorkExperience: ModelRelatedNodesI<
+		CompanyModelType,
+		CompanyInstance,
+		{
+			Title: string;
+			CompanyName: string;
+			StartDate: string;
+			EndDate: string;
+			Description: string;
+		},
+		{
+			title: string;
+			companyName: string;
+			startDate: string;
+			endDate: string;
+			description: string;
+		}
+	>;
 	FollowingUser: ModelRelatedNodesI<
 		typeof UserModel,
 		UserInstance,
@@ -100,6 +123,7 @@ export const getUserModel = (neogma: Neogma) => {
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
 	const SchoolModel = getSchoolModel(neogma);
+	const CompanyModel = getCompanyModel(neogma);
 
 	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
@@ -176,6 +200,45 @@ export const getUserModel = (neogma: Neogma) => {
 							schema: {
 								type: "string",
 								required: true,
+							},
+						},
+						StartDate: {
+							property: "startDate",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						EndDate: {
+							property: "endDate",
+							schema: {
+								type: "string",
+							},
+						},
+						Description: {
+							property: "description",
+							schema: {
+								type: "string",
+							},
+						},
+					},
+				},
+				WorkExperience: {
+					model: CompanyModel,
+					direction: "out",
+					name: "WORKS_AT",
+					properties: {
+						Title: {
+							property: "title",
+							schema: {
+								type: "string",
+								required: true,
+							},
+						},
+						CompanyName: {
+							property: "companyName",
+							schema: {
+								type: "string",
 							},
 						},
 						StartDate: {

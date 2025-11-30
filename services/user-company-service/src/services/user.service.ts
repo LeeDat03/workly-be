@@ -49,7 +49,14 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		promises.push(Promise.resolve([]));
 	}
 
-	const [industryRels, skillRels, educationRels, locationRels] =
+	// ---------- Work Experience ----------
+	if (isInclude("work-experience")) {
+		promises.push(user.findRelationships({ alias: "WorkExperience" }));
+	} else {
+		promises.push(Promise.resolve([]));
+	}
+
+	const [industryRels, skillRels, educationRels, locationRels, workExpRels] =
 		await Promise.all(promises);
 
 	const industryData =
@@ -73,7 +80,7 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 							...rel.relationship,
 						};
 					})
-					.sort((a, b) => {
+					.sort((a: any, b: any) => {
 						return (
 							new Date(a.startDate!).getTime() -
 							new Date(b.startDate!).getTime()
@@ -82,6 +89,22 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 			: [];
 	const locationData =
 		locationRels.length > 0 ? locationRels[0].target.dataValues : null;
+	const workExperienceData =
+		workExpRels.length > 0
+			? workExpRels
+					.map((rel) => {
+						return {
+							...rel.target.dataValues,
+							...rel.relationship,
+						};
+					})
+					.sort((a: any, b: any) => {
+						return (
+							new Date(b.startDate!).getTime() -
+							new Date(a.startDate!).getTime()
+						);
+					})
+			: [];
 
 	return toUserProfileDTO(
 		user.dataValues,
@@ -89,6 +112,7 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		skillData,
 		educationData,
 		locationData,
+		workExperienceData,
 	);
 };
 
