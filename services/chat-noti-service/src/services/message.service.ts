@@ -80,11 +80,15 @@ export class MessageService {
 			throw ApiError.notFound("Conversation not found");
 		}
 
+		// Check if userId is a participant (can be USER or COMPANY)
 		const isParticipant = conversation.participants.some(
 			(p) => p.id === userId
 		);
 
 		if (!isParticipant) {
+			console.warn(`⚠️ User ${userId} is not a participant of conversation ${conversationId}. Participants:`, 
+				conversation.participants.map(p => ({ id: p.id, type: p.type }))
+			);
 			throw ApiError.forbidden(
 				"You are not a participant of this conversation"
 			);
@@ -129,11 +133,15 @@ export class MessageService {
 			throw ApiError.notFound("Conversation not found");
 		}
 
+		// Check if userId is a participant (can be USER or COMPANY)
 		const isParticipant = conversation.participants.some(
 			(p) => p.id === userId
 		);
 
 		if (!isParticipant) {
+			console.warn(`⚠️ User ${userId} is not a participant of conversation ${message.conversationId}. Participants:`, 
+				conversation.participants.map(p => ({ id: p.id, type: p.type }))
+			);
 			throw ApiError.forbidden(
 				"You are not a participant of this conversation"
 			);
@@ -170,11 +178,15 @@ export class MessageService {
 			throw ApiError.notFound("Conversation not found");
 		}
 
+		// Check if userId is a participant (can be USER or COMPANY)
 		const isParticipant = conversation.participants.some(
 			(p) => p.id === userId
 		);
 
 		if (!isParticipant) {
+			console.warn(`⚠️ User ${userId} is not a participant of conversation ${conversationId}. Participants:`, 
+				conversation.participants.map(p => ({ id: p.id, type: p.type }))
+			);
 			throw ApiError.forbidden(
 				"You are not a participant of this conversation"
 			);

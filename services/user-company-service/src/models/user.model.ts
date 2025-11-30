@@ -123,7 +123,9 @@ export const getUserModel = (neogma: Neogma) => {
 	const IndustryModel = getIndustryModel(neogma);
 	const SkillModel = getSkillModel(neogma);
 	const SchoolModel = getSchoolModel(neogma);
-	const CompanyModel = getCompanyModel(neogma);
+
+	// Temporary placeholder for circular dependency
+	let CompanyModel: any;
 
 	UserModel = ModelFactory<UserProperties, IUserRelatedNodes>(
 		{
@@ -310,6 +312,13 @@ export const getUserModel = (neogma: Neogma) => {
 			logger.warn("User email constraint creation warning:", error);
 		}
 	})();
+
+	// Initialize CompanyModel after UserModel is created to avoid circular dependency
+	CompanyModel = getCompanyModel(neogma);
+	// Update the relationship model reference
+	if (UserModel.relationships && UserModel.relationships.WorkExperience) {
+		UserModel.relationships.WorkExperience.model = CompanyModel;
+	}
 
 	return UserModel;
 };
