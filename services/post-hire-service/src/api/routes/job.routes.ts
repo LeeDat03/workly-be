@@ -18,6 +18,10 @@ export function createJobRoutes(): Router {
     router.delete("/delete", jobController.deleteJobPost);
     router.get("/detail", jobController.getPostJobDetail);
     router.post("/update", jobController.updateCompanyJob);
+    router.get("/status", jobController.getPostJobByStatus);
+    router.post("/apply", jobController.applyJob);
+    router.get("/candidates", jobController.getCandidateByStatus);
+    router.post("/feedback", jobController.feedbackCandidate);
 
     return router;
 }

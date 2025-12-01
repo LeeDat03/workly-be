@@ -33,7 +33,8 @@ export class ServiceContainer {
             RepositoryContainer.getLikeRepository()
         )
         this.jobService = new JobService(
-            RepositoryContainer.getJobRepository()
+            RepositoryContainer.getJobRepository(),
+            RepositoryContainer.getCandidateRepository()
         )
         this.isInitialized = true;
 
@@ -62,7 +63,7 @@ export class ServiceContainer {
     }
     static getJobService(): IJobService {
         if (!this.jobService) {
-            this.jobService = new JobService(RepositoryContainer.getJobRepository());
+            this.jobService = new JobService(RepositoryContainer.getJobRepository(), RepositoryContainer.getCandidateRepository());
         }
         return this.jobService;
     }

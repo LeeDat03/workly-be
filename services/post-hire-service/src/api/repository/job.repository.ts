@@ -1,8 +1,9 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { JobSearch, PagingList } from "../model/common.model";
 import { GetPostJobDetailInput, Job } from "../model/job.model";
-import { DeleteResult, InsertOneResult, ObjectId } from "mongodb";
+import { InsertOneResult, ObjectId } from "mongodb";
 import { TimeHelper } from "@/util/time.util";
+import { log } from "console";
 
 
 export interface IJobRepository {
@@ -11,13 +12,14 @@ export interface IJobRepository {
     deleteJob(input: any): Promise<Boolean>
     getPostJobDetail(input: GetPostJobDetailInput): Promise<Job | null>
     updateJob(input: any): Promise<Boolean>
+    getPostJobByStatus(active: number, page: number, size: number, companyId: string): Promise<PagingList<Job>>
 }
 
 export class JobRepository implements IJobRepository {
 
     private jobCollection: DatabaseAdapter;
     constructor(
-        jobCollection: DatabaseAdapter
+        jobCollection: DatabaseAdapter,
     ) {
         this.jobCollection = jobCollection
     }
@@ -50,12 +52,74 @@ export class JobRepository implements IJobRepository {
         return result.deletedCount > 0;
     }
     async createJob(input: any): Promise<InsertOneResult> {
-        const result = await this.jobCollection.job.insertOne({ ...input, createdAt: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') });
+        const result = await this.jobCollection.job.insertOne({ ...input, endDate: TimeHelper.parseStartOfDayDate(input.endDate), createdAt: TimeHelper.now().format('YYYY-MM-DD HH:mm:ss') });
         return result;
     }
 
     async getPostJobDetail(input: GetPostJobDetailInput): Promise<Job | null> {
         return await this.jobCollection.job.findOne<Job>({ companyId: input.companyId, _id: new ObjectId(input.jobId) })
+    }
+
+    async getPostJobByStatus(
+        active: number,
+        page: number = 1,
+        size: number = 10,
+        companyId: string
+    ): Promise<PagingList<Job>> {
+        const skip = (page - 1) * size;
+
+        const matchCondition: any = { companyId: companyId };
+
+        if (active === 0) {
+            matchCondition.$expr = {
+                $lt: [
+                    "$endDate",
+                    { $dateTrunc: { date: "$$NOW", unit: "day" } }
+                ]
+            };
+        } else if (active === 1) {
+            matchCondition.$expr = {
+                $gte: [
+                    "$endDate",
+                    { $dateTrunc: { date: "$$NOW", unit: "day" } }
+                ]
+            };
+        }
+
+        // Data pipeline
+        const dataPipeline: any[] = [];
+        if (Object.keys(matchCondition).length > 0) {
+            dataPipeline.push({ $match: matchCondition });
+        }
+        dataPipeline.push(
+            { $sort: { endDate: -1 } },
+            { $skip: skip },
+            { $limit: size }
+        );
+
+        // Count pipeline
+        const countPipeline: any[] = [];
+        if (Object.keys(matchCondition).length > 0) {
+            countPipeline.push({ $match: matchCondition });
+        }
+        countPipeline.push({ $count: "total" });
+
+        const [data, countResult] = await Promise.all([
+            this.jobCollection.job.aggregate<Job>(dataPipeline).toArray(),
+            this.jobCollection.job.aggregate(countPipeline).toArray()
+        ]);
+
+        const total = countResult[0]?.total || 0;
+
+        return {
+            data,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
     }
 
     async getPagingJobsByCompanyId(input: JobSearch): Promise<PagingList<Job>> {
@@ -111,21 +175,38 @@ export class JobRepository implements IJobRepository {
             filter.createdAt = {};
             if (input.startAt) {
                 const startDate = new Date(input.startAt);
-                filter.createdAt.$gte = startDate;
+                filter.endDate.$gte = startDate;
             }
             if (input.endAt) {
                 const endDate = new Date(input.endAt);
-                filter.createdAt.$lte = endDate;
+                filter.endDate.$lte = endDate;
             }
         }
 
+        filter.companyId = input.companyId;
+
+        const pipeline = [
+            { $match: filter },
+            { $sort: { endDate: -1 } },
+            { $skip: skip },
+            { $limit: size },
+            {
+                $addFields: {
+                    isExpired: {
+                        $lt: [
+                            "$endDate",
+                            {
+                                $dateTrunc: { date: "$$NOW", unit: "day" }
+                            }
+                        ]
+                    }
+                }
+            }
+        ];
+
         // 3. Execute query với pagination
         const [data, total] = await Promise.all([
-            this.jobCollection.job.find<Job>(filter, {
-                skip,
-                limit: size,
-                sort: { createdAt: -1 }
-            }).toArray(),
+            this.jobCollection.job.aggregate<Job>(pipeline).toArray(),
             this.jobCollection.job.countDocuments(filter)
         ]);
 
