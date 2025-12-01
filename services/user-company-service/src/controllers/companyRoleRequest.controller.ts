@@ -12,18 +12,29 @@ const addAdminToCompany = async (
 	next: NextFunction,
 ) => {
 	try {
-		const { email } = req.body;
+		const { email, userId } = req.body;
 		const { company } = req;
 
 		if (!company) {
 			throw new BadRequestError("Company not found in request context");
 		}
 
-		const newAdmin = await UserModel.findOne({
-			where: {
-				email,
-			},
-		});
+		if (!email && !userId) {
+			throw new BadRequestError("Either email or userId is required");
+		}
+
+		// Find user by email or userId
+		let newAdmin;
+		if (email) {
+			newAdmin = await UserModel.findOne({
+				where: { email },
+			});
+		} else {
+			newAdmin = await UserModel.findOne({
+				where: { userId },
+			});
+		}
+
 		if (!newAdmin) {
 			throw new BadRequestError("User not found");
 		}
@@ -32,29 +43,23 @@ const addAdminToCompany = async (
 		const companyId = company.dataValues.companyId;
 		const neogma = database.getNeogma();
 
+		// Check if user is already an admin of THIS specific company
 		const existingAdminCheck = await neogma.queryRunner.run(
 			`
-			MATCH (u:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c:Company)
+			MATCH (u:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c:Company {companyId: $companyId})
 			WHERE r.status = $status
 			RETURN c.companyId as companyId
-			LIMIT 1
 			`,
 			{
 				userId: newAdminId,
+				companyId,
 				status: CompanyRoleRequestStatus.APPROVED,
 			},
 		);
 
 		if (existingAdminCheck.records.length > 0) {
-			const existingCompanyId =
-				existingAdminCheck.records[0].get("companyId");
-			if (existingCompanyId === companyId) {
-				throw new BadRequestError(
-					"User is already an admin of this company",
-				);
-			}
 			throw new BadRequestError(
-				`User is already an admin of another company`,
+				"User is already an admin of this company",
 			);
 		}
 
@@ -107,29 +112,66 @@ const viewAllCurrentAdmins = async (
 			throw new BadRequestError("Company not found in request context");
 		}
 
-		const admins = await CompanyModel.findRelationships({
-			alias: "CompanyRoleRequest",
-			where: {
-				source: {
-					companyId,
-				},
-				target: {},
-				relationship: {
-					status: CompanyRoleRequestStatus.APPROVED,
-				},
+		const neogma = database.getNeogma();
+
+		// Get OWNER first
+		const ownerResult = await neogma.queryRunner.run(
+			`
+			MATCH (c:Company {companyId: $companyId})-[:OWNS]-(owner:User)
+			RETURN owner.userId as userId,
+				   owner.name as name,
+				   owner.email as email,
+				   owner.username as username,
+				   owner.avatarUrl as avatarUrl,
+				   'OWNER' as role
+			`,
+			{ companyId },
+		);
+
+		// Get ADMINs
+		const adminsResult = await neogma.queryRunner.run(
+			`
+			MATCH (admin:User)-[r:REQUESTS_COMPANY_ROLE]->(c:Company {companyId: $companyId})
+			WHERE r.status = $status
+			RETURN admin.userId as userId,
+				   admin.name as name,
+				   admin.email as email,
+				   admin.username as username,
+				   admin.avatarUrl as avatarUrl,
+				   'ADMIN' as role
+			ORDER BY admin.name ASC
+			`,
+			{
+				companyId,
+				status: CompanyRoleRequestStatus.APPROVED,
 			},
-		});
-		const data = admins.map((item) => {
-			return {
-				id: item.target.dataValues.userId,
-				name: item.target.dataValues.name,
-				email: item.target.dataValues.email,
-			};
-		});
+		);
+
+		// Combine results: OWNER first, then ADMINs
+		const ownerData = ownerResult.records.map((record) => ({
+			userId: record.get("userId"),
+			name: record.get("name"),
+			email: record.get("email"),
+			username: record.get("username"),
+			avatarUrl: record.get("avatarUrl"),
+			role: record.get("role"),
+		}));
+
+		const adminData = adminsResult.records.map((record) => ({
+			userId: record.get("userId"),
+			name: record.get("name"),
+			email: record.get("email"),
+			username: record.get("username"),
+			avatarUrl: record.get("avatarUrl"),
+			role: record.get("role"),
+		}));
+
+		const admins = [...ownerData, ...adminData];
+
 		res.status(200).json({
 			status: "success",
 			data: {
-				admins: data,
+				admins,
 			},
 		});
 	} catch (error) {
@@ -149,24 +191,64 @@ const removeAdminFromCompany = async (
 			throw new BadRequestError("Company not found in request context");
 		}
 
-		const removeAdminResult = await CompanyModel.deleteRelationships({
-			alias: "CompanyRoleRequest",
-			where: {
-				source: {
-					companyId: company.dataValues.companyId,
-				},
-				target: {
-					userId,
-				},
-			},
-		});
-		if (!removeAdminResult) {
-			throw new BadRequestError("Failed to remove admin from company");
+		const companyId = company.dataValues.companyId;
+		const neogma = database.getNeogma();
+
+		// First, check if the user exists
+		const userCheck = await neogma.queryRunner.run(
+			`
+			MATCH (u:User {userId: $userId})
+			RETURN u.userId as userId
+			`,
+			{ userId },
+		);
+
+		if (userCheck.records.length === 0) {
+			throw new BadRequestError("User not found");
 		}
+
+		// Check if the relationship exists
+		const relationshipCheck = await neogma.queryRunner.run(
+			`
+			MATCH (u:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c:Company {companyId: $companyId})
+			RETURN r, r.status as status
+			`,
+			{
+				userId,
+				companyId,
+			},
+		);
+
+		if (relationshipCheck.records.length === 0) {
+			throw new BadRequestError(
+				"This user is not an admin of this company",
+			);
+		}
+
+		const relStatus = relationshipCheck.records[0].get("status");
+		if (relStatus !== CompanyRoleRequestStatus.APPROVED) {
+			throw new BadRequestError(
+				`Cannot remove admin: status is ${relStatus}`,
+			);
+		}
+
+		// Delete the relationship
+		await neogma.queryRunner.run(
+			`
+			MATCH (u:User {userId: $userId})-[r:REQUESTS_COMPANY_ROLE]->(c:Company {companyId: $companyId})
+			WHERE r.status = $status
+			DELETE r
+			`,
+			{
+				userId,
+				companyId,
+				status: CompanyRoleRequestStatus.APPROVED,
+			},
+		);
 
 		res.status(200).json({
 			status: "success",
-			message: "Admin removed!",
+			message: "Admin removed successfully!",
 		});
 	} catch (error) {
 		next(error);

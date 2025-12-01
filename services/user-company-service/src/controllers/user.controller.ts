@@ -4,6 +4,7 @@ import {
 	UpdateUserProfileSchema,
 	UpdateUserSkillsSchema,
 	UpdateUserIndustriesSchema,
+	UpdateUserLocationSchema,
 	ChangePasswordSchema,
 } from "../validators";
 import { UserModel, SkillModel, SchoolModel, IndustryModel } from "../models";
@@ -244,6 +245,46 @@ export const updateUserIndustries = async (
 			success: true,
 			message: "Industries updated successfully",
 			// data: userProfile,
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
+export const updateUserLocation = async (
+	req: LoggedInUserRequest,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { locationId }: UpdateUserLocationSchema = req.body;
+		const userId = req.user!.userId;
+
+		const user = await UserModel.findOne({ where: { userId } });
+		if (!user) throw new NotFoundError("User not found");
+
+		if (locationId) {
+			await updateRelationsWithQuery(
+				userId,
+				"LOCATED_IN",
+				"Location",
+				"locationId",
+				[locationId],
+			);
+		} else {
+			// If locationId is null or empty, remove the location relationship
+			await updateRelationsWithQuery(
+				userId,
+				"LOCATED_IN",
+				"Location",
+				"locationId",
+				[],
+			);
+		}
+
+		res.status(200).json({
+			success: true,
+			message: "Location updated successfully",
 		});
 	} catch (error) {
 		next(error);
@@ -763,6 +804,7 @@ export default {
 	getAllSchools,
 	updateUserSkills,
 	updateUserIndustries,
+	updateUserLocation,
 	updateUserEducations,
 	updateUserWorkExperiences,
 	changeMyPassword,

@@ -228,12 +228,27 @@ const getCompanyById = async (
 			),
 		};
 
+		let role = undefined;
+		const user = (req as any).user;
+		if (user && user.userId) {
+			const { isOwner, isAdmin } = await checkCompanyAccess(
+				user.userId,
+				companyId,
+			);
+			if (isOwner) {
+				role = "OWNER";
+			} else if (isAdmin) {
+				role = "ADMIN";
+			}
+		}
+
 		res.status(200).json({
 			status: "success",
 			data: {
 				company: {
 					...companyProfile.company,
 					followersCount,
+					...(role && { role }),
 				},
 			},
 		});
