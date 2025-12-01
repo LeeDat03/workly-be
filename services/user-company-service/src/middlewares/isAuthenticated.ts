@@ -32,7 +32,6 @@ export const isAuthenticated = async (
 			where: { userId: decoded.id },
 			plain: true,
 		});
-
 		if (!currentUser) {
 			throw new UnauthorizedError("Invalid token, please log in again.");
 		}

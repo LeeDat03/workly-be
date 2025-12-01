@@ -42,7 +42,21 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		promises.push(Promise.resolve([]));
 	}
 
-	const [industryRels, skillRels, educationRels] =
+	// ---------- Location ----------
+	if (isInclude("location")) {
+		promises.push(user.findRelationships({ alias: "Location" }));
+	} else {
+		promises.push(Promise.resolve([]));
+	}
+
+	// ---------- Work Experience ----------
+	if (isInclude("work-experience")) {
+		promises.push(user.findRelationships({ alias: "WorkExperience" }));
+	} else {
+		promises.push(Promise.resolve([]));
+	}
+
+	const [industryRels, skillRels, educationRels, locationRels, workExpRels] =
 		await Promise.all(promises);
 
 	const industryData =
@@ -66,10 +80,28 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 							...rel.relationship,
 						};
 					})
-					.sort((a, b) => {
+					.sort((a: any, b: any) => {
 						return (
 							new Date(a.startDate!).getTime() -
 							new Date(b.startDate!).getTime()
+						);
+					})
+			: [];
+	const locationData =
+		locationRels.length > 0 ? locationRels[0].target.dataValues : null;
+	const workExperienceData =
+		workExpRels.length > 0
+			? workExpRels
+					.map((rel) => {
+						return {
+							...rel.target.dataValues,
+							...rel.relationship,
+						};
+					})
+					.sort((a: any, b: any) => {
+						return (
+							new Date(b.startDate!).getTime() -
+							new Date(a.startDate!).getTime()
 						);
 					})
 			: [];
@@ -79,6 +111,8 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		industryData,
 		skillData,
 		educationData,
+		locationData,
+		workExperienceData,
 	);
 };
 
@@ -95,8 +129,13 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 export const updateRelationsWithQuery = async (
 	userId: string,
 	relationshipName: string,
-	targetLabel: "Industry" | "Skill" | "Company" | "School",
-	targetIdField: "industryId" | "skillId" | "companyId" | "schoolId",
+	targetLabel: "Industry" | "Skill" | "Company" | "School" | "Location",
+	targetIdField:
+		| "industryId"
+		| "skillId"
+		| "companyId"
+		| "schoolId"
+		| "locationId",
 	newIds?: string[],
 	relationshipProps?: Array<Record<string, unknown>>,
 ): Promise<void> => {

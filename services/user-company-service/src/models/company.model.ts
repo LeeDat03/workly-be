@@ -6,9 +6,12 @@ import {
 } from "neogma";
 import { nanoid } from "nanoid";
 
-import { IndustryModel, UserModel } from ".";
-import { UserInstance } from "./user.model";
-import { IndustryInstance } from "./industry.model";
+import { UserInstance, UserModelType, getUserModel } from "./user.model";
+import {
+	IndustryInstance,
+	IndustryModelType,
+	getIndustryModel,
+} from "./industry.model";
 import { logger } from "../utils";
 import {
 	getLocationModel,
@@ -45,16 +48,11 @@ export interface CompanyProperties {
 }
 
 interface ICompanyRelatedNodes {
-	Owner: ModelRelatedNodesI<typeof UserModel, UserInstance, {}, {}>;
+	Owner: ModelRelatedNodesI<UserModelType, UserInstance, {}, {}>;
 	Location: ModelRelatedNodesI<LocationModelType, LocationInstance, {}, {}>;
-	Industry: ModelRelatedNodesI<
-		typeof IndustryModel,
-		IndustryInstance,
-		{},
-		{}
-	>;
+	Industry: ModelRelatedNodesI<IndustryModelType, IndustryInstance, {}, {}>;
 	CompanyRoleRequest: ModelRelatedNodesI<
-		typeof UserModel,
+		UserModelType,
 		UserInstance,
 		{
 			Status: CompanyRoleRequestStatus;
@@ -80,7 +78,10 @@ export const getCompanyModel = (neogma: Neogma) => {
 	if (CompanyModel) {
 		return CompanyModel;
 	}
+	const UserModel = getUserModel(neogma);
+	const IndustryModel = getIndustryModel(neogma);
 	const LocationModel = getLocationModel(neogma);
+
 	CompanyModel = ModelFactory<CompanyProperties, ICompanyRelatedNodes>(
 		{
 			label: "Company",

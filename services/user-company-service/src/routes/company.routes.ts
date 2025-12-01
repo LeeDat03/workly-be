@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { isAuthenticated, validate, optionalAuth } from "../middlewares";
+import { isAuthenticated, validate, optionalAuth, isCompanyAdmin } from "../middlewares";
 import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
@@ -17,7 +17,7 @@ router.post(
 );
 router.get("/", companyController.getAllCompanies);
 router.get("/my-companies", isAuthenticated, companyController.getMyCompanies);
-router.get("/:id", companyController.getCompanyById);
+router.get("/:id", optionalAuth, companyController.getCompanyById);
 
 router.get("/:id/check-access", optionalAuth, companyController.checkAccess);
 
@@ -49,12 +49,20 @@ router.delete("/:id/follow", isAuthenticated, companyController.unfollow);
 router.get("/:id/is-following", optionalAuth, companyController.isFollowing);
 
 //////////////////////////////////////////////////////////////////
-// OWNER ACCESS - OWNER ACTION
+// ADMIN ACCESS (OWNER + ADMIN) - Can view and add admins
+const adminRoutes = Router({ mergeParams: true });
+adminRoutes.use(isAuthenticated, isCompanyAdmin);
+
+adminRoutes.get("/admins", companyRoleRequestController.viewAllCurrentAdmins);
+adminRoutes.post("/admins", companyRoleRequestController.addAdminToCompany);
+
+router.use("/:id", adminRoutes);
+
+//////////////////////////////////////////////////////////////////
+// OWNER ACCESS - OWNER ONLY ACTIONS
 const ownerRoutes = Router({ mergeParams: true });
 ownerRoutes.use(isAuthenticated, isCompanyOwner);
 
-ownerRoutes.post("/admins", companyRoleRequestController.addAdminToCompany);
-ownerRoutes.get("/admins", companyRoleRequestController.viewAllCurrentAdmins);
 ownerRoutes.delete(
 	"/admins/:userId",
 	companyRoleRequestController.removeAdminFromCompany,

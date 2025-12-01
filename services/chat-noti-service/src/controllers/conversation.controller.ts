@@ -19,10 +19,24 @@ export class ConversationController {
       const { participantId, participantType } = req.body;
       const currentUser = req.user!;
 
+      console.log('🔵 Creating/Getting conversation:', {
+        currentUser: { id: currentUser.id, type: currentUser.type },
+        otherParticipant: { id: participantId, type: participantType },
+        headers: {
+          'x-user-id': req.headers['x-user-id'],
+          'x-user-type': req.headers['x-user-type'],
+        }
+      });
+
       const conversation = await this.conversationService.createOrGetConversation(
         { id: currentUser.id, type: currentUser.type },
         { id: participantId, type: participantType as ParticipantType }
       );
+
+      console.log('✅ Conversation created/found:', {
+        conversationId: conversation._id,
+        participants: conversation.participants,
+      });
 
       res.status(201).json({
         success: true,
