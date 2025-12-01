@@ -89,4 +89,53 @@ export class JobController {
             next(error);
         }
     }
+    public getPostJobByStatus = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { active, page, size, companyId } = req.query
+            const data = await this.jobService.getPostJobByStatus(Number(active), Number(page), Number(size), companyId as string)
+            res.sendJson(data)
+        } catch (error) {
+            logger.error(`getPostJobDetail.create: `, error);
+            next(error);
+        }
+    }
+    public applyJob = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const input = req.body
+            const { userId, email, name } = req.user as any
+            const data = await this.jobService.applyJob({ ...input, userId, email, name });
+            res.sendJson(data)
+        } catch (error) {
+            logger.error(`applyJob.create: `, error);
+            next(error);
+        }
+    }
+    public getCandidateByStatus = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { status, jobId, page, size } = req.query as any
+            const data = await this.jobService.getCandidateByStatus(status, jobId, page, size)
+            res.sendJson(data)
+        } catch (error) {
+            logger.error(`applyJob.create: `, error);
+            next(error);
+        }
+    }
+    public feedbackCandidate = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const { status, jobId, userId } = req.body as any
+            const data = await this.jobService.feedbackCandidate(status, jobId, userId)
+            res.sendJson(data)
+        } catch (error) {
+            logger.error(`applyJob.create: `, error);
+            next(error);
+        }
+    }
 }

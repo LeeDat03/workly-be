@@ -132,17 +132,26 @@ export class PostRepository implements IPostRepository {
 		input: PostSearch,
 		userId: string
 	): Promise<PagingList<WithId<Document>>> {
-		const page = Number(input.page) ?? 1;
-		const size = Number(input.size) ?? 10;
+		console.log(input);
+
+		const page = Number(input.page) || 1;
+		const size = Number(input.size) || 10;
 		const skip = (page - 1) * size;
+
+		// Filter chung cho query và count
+		const filter = {
+			author_id: userId,
+			author_type: input.author_type
+		};
+
 		const [data, total] = await Promise.all([
 			this.postCollection.post
-				.find({ author_id: userId, author_type: input.author_type })
+				.find(filter)
 				.sort({ created_at: -1 })
 				.skip(skip)
 				.limit(size)
 				.toArray(),
-			this.postCollection.post.countDocuments(),
+			this.postCollection.post.countDocuments(filter),
 		]);
 
 		return {
@@ -155,7 +164,6 @@ export class PostRepository implements IPostRepository {
 			},
 		};
 	}
-
 	public async getPostsByAuthorIds(
 		input: IPaginationInput,
 		authorIds: string[]

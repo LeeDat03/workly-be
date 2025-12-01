@@ -50,16 +50,15 @@ export class ExpressServer {
 	}
 
 	private setupSecurityMiddlewares(server: Express) {
-		server.use(helmet());
-		server.use(
-			helmet.crossOriginResourcePolicy({ policy: "cross-origin" })
-		);
+		server.use(helmet({ frameguard: false }));
+		server.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
 		server.use(
 			helmet.contentSecurityPolicy({
 				directives: {
 					defaultSrc: ["'self'"],
 					styleSrc: ["'unsafe-inline'"],
 					scriptSrc: ["'unsafe-inline'", "'self'"],
+					frameAncestors: ["*"],
 				},
 			})
 		);
