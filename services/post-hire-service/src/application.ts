@@ -7,6 +7,8 @@ import { ContainerManager } from "./api/container";
 import { initializeIndexModel } from './api/model/model';
 import { RedisAdapter } from '@/common/infrastructure/redis.adapter';
 import { WorkerServer } from './worker/server';
+import RabbitMQConnection from './common/infrastructure/mq.adapter';
+import { registerAllQueue } from './api/service/mq.service';
 
 export class Application {
 
@@ -16,6 +18,8 @@ export class Application {
     public static async createApplication(): Promise<ExpressServer> {
         await this.databaseInstance.connect();
         await RedisAdapter.connect();
+        await RabbitMQConnection.connect();
+        await registerAllQueue()
         await ContainerManager.initializeAll();
         await initializeIndexModel();
         const expressServer = new ExpressServer();
@@ -27,7 +31,6 @@ export class Application {
         return expressServer;
     }
 
-    // private static handleExit(expressServer: ExpressServer, workerServer: WorkerServer, socketServer: SocketServer) {
     private static handleExit(expressServer: ExpressServer, workerServer: WorkerServer) {
         const shutdown = async (exitCode: number) => {
             logger.info('Starting graceful shutdown...');
