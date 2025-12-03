@@ -1,6 +1,12 @@
 import { Router } from "express";
 
-import { isAuthenticated, validate, optionalAuth, isCompanyAdmin } from "../middlewares";
+import {
+	isAuthenticated,
+	validate,
+	optionalAuth,
+	isCompanyAdmin,
+	isCompanyAdminOrSelf,
+} from "../middlewares";
 import { companyController } from "../controllers";
 import companyRoleRequestController from "../controllers/companyRoleRequest.controller";
 import { isCompanyOwner } from "../middlewares/isCompanyOwner";
@@ -59,14 +65,22 @@ adminRoutes.post("/admins", companyRoleRequestController.addAdminToCompany);
 router.use("/:id", adminRoutes);
 
 //////////////////////////////////////////////////////////////////
+// ADMIN OR SELF ACCESS - OWNER can remove anyone, ADMIN can remove self
+const adminOrSelfRoutes = Router({ mergeParams: true });
+adminOrSelfRoutes.delete(
+	"/admins/:userId",
+	isAuthenticated,
+	isCompanyAdminOrSelf,
+	companyRoleRequestController.removeAdminFromCompany,
+);
+
+router.use("/:id", adminOrSelfRoutes);
+
+//////////////////////////////////////////////////////////////////
 // OWNER ACCESS - OWNER ONLY ACTIONS
 const ownerRoutes = Router({ mergeParams: true });
 ownerRoutes.use(isAuthenticated, isCompanyOwner);
 
-ownerRoutes.delete(
-	"/admins/:userId",
-	companyRoleRequestController.removeAdminFromCompany,
-);
 ownerRoutes.delete("/:id", companyController.deleteCompany);
 
 router.use("/:id", ownerRoutes);
