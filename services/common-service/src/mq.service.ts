@@ -1,51 +1,58 @@
+import { handleEmail, handleEmailDLX, handlePost, handlePostDLX } from "./handler.service";
 import mqManager from "./mq.adapter";
 export const QUEUES = {
     EMAIL: "email_queue",
+    POST: "post_queue",
 } as const;
 
 export type QueueName = typeof QUEUES[keyof typeof QUEUES];
 // ============================================
-// EMAIL HANDLER (Main)
+// MESSAGE TYPE
 // ============================================
 
-const handleEmail = async (message: string): Promise<void> => {
-    console.log("📧 Processing email:");
+export interface EmailMessage {
+    to: string | string[];
+    subject: string;
+    body: string;
+    attachments?: string[];
+    cc?: string[];
+    bcc?: string[];
+}
+
+// ============================================
+// REGISTER QUEUE
+// ============================================
+export async function registerAllQueue(): Promise<void> {
     try {
-        // TODO: Thay bằng logic gửi email thật
-        // await emailService.send(message);
-        console.log("hehe", message);
+        console.log("📋 Registering email queue...");
 
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await mqManager.connect();
 
+        await mqManager.assertQueue(QUEUES.EMAIL, {
+            durable: true,
+            maxRetries: 3,          // Retry 3 lần
+            retryDelay: 5000,       // Đợi 5 giây giữa mỗi lần retry
+            enableDLX: true,        // Bật DLX cho failed messages
+        });
 
-        if (true) {
-            throw new Error("Email service temporarily unavailable");
-        }
+        await mqManager.assertQueue(QUEUES.POST, {
+            durable: true,
+            maxRetries: 5,          // Retry 3 lần
+            retryDelay: 10000,       // Đợi 5 giây giữa mỗi lần retry
+            enableDLX: true,        // Bật DLX cho failed messages
+        });
 
-        console.log("✅ Email sent successfully");
+        console.log("✅ All queue registered successfully");
     } catch (error) {
-        console.error("❌ Email sending failed:", error);
-        throw error; // Trigger retry mechanism
+        console.error("❌ Failed to register email queue:", error);
+        throw error;
     }
-};
+}
 
 // ============================================
 // EMAIL DLX HANDLER (Failed Messages)
 // ============================================
 
-const handleEmailDLX = async (message: string): Promise<void> => {
-    console.log("💀 Handling FAILED email (DLX):");
-    console.log("hehe", message);
-    // TODO: Xử lý email failed sau khi retry hết
-    // - Gửi alert cho admin
-    // - Log vào database
-    // - Gửi vào monitoring system (Sentry, Datadog, etc.)
-    // - Lưu vào bảng failed_emails để review sau
-
-    console.log("📧 Admin alert sent about failed email");
-    console.log("💾 Failed email logged to database");
-};
 
 // ============================================
 // SETUP CONSUMERS
@@ -54,11 +61,9 @@ const handleEmailDLX = async (message: string): Promise<void> => {
 export async function setupEmailConsumer(): Promise<void> {
     try {
         console.log("👂 Setting up email consumer...");
-
         await mqManager.consume(QUEUES.EMAIL, handleEmail, {
             maxRetries: 3,
         });
-
         console.log("✅ Email consumer started (with 3 retries)");
     } catch (error) {
         console.error("❌ Failed to setup email consumer:", error);
@@ -69,12 +74,35 @@ export async function setupEmailConsumer(): Promise<void> {
 export async function setupEmailDLXConsumer(): Promise<void> {
     try {
         console.log("💀 Setting up email DLX consumer...");
-
         await mqManager.consumeDLX(QUEUES.EMAIL, handleEmailDLX);
-
         console.log("✅ Email DLX consumer started");
     } catch (error) {
         console.error("❌ Failed to setup email DLX consumer:", error);
+        throw error;
+    }
+}
+
+
+export async function setupPostConsumer(): Promise<void> {
+    try {
+        console.log("👂 Setting up post consumer...");
+        await mqManager.consume(QUEUES.POST, handlePost, {
+            maxRetries: 5,
+        });
+        console.log("✅ post consumer started (with 5 retries)");
+    } catch (error) {
+        console.error("❌ Failed to setup post consumer:", error);
+        throw error;
+    }
+}
+
+export async function setupPostDLXConsumer(): Promise<void> {
+    try {
+        console.log("💀 Setting up post DLX consumer...");
+        await mqManager.consumeDLX(QUEUES.EMAIL, handlePostDLX);
+        console.log("✅ Email DLX consumer started");
+    } catch (error) {
+        console.error("❌ Failed to setup post DLX consumer:", error);
         throw error;
     }
 }
@@ -83,6 +111,8 @@ export async function setupAllConsumers(): Promise<void> {
     try {
         await setupEmailConsumer();
         await setupEmailDLXConsumer();
+        await setupPostConsumer();
+        await setupPostDLXConsumer();
     } catch (error) {
         console.error("❌ Failed to setup consumers:", error);
         throw error;

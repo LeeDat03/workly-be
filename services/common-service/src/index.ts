@@ -1,12 +1,19 @@
 // index.ts
 
+import { DatabaseAdapter } from "./db.adapter";
+import elasticManage from "./elastic.adapter";
 import mqManager from "./mq.adapter";
-import { setupAllConsumers } from "./mq.service";
+import { registerAllQueue, setupAllConsumers } from "./mq.service";
 
 async function start() {
+    const databaseInstance = DatabaseAdapter.getInstance();
+
     try {
         await mqManager.connect();
-        await setupAllConsumers()
+        await registerAllQueue();
+        await setupAllConsumers();
+        databaseInstance.connect();
+        elasticManage.testConnection();
     } catch (error) {
         console.error("❌ Failed to start service:", error);
         process.exit(1);

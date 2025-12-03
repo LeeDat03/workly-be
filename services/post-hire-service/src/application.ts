@@ -8,7 +8,6 @@ import { initializeIndexModel } from './api/model/model';
 import { RedisAdapter } from '@/common/infrastructure/redis.adapter';
 import { WorkerServer } from './worker/server';
 import RabbitMQConnection from './common/infrastructure/mq.adapter';
-import { registerAllQueue } from './api/service/mq.service';
 import ElasticsearchAdapter from './common/infrastructure/elasticsearch.adapter';
 
 export class Application {
@@ -20,7 +19,6 @@ export class Application {
         await this.databaseInstance.connect();
         await RedisAdapter.connect();
         await RabbitMQConnection.connect();
-        await registerAllQueue()
         await ContainerManager.initializeAll();
         ElasticsearchAdapter.connect();
         await ElasticsearchAdapter.testConnection();

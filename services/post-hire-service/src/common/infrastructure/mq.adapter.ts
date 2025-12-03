@@ -18,7 +18,6 @@ class RabbitMQManager {
     private readonly RETRY_EXCHANGE = "retry.exchange";
     private readonly DLX_EXCHANGE = "dlx.exchange";
     private readonly DLX_QUEUE_SUFFIX = ".dlx";
-    private readonly RETRY_QUEUE_SUFFIX = ".retry";
 
     async connect(): Promise<void> {
         if (this.connected && this.connection) return;
@@ -63,86 +62,35 @@ class RabbitMQManager {
 
     private async setupExchanges(): Promise<void> {
         const channel = await this.getChannel("_system");
-
-        // Retry exchange (direct)
         await channel.assertExchange(this.RETRY_EXCHANGE, "direct", { durable: true });
-
-        // DLX exchange (direct)
         await channel.assertExchange(this.DLX_EXCHANGE, "direct", { durable: true });
-
-        console.log("🔄 Retry & DLX exchanges created");
     }
 
     async getChannel(queueName: string): Promise<Channel> {
         if (!this.connection) {
             await this.connect();
         }
-
         if (this.channels.has(queueName)) {
             return this.channels.get(queueName)!;
         }
-
         try {
             const channel = await this.connection.createChannel();
             console.log(`🛸 Created RabbitMQ Channel for "${queueName}"`);
-
             await channel.prefetch(10);
-
             channel.on("error", (err) => {
                 console.error(`❌ Channel "${queueName}" error:`, err);
                 this.channels.delete(queueName);
             });
-
             channel.on("close", () => {
                 console.log(`🔌 Channel "${queueName}" closed`);
                 this.channels.delete(queueName);
             });
-
             this.channels.set(queueName, channel);
             return channel;
         } catch (error) {
             console.error(`❌ Failed to create channel for "${queueName}":`, error);
             throw error;
         }
-    }
-
-    async assertQueue(queue: string, options: QueueOptions = {}): Promise<void> {
-        const {
-            durable = true,
-            maxRetries = 3,
-            retryDelay = 5000,
-            enableDLX = true
-        } = options;
-
-        const channel = await this.getChannel(queue);
-
-        if (enableDLX) {
-            const dlxQueue = queue + this.DLX_QUEUE_SUFFIX;
-            await channel.assertQueue(dlxQueue, { durable: true });
-            await channel.bindQueue(dlxQueue, this.DLX_EXCHANGE, queue);
-            console.log(`💀 DLX Queue "${dlxQueue}" created`);
-        }
-
-        // 2. Setup Retry Queue (nơi message chờ retry)
-        const retryQueue = queue + this.RETRY_QUEUE_SUFFIX;
-        await channel.assertQueue(retryQueue, {
-            durable: true,
-            deadLetterExchange: "", // Route về main queue
-            deadLetterRoutingKey: queue,
-            messageTtl: retryDelay // Sau X ms thì tự động gửi về main queue
-        });
-        await channel.bindQueue(retryQueue, this.RETRY_EXCHANGE, queue);
-        console.log(`🔄 Retry Queue "${retryQueue}" created (delay: ${retryDelay}ms)`);
-
-        // 3. Setup Main Queue với DLX
-        const queueOptions: any = {
-            durable,
-            deadLetterExchange: this.DLX_EXCHANGE,
-            deadLetterRoutingKey: queue
-        };
-
-        await channel.assertQueue(queue, queueOptions);
-        console.log(`📬 Queue "${queue}" ready with retry (max: ${maxRetries}) & DLX`);
     }
 
     async sendToQueue(queue: string, message: any): Promise<void> {
@@ -158,14 +106,12 @@ class RabbitMQManager {
                     }
                 }
             );
-
             if (!sent) {
                 console.warn(`⚠️ Message buffer is full for "${queue}", waiting...`);
                 await new Promise(resolve => {
                     channel.once("drain", resolve);
                 });
             }
-
             console.log(`✉️ Message sent to queue "${queue}"`);
         } catch (error) {
             console.error(`❌ Failed to send message to "${queue}":`, error);
@@ -179,37 +125,26 @@ class RabbitMQManager {
         options: QueueOptions = {}
     ): Promise<void> {
         const { maxRetries = 3 } = options;
-
         try {
             const channel = await this.getChannel(queue);
-
             await channel.consume(
                 queue,
                 async (msg: ConsumeMessage | null) => {
                     if (!msg) return;
-
                     const retryCount = msg.properties.headers?.["x-retry-count"] || 0;
-
                     try {
                         const content = JSON.parse(msg.content.toString());
                         console.log(`📨 Received message from "${queue}" (retry: ${retryCount}/${maxRetries})`);
-
                         await handler(content);
-
                         channel.ack(msg);
                         console.log(`✅ Message processed successfully from "${queue}"`);
-
                     } catch (error) {
                         console.error(`❌ Error processing message from "${queue}":`, error);
-
-                        // Kiểm tra số lần retry
                         if (retryCount < maxRetries) {
-                            // Retry: Gửi vào retry queue
                             await this.retryMessage(queue, msg, retryCount + 1);
-                            channel.ack(msg); // Ack message gốc
+                            channel.ack(msg);
                             console.log(`🔄 Message sent to retry queue (attempt ${retryCount + 1}/${maxRetries})`);
                         } else {
-                            // Đã hết retry: Nack để gửi vào DLX
                             channel.nack(msg, false, false);
                             console.log(`💀 Message moved to DLX after ${maxRetries} retries`);
                         }
@@ -227,7 +162,6 @@ class RabbitMQManager {
 
     private async retryMessage(queue: string, msg: ConsumeMessage, retryCount: number): Promise<void> {
         const channel = await this.getChannel(queue);
-
         // Gửi message vào retry exchange với retry count tăng lên
         channel.publish(
             this.RETRY_EXCHANGE,
@@ -245,11 +179,9 @@ class RabbitMQManager {
         );
     }
 
-    // Consumer cho DLX queue để xử lý failed messages
     async consumeDLX(queue: string, handler: (message: any) => Promise<void>): Promise<void> {
         const dlxQueue = queue + this.DLX_QUEUE_SUFFIX;
         const channel = await this.getChannel(dlxQueue);
-
         await channel.consume(
             dlxQueue,
             async (msg: ConsumeMessage | null) => {
@@ -258,44 +190,16 @@ class RabbitMQManager {
                 try {
                     const content = JSON.parse(msg.content.toString());
                     const retryCount = msg.properties.headers?.["x-retry-count"] || 0;
-
                     console.log(`💀 Processing DLX message from "${queue}" (failed after ${retryCount} retries)`);
-
                     await handler(content);
                     channel.ack(msg);
 
-                    console.log(`✅ DLX message processed`);
                 } catch (error) {
                     console.error(`❌ Error processing DLX message:`, error);
                     channel.nack(msg, false, false);
                 }
             }
         );
-
-        console.log(`💀 Listening to DLX queue "${dlxQueue}"`);
-    }
-
-    async close(): Promise<void> {
-        try {
-            for (const [name, channel] of this.channels.entries()) {
-                try {
-                    await channel.close();
-                    console.log(`✓ Channel "${name}" closed`);
-                } catch (error) {
-                    console.error(`❌ Error closing channel "${name}":`, error);
-                }
-            }
-            this.channels.clear();
-
-            if (this.connection) {
-                await this.connection.close();
-            }
-
-            this.connected = false;
-            console.log("👋 RabbitMQ connection closed");
-        } catch (error) {
-            console.error("❌ Error closing connection:", error);
-        }
     }
 
     isConnected(): boolean {

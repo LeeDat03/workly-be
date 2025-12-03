@@ -33,6 +33,8 @@ import { QueueService } from "@/api/service/queue.service";
 import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 import { ICommentRepository } from "../repository/comment.repository";
 import { ILikeRepository } from "../repository/like.repository";
+import mqManager from "@/common/infrastructure/mq.adapter";
+import { QUEUES, sendEventAddPost } from "./mq.service";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -78,6 +80,9 @@ export class PostService implements IPostService {
 		post: CreatePostDTO
 	): Promise<InsertOneResult> => {
 		const result = await this.postRepository.createPost(post);
+		if (result.acknowledged && result.insertedId) {
+			sendEventAddPost({ type: "ADD", postId: result.insertedId })
+		}
 		return result;
 	};
 

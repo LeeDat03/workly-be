@@ -1,7 +1,6 @@
 import { MongoClient, Db, Collection, Document } from "mongodb";
 import logger from "@/common/logger";
 import { MONGODB_NAME, MONGODB_URL } from "@/common/enviroment";
-import { Post } from "@/api/model/post.model";
 
 export class DatabaseAdapter {
 	private static instance: DatabaseAdapter;
