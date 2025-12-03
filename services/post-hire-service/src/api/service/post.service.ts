@@ -33,6 +33,8 @@ import { QueueService } from "@/api/service/queue.service";
 import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 import { ICommentRepository } from "../repository/comment.repository";
 import { ILikeRepository } from "../repository/like.repository";
+import mqManager from "@/common/infrastructure/mq.adapter";
+import { QUEUES, sendEventAddPost } from "./mq.service";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -78,13 +80,9 @@ export class PostService implements IPostService {
 		post: CreatePostDTO
 	): Promise<InsertOneResult> => {
 		const result = await this.postRepository.createPost(post);
-		//add in to post_job
-		// const queue = await QueueService.getQueue<JobPost>(JOB_NAME);
-		// queue.add(
-		// 	{ postId: result.insertedId },
-		// 	{ removeOnComplete: true, removeOnFail: true }
-		// );
-
+		if (result.acknowledged && result.insertedId) {
+			sendEventAddPost({ type: "ADD", postId: result.insertedId })
+		}
 		return result;
 	};
 
@@ -98,9 +96,7 @@ export class PostService implements IPostService {
 				status: StatusCode.BAD_REQUEST,
 			});
 		}
-		// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}`;
 		const result = await this.postRepository.updatePost(updatePost);
-		// await RedisAdapter.deleteKeysWithPrefix(cacheKey);
 
 		// delete old file
 		if (updatePost.media_url_delete && updatePost.media_url_delete.length > 0) {
@@ -143,8 +139,6 @@ export class PostService implements IPostService {
 			input,
 			userId
 		);
-
-
 		const postIds = result.data.map((post) => post._id.toString());
 
 		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
@@ -164,38 +158,6 @@ export class PostService implements IPostService {
 			data: mappedData,
 		};
 	};
-	// public getAllPost = async (
-	// 	input: IPaginationInput,
-	// 	userId: string
-	// ): Promise<PagingList<PostResponse>> => {
-	// 	// const cacheKey = `${HOME_ACCOUNT_POST_KEY}${userId}${input.page}`;
-	// 	let result: PagingList<WithId<Document>>;
-	// 	// result = (await RedisAdapter.get(cacheKey)) as PagingList<
-	// 	// 	WithId<Document>
-	// 	// >;
-	// 	// console.log("map1", result.data);
-	// 	result = await this.postRepository.getPagingPostByUserId(
-	// 		input,
-	// 		userId
-	// 	);
-	// 	// if (!result) {
-	// 	// 	result = await this.postRepository.getPagingPostByUserId(
-	// 	// 		input,
-	// 	// 		userId
-	// 	// 	);
-	// 	// 	console.log("map", result.data);
-
-	// 	// 	await RedisAdapter.set(cacheKey, result, 36000);
-	// 	// }
-	// 	const mappedData = result.data.map((item) => {
-	// 		return mapToPostResponse(item);
-	// 	})
-
-	// 	return {
-	// 		...result,
-	// 		data: mappedData,
-	// 	};
-	// };
 
 	public getAllFileMedia = async (): Promise<string[]> => {
 		const posts = await this.postRepository.getAll();

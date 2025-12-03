@@ -7,15 +7,20 @@ import {
 	createComment,
 } from "@/api/validation/comment.validator";
 import { isAuthenticated } from "../middlewares/authentication.middleware";
+import mqManager from "@/common/infrastructure/mq.adapter";
+import { QUEUES } from "../service/mq.service";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
+
+	router.get("/test", (req, res) => {
+		console.log("hehe");
+		mqManager.sendToQueue(QUEUES.EMAIL, { hehe: "dang test" })
+		res.send({ a: "abc" });
+	});
 	router.use(isAuthenticated)
 	const postController = ControllerContainer.getPostController();
 
-	router.get("/test", (req, res) => {
-		res.send({ a: "abc" });
-	});
 
 	router.post(
 		"/delete",
