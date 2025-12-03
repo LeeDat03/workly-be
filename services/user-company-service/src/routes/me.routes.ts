@@ -63,6 +63,6 @@ router.patch(
 	validate(changePasswordSchema),
 	userController.changeMyPassword,
 );
-router.delete("/me", userController.deleteMe);
+router.delete("/", userController.deleteMe);
 
 export default router;
