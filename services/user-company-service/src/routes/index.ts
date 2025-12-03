@@ -8,6 +8,7 @@ import skillRoutes from "./skill.routes";
 import schoolRoutes from "./school.routes";
 import locationRoutes from "./location.routes";
 import internalRoutes from "./internal.routes";
+import recommendRoutes from "./recommend.routes";
 
 const router = Router();
 
@@ -19,6 +20,7 @@ router.use("/industries", industryRoutes);
 router.use("/skills", skillRoutes);
 router.use("/schools", schoolRoutes);
 router.use("/locations", locationRoutes);
+router.use("/recommend", recommendRoutes);
 
 // Service - Service communicate
 router.use("/internals", internalRoutes);
