@@ -3,3 +3,4 @@ export { globalErrorHandler } from "./errorHandler";
 export * from "./isAuthenticated";
 export * from "./optionalAuth";
 export * from "./isCompanyAdmin";
+export * from "./isCompanyAdminOrSelf";
