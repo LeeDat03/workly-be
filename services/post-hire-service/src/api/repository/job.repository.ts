@@ -33,11 +33,12 @@ export class JobRepository implements IJobRepository {
                 updateFields[key] = value;
             }
         }
+        updateFields.endDate = TimeHelper.parseStartOfDayDate(input.endDate);
 
         if (Object.keys(updateFields).length === 0) {
             return false;
         }
-
+        endDate: TimeHelper.parseStartOfDayDate(input.endDate)
         const result = await this.jobCollection.job.updateOne(
             { _id: new ObjectId(jobId as string), companyId: companyId },
             { $set: updateFields }

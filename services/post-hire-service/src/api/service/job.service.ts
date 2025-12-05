@@ -6,6 +6,7 @@ import { APIError } from "@/common/error/api.error";
 import { ICandidateRepository } from "../repository/candidate.repository";
 import { ErrorCode, StatusCode } from "@/common/errors";
 import { Candidate } from "../model/candidate.model";
+import { sendEventJob } from "./mq.service";
 
 export interface IJobService {
     getAllJob(input: JobSearch): Promise<PagingList<Job>>
@@ -50,10 +51,14 @@ export class JobService implements IJobService {
         if (!result) {
             throw new APIError({ message: "updateJob.fail" })
         }
+        sendEventJob({ type: "UPDATE", id: input.jobId })
         return result
     }
     async createJob(input: any): Promise<InsertOneResult> {
         const result = await this.jobRepository.createJob(input);
+        if (result.acknowledged && result.insertedId) {
+            sendEventJob({ type: "ADD", id: result.insertedId })
+        }
         return result;
     }
     async getAllJob(input: JobSearch): Promise<PagingList<Job>> {
@@ -65,6 +70,7 @@ export class JobService implements IJobService {
         if (!result) {
             throw new APIError({ message: "deletePost.Fail" })
         }
+        sendEventJob({ type: "DELETE", id: input.jobId })
         return result;
     }
     async getPostJobDetail(input: GetPostJobDetailInput): Promise<Job> {

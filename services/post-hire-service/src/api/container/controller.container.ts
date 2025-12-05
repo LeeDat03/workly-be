@@ -5,6 +5,7 @@ import { LikeController } from "../controller/like.controller";
 import { FeedController } from "../controller/feed.controller";
 import { RepositoryContainer } from "@/api/container/repository.container";
 import { JobController } from "../controller/job.controller";
+import { SearchController } from "../controller/search.controller";
 
 export class ControllerContainer {
 	private static postController: PostController;
@@ -12,6 +13,7 @@ export class ControllerContainer {
 	private static likeController: LikeController;
 	private static jobController: JobController;
 	private static feedController: FeedController;
+	private static searchController: SearchController;
 	private static isInitialized = false;
 
 	static async initialize(): Promise<void> {
@@ -37,10 +39,23 @@ export class ControllerContainer {
 		this.feedController = new FeedController(
 			ServiceContainer.getPostService()
 		);
+		this.searchController = new SearchController(
+			ServiceContainer.getSearchService()
+		)
 		this.isInitialized = true;
 
 		console.log("✅ ControllerContainer initialized successfully");
 	}
+
+	static getSearchController(): SearchController {
+		if (!this.searchController) {
+			this.searchController = new SearchController(
+				ServiceContainer.getSearchService()
+			);
+		}
+		return this.searchController;
+	}
+
 	static getPostController(): PostController {
 		if (!this.postController) {
 			this.postController = new PostController(

@@ -113,6 +113,7 @@ export class PostRepository implements IPostRepository {
 					{ session }
 				);
 			}
+			return result
 		});
 	}
 

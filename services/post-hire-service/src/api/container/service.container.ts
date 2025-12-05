@@ -3,12 +3,14 @@ import { RepositoryContainer } from "@/api/container/repository.container";
 import { CommentService, ICommentService } from "@/api/service/comment.service";
 import { ILikeService, LikeService } from "../service/like.service";
 import { IJobService, JobService } from "../service/job.service";
+import { ISearchService, SearchService } from "../service/search.service";
 
 export class ServiceContainer {
     private static postService: IPostService;
     private static commentService: ICommentService;
     private static likeService: ILikeService;
     private static jobService: IJobService;
+    private static searchService: ISearchService;
     private static isInitialized = false;
 
     static async initialize(): Promise<void> {
@@ -36,9 +38,17 @@ export class ServiceContainer {
             RepositoryContainer.getJobRepository(),
             RepositoryContainer.getCandidateRepository()
         )
+        this.searchService = new SearchService();
         this.isInitialized = true;
 
         console.log('✅ ServiceContainer initialized successfully');
+    }
+
+    static getSearchService(): ISearchService {
+        if (!this.searchService) {
+            this.searchService = new SearchService()
+        }
+        return this.searchService;
     }
 
     static getPostService(): IPostService {
