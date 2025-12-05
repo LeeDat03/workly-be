@@ -8,6 +8,7 @@ import { ObjectId } from "mongodb";
 export const QUEUES = {
     EMAIL: "email_queue",
     POST: "post_queue",
+    UC_JOB: "uc_job_queue", // for create/update jobs node in user company service
 } as const;
 
 export interface PostEvent {
@@ -30,6 +31,21 @@ export async function sendEventAddPost(data: PostEvent) {
         await mqManager.sendToQueue(QUEUES.POST, data);
     } catch (error) {
         console.error("❌ Failed to queue post:", error);
+        throw error;
+    }
+}
+
+export async function sendJobToUCQueue(message: {
+    jobId: string;
+    companyId: string;
+    skills?: string[];
+    action: "created" | "updated" | "deleted";
+    timestamp: string;
+}): Promise<void> {
+    try {
+        await mqManager.sendToQueue(QUEUES.UC_JOB, message);
+    } catch (error) {
+        console.error("❌ Failed to send job message to UC queue:", error);
         throw error;
     }
 }
