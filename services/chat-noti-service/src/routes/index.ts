@@ -2,6 +2,7 @@ import { Router } from "express";
 import conversationRoutes from "./conversation.routes";
 import messageRoutes from "./message.routes";
 import { userRoutes } from "./user.routes";
+import internalRoutes from "./internal.routes";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.get("/health", (req, res) => {
 router.use("/conversations", conversationRoutes);
 router.use("/messages", messageRoutes);
 router.use("/users", userRoutes);
+router.use("/internals", internalRoutes);
 
 export default router;
