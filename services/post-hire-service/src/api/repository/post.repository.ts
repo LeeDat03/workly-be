@@ -31,6 +31,9 @@ export interface IPostRepository {
 		input: IPaginationInput,
 		userId: string
 	): Promise<PagingList<WithId<Document>>>;
+	getPublicFeed(
+		input: IPaginationInput
+	): Promise<PagingList<WithId<Document>>>;
 	deletePost(post: DeletePost): Promise<boolean>;
 	getPostsByAuthorIds(
 		input: IPaginationInput,
@@ -153,6 +156,33 @@ export class PostRepository implements IPostRepository {
 				.limit(size)
 				.toArray(),
 			this.postCollection.post.countDocuments(filter),
+		]);
+
+		return {
+			data,
+			pagination: {
+				page,
+				size,
+				total,
+				totalPages: Math.ceil(total / size),
+			},
+		};
+	}
+	public async getPublicFeed(
+		input: IPaginationInput
+	): Promise<PagingList<WithId<Document>>> {
+		const page = Number(input.page) || 1;
+		const size = Number(input.size) || 10;
+		const skip = (page - 1) * size;
+
+		const [data, total] = await Promise.all([
+			this.postCollection.post
+				.find({})
+				.sort({ created_at: -1 })
+				.skip(skip)
+				.limit(size)
+				.toArray(),
+			this.postCollection.post.countDocuments({}),
 		]);
 
 		return {

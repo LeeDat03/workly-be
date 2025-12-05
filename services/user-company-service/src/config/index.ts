@@ -41,4 +41,8 @@ export const config = {
 		name: "workly_token",
 		maxAge: 24 * 60 * 60 * 1000 * 90,
 	},
+
+	rabbitmq: {
+		uri: process.env.RABBITMQ_URL || "amqp://admin:admin@localhost:5672",
+	},
 } as const;

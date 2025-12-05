@@ -41,6 +41,9 @@ export interface IPostService {
 	getAllFileMedia(): Promise<string[]>;
 	updatePost(updatePost: UpdatePostDTO): Promise<UpdateResult>;
 	getPostDetail(id: ObjectId): Promise<PostResponse>;
+	getPublicFeed(
+		input: IPaginationInput,
+	): Promise<PagingList<PostResponse>>;
 	getAllPost(
 		input: IPaginationInput,
 		userId: string,
@@ -132,6 +135,29 @@ export class PostService implements IPostService {
 		}
 
 		return mapToPostResponse(post);
+	};
+	public getPublicFeed = async (
+		input: IPaginationInput,
+	): Promise<PagingList<PostResponse>> => {
+		const result = await this.postRepository.getPublicFeed(input);
+
+		const postIds = result.data.map((post) => post._id.toString());
+
+		const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
+		const likePosts = await this.likeRepository.getAllLikeByListPost(postIds);
+		const mappedData = result.data.map((item) => {
+			const postResponse = mapToPostResponse(item);
+			return {
+				...postResponse,
+				totalComments: commentCounts[item._id.toString()] || 0,
+				totalLikes: likePosts[item._id.toString()] || [],
+			};
+		});
+
+		return {
+			...result,
+			data: mappedData,
+		};
 	};
 	public getAllPost = async (
 		input: IPaginationInput,

@@ -3,6 +3,7 @@ import logger from "@/common/logger";
 import { IJobService } from "../service/job.service";
 import { JobSearch } from "../model/common.model";
 import { GetPostJobDetailInput } from "../model/job.model";
+import { sendJobToUCQueue } from "../service/mq.service";
 
 export class JobController {
     private jobService: IJobService;
@@ -36,6 +37,15 @@ export class JobController {
             const data = await this.jobService.createJob(
                 input
             );
+            if (data.acknowledged && data.insertedId) {
+                sendJobToUCQueue({
+                    jobId: data.insertedId.toString(),
+                    companyId: input.companyId,
+                    skills: input.skills,
+                    action: "created",
+                    timestamp: new Date().toISOString()
+                })
+            }
             res.sendJson(data)
         } catch (error) {
             logger.error(`JobController.create: `, error);
@@ -53,6 +63,12 @@ export class JobController {
             const data = await this.jobService.deleteJobPost(
                 input
             );
+            sendJobToUCQueue({
+                jobId: input.jobId,
+                companyId: input.companyId,
+                action: "deleted",
+                timestamp: new Date().toISOString()
+            })
             res.sendJson(data)
         } catch (error) {
             logger.error(`JobController.create: `, error);
@@ -83,6 +99,13 @@ export class JobController {
         try {
             const input = req.body;
             const data = await this.jobService.updateCompanyJob(input);
+            sendJobToUCQueue({
+                jobId: input.jobId,
+                companyId: input.companyId,
+                skills: input.skills,
+                action: "updated",
+                timestamp: new Date().toISOString()
+            })
             res.sendJson(data)
         } catch (error) {
             logger.error(`getPostJobDetail.create: `, error);

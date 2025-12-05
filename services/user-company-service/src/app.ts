@@ -8,6 +8,10 @@ import { config } from "./config";
 import routes from "./routes";
 import logger from "./utils/logger";
 import { globalErrorHandler } from "./middlewares/errorHandler";
+import {
+	registerAllQueues,
+	startConsumingQueues,
+} from "./infrastructure/queue/setup";
 
 class App {
 	public app: Application;
@@ -17,7 +21,18 @@ class App {
 		this.initializeMiddlewares();
 		this.initializeRoutes();
 		this.initializeErrorHandling();
+		this.initializeQueues();
 		logger.info("App initialized");
+	}
+
+	private async initializeQueues(): Promise<void> {
+		try {
+			await registerAllQueues();
+			await startConsumingQueues();
+		} catch (error) {
+			logger.error("❌ Failed to initialize RabbitMQ queues:", error);
+			// Don't throw - let the app start even if MQ fails
+		}
 	}
 
 	private initializeMiddlewares(): void {

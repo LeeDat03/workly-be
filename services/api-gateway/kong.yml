@@ -23,6 +23,7 @@ routes:
           - /api/v1/skills
           - /api/v1/schools
           - /api/v1/locations
+          - /api/v1/recommend
           - /api/v1/internals
       strip_path: false
 

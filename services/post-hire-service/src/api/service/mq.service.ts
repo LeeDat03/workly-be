@@ -9,7 +9,8 @@ import { handleEmail, handleEmailDLX, handleJob, handleJobDLX, handlePost, handl
 export const QUEUES = {
     EMAIL: "email_queue",
     POST: "post_queue",
-    JOB: "job_queue"
+    JOB: "job_queue",
+    UC_JOB: "uc_job_queue", // for create/update jobs node in user company service
 } as const;
 
 export interface BaseEvent {
@@ -189,6 +190,20 @@ export async function setupAllConsumers(): Promise<void> {
         await setupJobDLXConsumer();
     } catch (error) {
         console.error("❌ Failed to setup consumers:", error);
+    }
+}
+export async function sendJobToUCQueue(message: {
+    jobId: string;
+    companyId: string;
+    skills?: string[];
+    action: "created" | "updated" | "deleted";
+    timestamp: string;
+}): Promise<void> {
+    try {
+        await mqManager.sendToQueue(QUEUES.UC_JOB, message);
+    } catch (error) {
+        console.error("❌ Failed to send job message to UC queue:", error);
         throw error;
     }
 }
+

@@ -1,6 +1,7 @@
 import app from "./app";
 import { config } from "./config";
 import { database } from "./config/database";
+import { closeQueues } from "./infrastructure/queue/setup";
 import { initModels } from "./models";
 import logger from "./utils/logger";
 
@@ -16,6 +17,7 @@ const startServer = async () => {
 		const gracefulShutdown = async (signal: string) => {
 			logger.info(`${signal} received. Closing server gracefully...`);
 			server.close(async () => {
+				await closeQueues();
 				await database.disconnect();
 				process.exit(0);
 			});
