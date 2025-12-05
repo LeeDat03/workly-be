@@ -119,6 +119,79 @@ const getFeedContext = async (
 	}
 };
 
+const getJobContext = async (
+	req: Request,
+	res: Response,
+	next: NextFunction,
+) => {
+	try {
+		const { userId } = req.params;
+		const page = Number(req.query.page) || 1;
+		const size = Number(req.query.size) || 10;
+
+		if (!userId) {
+			throw new BadRequestError("User ID is required");
+		}
+
+		const skip = (page - 1) * size;
+		const limit = size + 1;
+
+		const neogma = database.getNeogma();
+
+		const query = `
+		MATCH (u:User {userId: $userId})
+
+		MATCH (j:Job)-[:POSTED_BY]->(c:Company)
+		WHERE j.endDate >= date()
+
+		WITH u, j, c,
+			CASE WHEN EXISTS { MATCH (u)-[:FOLLOWING_COMPANY]->(c) } THEN 10 ELSE 0 END AS followScore
+
+		OPTIONAL MATCH (u)-[:HAS_SKILL]->(:Skill)<-[:REQUIRED_SKILL]-(j)
+		WITH j, c, followScore, count(*) AS matchingSkills
+
+		WITH j, c, followScore + matchingSkills AS totalScore
+		RETURN j.jobId AS jobId, c, totalScore
+		ORDER BY totalScore DESC
+		SKIP $skip
+		LIMIT $limit
+	`;
+
+		const result = await neogma.queryRunner.run(query, {
+			userId,
+			skip: int(skip),
+			limit: int(limit),
+		});
+
+		const hasNextPage = result.records.length > limit;
+		const jobs = result.records.slice(0, limit).map((record) => {
+			const company = record.get("c").properties;
+			return {
+				jobId: record.get("jobId"),
+				company: {
+					id: company.companyId,
+					name: company.name,
+					imageUrl: company.logoUrl,
+				},
+				score: Number(record.get("totalScore")),
+			};
+		});
+
+		return res.status(200).json({
+			success: true,
+			data: jobs,
+			pagination: {
+				page,
+				limit: limit - 1,
+				hasNextPage,
+			},
+		});
+	} catch (error) {
+		next(error);
+	}
+};
+
 export default {
 	getFeedContext,
+	getJobContext,
 };

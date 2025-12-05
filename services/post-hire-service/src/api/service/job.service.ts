@@ -1,5 +1,5 @@
 import { InsertOneResult } from "mongodb/mongodb";
-import { JobSearch, PagingList } from "../model/common.model";
+import { IPaginationInput, JobSearch, PagingList } from "../model/common.model";
 import { GetPostJobDetailInput, Job } from "../model/job.model";
 import { IJobRepository } from "../repository/job.repository";
 import { APIError } from "@/common/error/api.error";
@@ -17,6 +17,8 @@ export interface IJobService {
     applyJob(input: any): Promise<InsertOneResult>
     getCandidateByStatus(status: string, jobId: string, page: number, size: number): Promise<PagingList<Candidate>>
     feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean>
+    getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>>
+    getJobsByIds(jobIds: string[]): Promise<Job[]>
 }
 
 export class JobService implements IJobService {
@@ -79,5 +81,11 @@ export class JobService implements IJobService {
     }
     async getCandidateByStatus(status: string, jobId: string, page: number, size: number): Promise<PagingList<Candidate>> {
         return await this.candidateRepository.getCandidateByStatus(status, jobId, page, size)
+    }
+    async getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>> {
+        return await this.jobRepository.getPublicJobFeed(input)
+    }
+    async getJobsByIds(jobIds: string[]): Promise<Job[]> {
+        return await this.jobRepository.getJobsByIds(jobIds)
     }
 }
