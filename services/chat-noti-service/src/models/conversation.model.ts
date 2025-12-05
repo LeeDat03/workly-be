@@ -11,6 +11,7 @@ export interface IConversation extends Document {
 	lastMessage?: mongoose.Types.ObjectId;
 	lastMessageAt?: Date;
 	unreadCount: Map<string, number>; // participantId -> count
+	deletedParticipants: Map<string, Date>; // participantId -> deletedAt timestamp
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -54,6 +55,11 @@ const ConversationSchema = new Schema<IConversation>(
 			of: Number,
 			default: new Map(),
 		},
+		deletedParticipants: {
+			type: Map,
+			of: Date,
+			default: new Map(),
+		},
 	},
 	{
 		timestamps: true,
@@ -61,6 +67,14 @@ const ConversationSchema = new Schema<IConversation>(
 			virtuals: true,
 			transform: function (_doc: any, ret: any) {
 				delete ret.__v;
+				// Convert deletedParticipants Map to plain object for JSON serialization
+				if (ret.deletedParticipants && ret.deletedParticipants instanceof Map) {
+					const deletedObj: Record<string, string> = {};
+					ret.deletedParticipants.forEach((value: Date, key: string) => {
+						deletedObj[key] = value.toISOString();
+					});
+					ret.deletedParticipants = deletedObj;
+				}
 				return ret;
 			},
 		},
@@ -113,46 +127,11 @@ ConversationSchema.statics.findByParticipant = async function (
 		},
 	};
 
-	console.log(
-		"🔍 [findByParticipant] Query:",
-		JSON.stringify(query, null, 2)
-	);
-	console.log("🔍 [findByParticipant] Params:", {
-		participantId,
-		participantType,
-		page,
-		limit,
-	});
-
 	const results = await this.find(query)
 		.populate("lastMessage")
 		.sort({ lastMessageAt: -1 })
 		.skip((page - 1) * limit)
 		.limit(limit);
-
-	console.log("📨 [findByParticipant] Results count:", results.length);
-	if (results.length > 0) {
-		console.log(
-			"📨 [findByParticipant] First result participants:",
-			results[0].participants
-		);
-	}
-
-	// Also check what's actually in DB (for debugging)
-	const allConversations = await this.find({
-		"participants.id": participantId,
-	}).limit(5);
-	console.log(
-		"🗄️ [findByParticipant] All conversations with this ID (first 5):",
-		JSON.stringify(
-			allConversations.map((c: any) => ({
-				_id: c._id,
-				participants: c.participants,
-			})),
-			null,
-			2
-		)
-	);
 
 	return results;
 };

@@ -95,10 +95,15 @@ export class ConversationService {
 
 	/**
 	 * Xóa conversation
+	 * Logic:
+	 * - Nếu một trong hai participant đã bị xóa account → Hard delete (xóa vĩnh viễn)
+	 * - Nếu cả hai participant đều bị xóa → Hard delete (xóa vĩnh viễn)
+	 * - Nếu cả hai đều còn tồn tại → Frontend sẽ xử lý soft delete (ẩn ở client)
 	 */
 	async deleteConversation(
 		conversationId: string,
-		userId: string
+		userId: string,
+		hasDeletedParticipantFromRequest?: boolean
 	): Promise<void> {
 		const conversation = await Conversation.findById(conversationId);
 
@@ -117,11 +122,40 @@ export class ConversationService {
 			);
 		}
 
-		// Xóa tất cả messages của conversation
-		await Message.deleteMany({ conversationId });
+		// Kiểm tra xem có participant nào đã bị xóa không
+		// Ưu tiên sử dụng thông tin từ frontend request, nếu không có thì check trong DB
+		const deletedParticipantsMap =
+			conversation.deletedParticipants || new Map();
+		const deletedParticipantsArray = Array.from(
+			deletedParticipantsMap.entries()
+		);
 
-		// Xóa conversation
-		await Conversation.findByIdAndDelete(conversationId);
+		const hasDeletedParticipantInDB = conversation.participants.some((p) =>
+			deletedParticipantsMap.has(p.id)
+		);
+
+		// Sử dụng thông tin từ request body nếu có, nếu không thì dùng thông tin từ DB
+		const hasDeletedParticipant =
+			hasDeletedParticipantFromRequest !== undefined
+				? hasDeletedParticipantFromRequest
+				: hasDeletedParticipantInDB;
+
+		// TRƯỜNG HỢP 1: Có ít nhất một participant đã bị xóa → HARD DELETE
+		if (hasDeletedParticipant) {
+			// Xóa tất cả messages của conversation
+			await Message.deleteMany({ conversationId });
+
+			// Xóa conversation
+			await Conversation.findByIdAndDelete(conversationId);
+			return;
+		}
+
+		// TRƯỜNG HỢP 2: Cả hai đều còn tồn tại → Backend không làm gì
+		// Frontend sẽ xử lý soft delete (ẩn ở client)
+
+		// Nếu cả hai đều còn tồn tại, frontend sẽ xử lý soft delete
+		// Backend không làm gì, chỉ trả về success
+		// Frontend sẽ tự xử lý ẩn ở client-side
 	}
 
 	/**
@@ -153,5 +187,66 @@ export class ConversationService {
 		participantId: string
 	): Promise<void> {
 		await this.updateUnreadCount(conversationId, participantId, false);
+	}
+
+	/**
+	 * Đánh dấu participant đã bị xóa
+	 * Sau khi đánh dấu, kiểm tra và xóa conversations nếu cả hai participant đều bị xóa
+	 */
+	async markParticipantAsDeleted(
+		participantId: string,
+		participantType: ParticipantType
+	): Promise<void> {
+		// Tìm tất cả conversations có participant này
+		const conversations = await Conversation.find({
+			participants: {
+				$elemMatch: {
+					id: participantId,
+					type: participantType,
+				},
+			},
+		});
+
+		// Đánh dấu participant là deleted trong tất cả conversations
+		const updatePromises = conversations.map(async (conversation) => {
+			conversation.deletedParticipants.set(participantId, new Date());
+			return await conversation.save();
+		});
+
+		await Promise.all(updatePromises);
+
+		// Sau khi đánh dấu, kiểm tra và xóa conversations nếu cả hai đều bị xóa
+		await this.cleanupDeletedConversations();
+	}
+
+	/**
+	 * Xóa các conversations mà cả hai participant đều đã bị xóa
+	 * TRƯỜNG HỢP 3: Tự động cleanup khi cả hai đều bị xóa
+	 */
+	async cleanupDeletedConversations(): Promise<void> {
+		// Lấy tất cả conversations (vì Map không query được trực tiếp trong MongoDB)
+		const allConversations = await Conversation.find({});
+
+		// Kiểm tra từng conversation
+		for (const conversation of allConversations) {
+			// Bỏ qua nếu không có deleted participants
+			if (
+				!conversation.deletedParticipants ||
+				conversation.deletedParticipants.size === 0
+			) {
+				continue;
+			}
+
+			// Kiểm tra xem cả hai participant đều bị xóa không
+			const allParticipantsDeleted = conversation.participants.every(
+				(p) => conversation.deletedParticipants?.has(p.id)
+			);
+
+			if (allParticipantsDeleted) {
+				// Cả hai đều bị xóa → HARD DELETE
+				await Message.deleteMany({ conversationId: conversation._id });
+				await Conversation.findByIdAndDelete(conversation._id);
+			}
+		}
 	}
 }
