@@ -47,29 +47,38 @@ export const handleUCJobTaskDLX = async (
 
 async function createJobNode(message: UC_JobMessage): Promise<void> {
 	const neogma = database.getNeogma();
-	const { jobId, companyId, skills } = message;
+	const { jobId, companyId, skills, endDate } = message;
 
 	const skillNormalized = skills?.map((skill) =>
 		skill.toLowerCase().replace(/ /g, "_"),
 	);
+
+	if (!endDate) {
+		logger.error(`❌ End date is required for job ${jobId}`);
+		return;
+	}
+
+	const endDateOnly = new Date(endDate).toISOString().split("T")[0];
 
 	try {
 		// Single query to create Job node with all relationships
 		await neogma.queryRunner.run(
 			`
 			MERGE (j:Job { jobId: $jobId })
+			SET j.endDate = date($endDate)
 			WITH j
 			MATCH (c:Company { companyId: $companyId })
 			MERGE (j)-[:POSTED_BY]->(c)
 			
 			WITH j
-			UNWIND $skills AS skillId
-			MATCH (s:Skill { skillId: skillId })
+			MATCH (s:Skill)
+			WHERE s.skillId IN $skills
 			MERGE (j)-[:REQUIRED_SKILL]->(s)
 			`,
 			{
 				jobId,
 				companyId,
+				endDate: endDateOnly,
 				skills: skillNormalized || [],
 			},
 		);
@@ -83,27 +92,30 @@ async function createJobNode(message: UC_JobMessage): Promise<void> {
 
 async function updateJobNode(message: UC_JobMessage): Promise<void> {
 	const neogma = database.getNeogma();
-	const { jobId, skills } = message;
+	const { jobId, skills, endDate } = message;
 
 	const skillNormalized = skills?.map((skill) =>
 		skill.toLowerCase().replace(/ /g, "_"),
 	);
 
+	const endDateOnly = new Date(endDate).toISOString().split("T")[0];
 	try {
 		await neogma.queryRunner.run(
 			`
 			MATCH (j:Job { jobId: $jobId })
+			SET j.endDate = date($endDate)
 			WITH j
 			OPTIONAL MATCH (j)-[r:REQUIRED_SKILL]->()
 			DELETE r
 			
 			WITH j
-			UNWIND $skills AS skillId
-			MATCH (s:Skill { skillId: skillId })
+			MATCH (s:Skill)
+			WHERE s.skillId IN $skills
 			MERGE (j)-[:REQUIRED_SKILL]->(s)
 			`,
 			{
 				jobId,
+				endDate: endDateOnly,
 				skills: skillNormalized || [],
 			},
 		);

@@ -11,5 +11,6 @@ router.post("/companies/get-batch", companyController.getCompaniesByIds);
 router.post("/get-batch-ids", internalController.getBatchIds);
 
 router.get("/users/:userId/feed-context", feedController.getFeedContext);
+router.get("/users/:userId/job-context", feedController.getJobContext);
 
 export default router;

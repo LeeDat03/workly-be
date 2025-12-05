@@ -10,5 +10,7 @@ export function createFeedRoutes(): Router {
 	const feedController = ControllerContainer.getFeedController();
 	router.get("/", optionalAuth, feedController.getFeed);
 
+	router.get("/job", optionalAuth, feedController.getJobFeed);
+
 	return router;
 }

@@ -32,5 +32,5 @@ export interface UC_JobMessage {
 	companyId: string;
 	skills?: string[];
 	action: "created" | "updated" | "deleted";
-	timestamp: string;
+	endDate: string;
 }

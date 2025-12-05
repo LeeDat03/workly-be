@@ -35,7 +35,8 @@ export class ControllerContainer {
 			ServiceContainer.getJobService()
 		);
 		this.feedController = new FeedController(
-			ServiceContainer.getPostService()
+			ServiceContainer.getPostService(),
+			ServiceContainer.getJobService()
 		);
 		this.isInitialized = true;
 
@@ -79,7 +80,8 @@ export class ControllerContainer {
 	static getFeedController(): FeedController {
 		if (!this.feedController) {
 			this.feedController = new FeedController(
-				ServiceContainer.getPostService()
+				ServiceContainer.getPostService(),
+				ServiceContainer.getJobService()
 			);
 		}
 		return this.feedController;
