@@ -197,7 +197,7 @@ export async function sendJobToUCQueue(message: {
     companyId: string;
     skills?: string[];
     action: "created" | "updated" | "deleted";
-    timestamp: string;
+    endDate?: string;
 }): Promise<void> {
     try {
         await mqManager.sendToQueue(QUEUES.UC_JOB, message);

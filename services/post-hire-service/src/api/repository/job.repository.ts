@@ -1,5 +1,5 @@
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
-import { JobSearch, PagingList } from "../model/common.model";
+import { IPaginationInput, JobSearch, PagingList } from "../model/common.model";
 import { GetPostJobDetailInput, Job } from "../model/job.model";
 import { InsertOneResult, ObjectId } from "mongodb";
 import { TimeHelper } from "@/util/time.util";
@@ -13,6 +13,8 @@ export interface IJobRepository {
     getPostJobDetail(input: GetPostJobDetailInput): Promise<Job | null>
     updateJob(input: any): Promise<Boolean>
     getPostJobByStatus(active: number, page: number, size: number, companyId: string): Promise<PagingList<Job>>
+    getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>>
+    getJobsByIds(jobIds: string[]): Promise<Job[]>
 }
 
 export class JobRepository implements IJobRepository {
@@ -220,5 +222,40 @@ export class JobRepository implements IJobRepository {
                 totalPages: Math.ceil(total / size),
             },
         };
+    }
+
+    async getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>> {
+        const page = Number(input.page) || 1;
+        const size = Number(input.size) || 10;
+        const skip = (page - 1) * size;
+
+        const [data, total] = await Promise.all([
+            this.jobCollection.job
+                .find({ endDate: { $gte: new Date() } })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(size)
+                .toArray(),
+            this.jobCollection.job.countDocuments({ endDate: { $gte: new Date() } })
+        ]);
+
+        return {
+            data: data as unknown as Job[],
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
+    }
+
+    async getJobsByIds(jobIds: string[]): Promise<Job[]> {
+        const objectJobIds = jobIds.map(id => new ObjectId(id))
+        const jobs = await this.jobCollection.job
+            .find({ _id: { $in: objectJobIds } })
+            .sort({ createdAt: -1 })
+            .toArray()
+        return jobs as unknown as Job[]
     }
 }

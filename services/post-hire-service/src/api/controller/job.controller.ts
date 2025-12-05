@@ -37,16 +37,16 @@ export class JobController {
             const data = await this.jobService.createJob(
                 input
             );
+            res.sendJson(data)
             if (data.acknowledged && data.insertedId) {
                 sendJobToUCQueue({
                     jobId: data.insertedId.toString(),
                     companyId: input.companyId,
                     skills: input.skills,
                     action: "created",
-                    timestamp: new Date().toISOString()
+                    endDate: input.endDate,
                 })
             }
-            res.sendJson(data)
         } catch (error) {
             logger.error(`JobController.create: `, error);
             next(error);
@@ -63,13 +63,12 @@ export class JobController {
             const data = await this.jobService.deleteJobPost(
                 input
             );
+            res.sendJson(data)
             sendJobToUCQueue({
                 jobId: input.jobId,
                 companyId: input.companyId,
                 action: "deleted",
-                timestamp: new Date().toISOString()
             })
-            res.sendJson(data)
         } catch (error) {
             logger.error(`JobController.create: `, error);
             next(error);
@@ -99,14 +98,14 @@ export class JobController {
         try {
             const input = req.body;
             const data = await this.jobService.updateCompanyJob(input);
+            res.sendJson(data)
             sendJobToUCQueue({
                 jobId: input.jobId,
                 companyId: input.companyId,
                 skills: input.skills,
                 action: "updated",
-                timestamp: new Date().toISOString()
+                endDate: input.endDate,
             })
-            res.sendJson(data)
         } catch (error) {
             logger.error(`getPostJobDetail.create: `, error);
             next(error);
