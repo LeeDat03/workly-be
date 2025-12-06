@@ -36,6 +36,7 @@ import { parsePaginationQuery } from "../utils/pagination";
 import { clearCookie } from "./auth.controller";
 import { cloudinaryService } from "../services/upload/cloudinary.service";
 import { UNLISTED_COMPANY, UNLISTED_SCHOOL } from "../utils/constants";
+import { notifyChatServiceUserDeleted } from "../services/chat.service";
 
 // TODO: HANDLE TRANSACTION
 const updateUserImage = async (
@@ -585,6 +586,12 @@ export const deleteMe = async (
 
 		await user.delete({
 			detach: true,
+		});
+
+		// Thông báo cho chat service về việc user bị xóa
+		// Gọi async nhưng không await để không block response
+		notifyChatServiceUserDeleted(userId, "USER").catch((err) => {
+			console.error("Error notifying chat service:", err);
 		});
 
 		clearCookie(res);

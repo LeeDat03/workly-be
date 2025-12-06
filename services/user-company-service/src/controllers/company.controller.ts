@@ -480,6 +480,15 @@ const deleteCompany = async (
 			detach: true,
 		});
 
+		// Thông báo cho chat service về việc company bị xóa
+		// Gọi async nhưng không await để không block response
+		const { notifyChatServiceCompanyDeleted } = await import(
+			"../services/chat.service"
+		);
+		notifyChatServiceCompanyDeleted(companyId).catch((err) => {
+			console.error("Error notifying chat service:", err);
+		});
+
 		return res.status(200).json({
 			status: "success",
 			data: {
