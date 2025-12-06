@@ -1,6 +1,6 @@
 import mqManager from "@/common/infrastructure/mq.adapter";
 import { ObjectId } from "mongodb";
-import { handleEmail, handleEmailDLX, handleJob, handleJobDLX, handlePost, handlePostDLX } from "./handler.service";
+import { handleCompany, handleCompanyDLX, handleEmail, handleEmailDLX, handleJob, handleJobDLX, handlePost, handlePostDLX, handleUser, handleUserDLX } from "./handler.service";
 
 // ============================================
 // QUEUE NAME
@@ -10,6 +10,8 @@ export const QUEUES = {
     EMAIL: "email_queue",
     POST: "post_queue",
     JOB: "job_queue",
+    USER: "user_queue",
+    COMPANY: "company_queue",
     UC_JOB: "uc_job_queue", // for create/update jobs node in user company service
 } as const;
 
@@ -91,6 +93,21 @@ export async function registerAllQueue(): Promise<void> {
         });
 
 
+        await mqManager.assertQueue(QUEUES.USER, {
+            durable: true,
+            maxRetries: 5,          // Retry 3 lần
+            retryDelay: 10000,       // Đợi 5 giây giữa mỗi lần retry
+            enableDLX: true,        // Bật DLX cho failed messages
+        });
+
+        await mqManager.assertQueue(QUEUES.COMPANY, {
+            durable: true,
+            maxRetries: 5,          // Retry 3 lần
+            retryDelay: 10000,       // Đợi 5 giây giữa mỗi lần retry
+            enableDLX: true,        // Bật DLX cho failed messages
+        });
+
+
         console.log("✅ All queue registered successfully");
     } catch (error) {
         console.error("❌ Failed to register email queue:", error);
@@ -109,24 +126,18 @@ export async function registerAllQueue(): Promise<void> {
 
 export async function setupEmailConsumer(): Promise<void> {
     try {
-        console.log("👂 Setting up email consumer...");
         await mqManager.consume(QUEUES.EMAIL, handleEmail, {
             maxRetries: 3,
         });
-        console.log("✅ Email consumer started (with 3 retries)");
     } catch (error) {
-        console.error("❌ Failed to setup email consumer:", error);
         throw error;
     }
 }
 
 export async function setupEmailDLXConsumer(): Promise<void> {
     try {
-        console.log("💀 Setting up email DLX consumer...");
         await mqManager.consumeDLX(QUEUES.EMAIL, handleEmailDLX);
-        console.log("✅ Email DLX consumer started");
     } catch (error) {
-        console.error("❌ Failed to setup email DLX consumer:", error);
         throw error;
     }
 }
@@ -134,51 +145,78 @@ export async function setupEmailDLXConsumer(): Promise<void> {
 
 export async function setupPostConsumer(): Promise<void> {
     try {
-        console.log("👂 Setting up post consumer...");
         await mqManager.consume(QUEUES.POST, handlePost, {
             maxRetries: 5,
         });
-        console.log("✅ post consumer started (with 5 retries)");
     } catch (error) {
-        console.error("❌ Failed to setup post consumer:", error);
         throw error;
     }
 }
 
 export async function setupPostDLXConsumer(): Promise<void> {
     try {
-        console.log("💀 Setting up post DLX consumer...");
         await mqManager.consumeDLX(QUEUES.EMAIL, handlePostDLX);
-        console.log("✅ Email DLX consumer started");
     } catch (error) {
-        console.error("❌ Failed to setup post DLX consumer:", error);
         throw error;
     }
 }
 
 export async function setupJobConsumer(): Promise<void> {
     try {
-        console.log("👂 Setting up post consumer...");
         await mqManager.consume(QUEUES.JOB, handleJob, {
             maxRetries: 5,
         });
-        console.log("✅ post consumer started (with 5 retries)");
     } catch (error) {
-        console.error("❌ Failed to setup post consumer:", error);
         throw error;
     }
 }
 
 export async function setupJobDLXConsumer(): Promise<void> {
     try {
-        console.log("💀 Setting up post DLX consumer...");
         await mqManager.consumeDLX(QUEUES.JOB, handleJobDLX);
-        console.log("✅ Email DLX consumer started");
     } catch (error) {
-        console.error("❌ Failed to setup post DLX consumer:", error);
         throw error;
     }
 }
+
+
+export async function setupUserConsumer(): Promise<void> {
+    try {
+        await mqManager.consume(QUEUES.USER, handleUser, {
+            maxRetries: 5,
+        });
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function setupUserDLXConsumer(): Promise<void> {
+    try {
+        await mqManager.consumeDLX(QUEUES.JOB, handleUserDLX);
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function setupCompanyConsumer(): Promise<void> {
+    try {
+        await mqManager.consume(QUEUES.COMPANY, handleCompany, {
+            maxRetries: 5,
+        });
+    } catch (error) {
+        throw error;
+    }
+}
+
+export async function setupCompanyDLXConsumer(): Promise<void> {
+    try {
+        await mqManager.consumeDLX(QUEUES.COMPANY, handleCompanyDLX);
+    } catch (error) {
+        throw error;
+    }
+}
+
+
 
 export async function setupAllConsumers(): Promise<void> {
     try {
@@ -188,6 +226,10 @@ export async function setupAllConsumers(): Promise<void> {
         await setupPostDLXConsumer();
         await setupJobConsumer();
         await setupJobDLXConsumer();
+        await setupUserConsumer();
+        await setupUserDLXConsumer();
+        await setupCompanyConsumer();
+        await setupCompanyDLXConsumer();
     } catch (error) {
         console.error("❌ Failed to setup consumers:", error);
     }

@@ -192,6 +192,155 @@ export const handleJob = async (data: BaseEvent): Promise<void> => {
     }
 }
 
+export const handleUser = async (data: any): Promise<void> => {
+    try {
+        console.log("Processing user:");
+        const client = elasticManage.getClient();
+        const index = 'user';
+
+        const exists = await client.indices.exists({ index });
+        if (!exists) {
+            await client.indices.create({
+                index: index,
+                settings: {
+                    analysis: {
+                        analyzer: {
+                            ngram_analyzer: {
+                                type: "custom",
+                                tokenizer: "ngram_tokenizer",
+                                filter: ["lowercase"]
+                            }
+                        },
+                        tokenizer: {
+                            ngram_tokenizer: {
+                                type: "ngram",
+                                min_gram: 1,
+                                max_gram: 2,
+                                token_chars: ["letter", "digit"]
+                            }
+                        }
+                    }
+                },
+                mappings: {
+                    properties: {
+                        name: {
+                            type: "text",
+                            analyzer: "ngram_analyzer",
+                            search_analyzer: "standard"
+                        },
+                    }
+                }
+            });
+        }
+        if (data.type === "ADD") {
+            const { id, name } = data;
+            await client.create({
+                index,
+                id: id,
+                document: { name: name },
+                refresh: 'wait_for',
+            });
+            console.log(`user ${data.id} add from Elasticsearch`);
+        }
+        if (data.type === "UPDATE") {
+            const { id, name } = data;
+            await client.update({
+                index,
+                id: id,
+                doc: { name: name },
+                refresh: 'wait_for',
+            });
+            console.log(`user ${data.id} update from Elasticsearch`);
+        }
+        if (data.type === "DELETE") {
+            await client.delete({
+                index,
+                id: data.id,
+                refresh: 'wait_for',
+            });
+            console.log(`job ${data.id} deleted from Elasticsearch`);
+        }
+    } catch (error) {
+        console.error("job sync to Elasticsearch failed:", error);
+        throw error;
+    }
+}
+
+export const handleCompany = async (data: any): Promise<void> => {
+    try {
+        console.log("Processing company:");
+        const client = elasticManage.getClient();
+        const index = 'company';
+
+        const exists = await client.indices.exists({ index });
+        if (!exists) {
+            await client.indices.create({
+                index: index,
+                settings: {
+                    analysis: {
+                        analyzer: {
+                            ngram_analyzer: {
+                                type: "custom",
+                                tokenizer: "ngram_tokenizer",
+                                filter: ["lowercase"]
+                            }
+                        },
+                        tokenizer: {
+                            ngram_tokenizer: {
+                                type: "ngram",
+                                min_gram: 1,
+                                max_gram: 2,
+                                token_chars: ["letter", "digit"]
+                            }
+                        }
+                    }
+                },
+                mappings: {
+                    properties: {
+                        name: {
+                            type: "text",
+                            analyzer: "ngram_analyzer",
+                            search_analyzer: "standard"
+                        },
+                    }
+                }
+            });
+        }
+        if (data.type === "ADD") {
+            const { id, name } = data;
+            await client.create({
+                index,
+                id: id,
+                document: { name: name },
+                refresh: 'wait_for',
+            });
+            console.log(`user ${data.id} add from Elasticsearch`);
+        }
+        if (data.type === "UPDATE") {
+            const { id, name } = data;
+            await client.update({
+                index,
+                id: id,
+                doc: { name: name },
+                refresh: 'wait_for',
+            });
+            console.log(`user ${data.id} update from Elasticsearch`);
+        }
+        if (data.type === "DELETE") {
+            await client.delete({
+                index,
+                id: data.id,
+                refresh: 'wait_for',
+            });
+            console.log(`job ${data.id} deleted from Elasticsearch`);
+        }
+    } catch (error) {
+        console.error("job sync to Elasticsearch failed:", error);
+        throw error;
+    }
+}
+
+
 export const handleJobDLX = async (data: BaseEvent): Promise<void> => {
     console.log("💀 Handling FAILED job (DLX):");
     console.log("hehe", data);
@@ -207,6 +356,32 @@ export const handleJobDLX = async (data: BaseEvent): Promise<void> => {
 
 export const handlePostDLX = async (data: BaseEvent): Promise<void> => {
     console.log("💀 Handling FAILED post (DLX):");
+    console.log("hehe", data);
+    // TODO: Xử lý email failed sau khi retry hết
+    // - Gửi alert cho admin
+    // - Log vào database
+    // - Gửi vào monitoring system (Sentry, Datadog, etc.)
+    // - Lưu vào bảng failed_emails để review sau
+
+    console.log("📧 Admin alert sent about failed email");
+    console.log("💾 Failed email logged to database");
+};
+
+export const handleUserDLX = async (data: BaseEvent): Promise<void> => {
+    console.log("💀 Handling FAILED USER (DLX):");
+    console.log("hehe", data);
+    // TODO: Xử lý email failed sau khi retry hết
+    // - Gửi alert cho admin
+    // - Log vào database
+    // - Gửi vào monitoring system (Sentry, Datadog, etc.)
+    // - Lưu vào bảng failed_emails để review sau
+
+    console.log("📧 Admin alert sent about failed email");
+    console.log("💾 Failed email logged to database");
+};
+
+export const handleCompanyDLX = async (data: BaseEvent): Promise<void> => {
+    console.log("💀 Handling FAILED COMPANY (DLX):");
     console.log("hehe", data);
     // TODO: Xử lý email failed sau khi retry hết
     // - Gửi alert cho admin

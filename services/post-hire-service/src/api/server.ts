@@ -12,6 +12,7 @@ import { PublicPath } from "@/config/app.constant";
 import cookieParser from "cookie-parser";
 import { createJobRoutes } from "./routes/job.routes";
 import { createFeedRoutes } from "./routes/feed.routes";
+import { createSearchRoutes } from "./routes/search.route";
 
 export class ExpressServer {
 	private server?: Express;
@@ -102,10 +103,13 @@ export class ExpressServer {
 		const postRoutes = createPostRoutes();
 		const jobRoutes = createJobRoutes();
 		const feedRoutes = createFeedRoutes();
+		const searchRoutes = createSearchRoutes();
 
 		server.use("/api/v1/posts", postRoutes);
 		server.use("/api/v1/jobs", jobRoutes);
 		server.use("/api/v1/feed", feedRoutes);
+		server.use("/api/v1/search", searchRoutes);
+
 	}
 	private setupErrorHandlers(server: Express) {
 		server.use(ResponseMiddleware.handler);
