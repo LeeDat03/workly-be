@@ -38,7 +38,10 @@ export class ServiceContainer {
             RepositoryContainer.getJobRepository(),
             RepositoryContainer.getCandidateRepository()
         )
-        this.searchService = new SearchService();
+        this.searchService = new SearchService(
+            RepositoryContainer.getCommentRepository(),
+            RepositoryContainer.getLikeRepository()
+        );
         this.isInitialized = true;
 
         console.log('✅ ServiceContainer initialized successfully');
@@ -46,7 +49,10 @@ export class ServiceContainer {
 
     static getSearchService(): ISearchService {
         if (!this.searchService) {
-            this.searchService = new SearchService()
+            this.searchService = new SearchService(
+                RepositoryContainer.getCommentRepository(),
+                RepositoryContainer.getLikeRepository()
+            )
         }
         return this.searchService;
     }

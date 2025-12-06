@@ -16,8 +16,6 @@ export class SearchController {
             const { keyword } = req.query;
             const cookie = req.headers.cookie;
             const authorization = req.headers.authorization;
-            console.log("debug");
-
             const result = await this.searchService.getGlobalSearch(keyword as string, cookie as string, authorization as string);
             res.sendJson(result);
         } catch (error) {

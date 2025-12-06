@@ -2,11 +2,23 @@ import elasticManage from "@/common/infrastructure/elasticsearch.adapter";
 import { DatabaseAdapter } from "@/common/infrastructure/database.adapter";
 import { ObjectId } from "mongodb";
 import axios from "axios";
+import { ICommentRepository } from "../repository/comment.repository";
+import { ILikeRepository } from "../repository/like.repository";
+import { mapToPostResponse } from "../model/post.model";
+import { USER_SERVICE_URL } from "@/common/enviroment";
 
 export interface ISearchService {
     getGlobalSearch(keyword: string, cookie: string, authorization: string): Promise<any>
 }
 export class SearchService implements ISearchService {
+
+    private commentRepository: ICommentRepository;
+    private likeRepository: ILikeRepository;
+
+    constructor(commentRepository: ICommentRepository, likeRepository: ILikeRepository) {
+        this.commentRepository = commentRepository;
+        this.likeRepository = likeRepository
+    }
     private static client = elasticManage.getClient();
     public getGlobalSearch = async (keyword: string, cookie: string, authorization: string): Promise<any> => {
         console.log(keyword);
@@ -109,14 +121,75 @@ export class SearchService implements ISearchService {
         const companyPayload = searchMap.get("company") || [];
 
         // Fetch data from databases
-        const [postResults, jobResults] = await Promise.all([
+        const [postResults, jobResults, commentCounts, likePosts] = await Promise.all([
             postIds.length > 0
                 ? DatabaseAdapter.getInstance().post.find({ _id: { $in: postIds } }).toArray()
                 : Promise.resolve([]),
             jobIds.length > 0
                 ? DatabaseAdapter.getInstance().job.find({ _id: { $in: jobIds } }).toArray()
-                : Promise.resolve([])
+                : Promise.resolve([]),
+            postIds.length > 0
+                ? this.commentRepository.countCommentsByPostIds(postIds.map(p => p.toString()))
+                : Promise.resolve({} as Record<string, number>),
+            postIds.length > 0
+                ? this.likeRepository.getAllLikeByListPost(postIds.map(p => p.toString()))
+                : Promise.resolve({} as Record<string, any[]>)
         ]);
+
+        const mappedPostResults = postResults.map((item) => {
+            const postResponse = mapToPostResponse(item);
+            return {
+                ...postResponse,
+                totalComments: commentCounts[item._id.toString()] || 0,
+                totalLikes: likePosts[item._id.toString()] || [],
+            };
+        });
+        const authorIds = mappedPostResults.map((post) => {
+            return {
+                id: post.author_id,
+                type: post.author_type,
+            };
+        });
+
+        const authorData = await axios
+            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
+                ids: authorIds,
+            })
+            .then((res) => res.data.data);
+
+        const authorMap = new Map(
+            authorData.map((item: any) => [item.id, item.data])
+        );
+
+        const postsWithAuthor = mappedPostResults.map((post) => ({
+            ...post,
+            author: authorMap.get(post.author_id) || null,
+        }));
+
+        //JOB
+        const companyIds = jobResults.map((job) => {
+            return {
+                id: job.companyId,
+                type: "COMPANY",
+            };
+        });
+
+        const companyData = await axios
+            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
+                ids: companyIds,
+            })
+            .then((res) => res.data.data);
+        console.log(companyData);
+
+        const companiesMap = new Map(
+            companyData.map((item: any) => [item.id, item.data])
+        );
+        console.log(companiesMap);
+
+        const jobsWithAuthor = jobResults.map((job) => ({
+            ...job,
+            company: companiesMap.get(job.companyId) || null,
+        }));
 
         // Fetch user and company data from external API
         const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
@@ -160,15 +233,12 @@ export class SearchService implements ISearchService {
             userPromise,
             companyPromise
         ]);
-
-
         // Create maps for quick lookup
-        const postMap = new Map(postResults.map(doc => [doc._id.toString(), doc]));
-        const jobMap = new Map(jobResults.map(doc => [doc._id.toString(), doc]));
+        const postMap = new Map(postsWithAuthor.map(doc => [doc._id.toString(), doc]));
+        const jobMap = new Map(jobsWithAuthor.map(doc => [doc._id.toString(), doc]));
         const userMap = new Map(userResults.data.data.map((user: any) => [user.userId, user]));
         const companyMap = new Map(companyResults.data.data.map((company: any) => [company.companyId, company]));
 
-        // Maintain search result order
         const orderedPosts = (searchMap.get("post") || [])
             .map(id => postMap.get(id))
             .filter(Boolean);
@@ -185,7 +255,6 @@ export class SearchService implements ISearchService {
             .map(id => companyMap.get(id))
             .filter(Boolean);
 
-        // Return final results
         const finalResults = {
             posts: orderedPosts,
             jobs: orderedJobs,
@@ -198,8 +267,6 @@ export class SearchService implements ISearchService {
                 companies: totalMap.get("company") || 0
             }
         };
-        console.log("finalResults", finalResults);
-
         return finalResults
     }
 }
