@@ -163,8 +163,15 @@ const getJobContext = async (
 			limit: int(limit),
 		});
 
-		const hasNextPage = result.records.length > limit;
-		const jobs = result.records.slice(0, limit).map((record) => {
+		console.log(result.records, {
+			page,
+			size,
+			skip,
+			limit,
+		});
+
+		const hasNextPage = result.records.length > size;
+		const jobs = result.records.slice(0, size).map((record) => {
 			const company = record.get("c").properties;
 			return {
 				jobId: record.get("jobId"),
