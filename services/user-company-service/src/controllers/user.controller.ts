@@ -36,6 +36,9 @@ import { parsePaginationQuery } from "../utils/pagination";
 import { clearCookie } from "./auth.controller";
 import { cloudinaryService } from "../services/upload/cloudinary.service";
 import { UNLISTED_COMPANY, UNLISTED_SCHOOL } from "../utils/constants";
+import mqManager from "../infrastructure/queue/mq.adapter";
+import { QUEUES } from "../infrastructure/queue/type";
+import { da } from "zod/v4/locales";
 
 // TODO: HANDLE TRANSACTION
 const updateUserImage = async (
@@ -184,6 +187,7 @@ export const updateBasicProfile = async (
 			message: "Profile updated successfully",
 			// data: userProfile,
 		});
+		mqManager.sendToQueue(QUEUES.USER, { type: "UPDATE", id: userId, name: data.name })
 	} catch (error) {
 		next(error);
 	}
@@ -594,6 +598,7 @@ export const deleteMe = async (
 			message: "User deleted successfully",
 			data: null,
 		});
+		mqManager.sendToQueue(QUEUES.USER, { type: "DELETE", id: userId })
 	} catch (error) {
 		next(error);
 	}
