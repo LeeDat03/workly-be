@@ -109,7 +109,6 @@ export class ExpressServer {
 		server.use("/api/v1/jobs", jobRoutes);
 		server.use("/api/v1/feed", feedRoutes);
 		server.use("/api/v1/search", searchRoutes);
-
 	}
 	private setupErrorHandlers(server: Express) {
 		server.use(ResponseMiddleware.handler);
