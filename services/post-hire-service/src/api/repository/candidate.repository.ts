@@ -19,6 +19,7 @@ export interface ICandidateRepository {
         jobId: string,
         userId: string
     ): Promise<Boolean>
+    checkCandidateByUserIdAndJobIds(userId: string, jobIds: string[]): Promise<any[]>
 }
 
 export class candidateRepository implements ICandidateRepository {
@@ -111,4 +112,13 @@ export class candidateRepository implements ICandidateRepository {
         }
         return true;
     };
+
+    checkCandidateByUserIdAndJobIds = async (userId: string, jobIds: string[]): Promise<any[]> => {
+        return await this.candidateCollection.candidate.find({
+            userId: userId,
+            jobId: { $in: jobIds }
+        }, {
+            projection: { jobId: 1, _id: 0 }
+        }).toArray()
+    }
 }

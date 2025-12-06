@@ -18,7 +18,9 @@ export class JobController {
     ) => {
         try {
             const input = req.query as unknown as JobSearch;
+            const userId = (req as any).user?.userId;
             const data = await this.jobService.getAllJob(
+                userId,
                 input
             );
             res.sendJson(data)
