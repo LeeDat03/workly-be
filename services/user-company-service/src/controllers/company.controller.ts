@@ -26,6 +26,8 @@ import {
 	unfollowCompany,
 } from "../services/follow.service";
 import { parsePaginationQuery } from "../utils/pagination";
+import mqManager from "../infrastructure/queue/mq.adapter";
+import { QUEUES } from "../infrastructure/queue/type";
 
 const extractRelationshipData = (relationships: any[]) => {
 	return relationships[0]?.target?.dataValues || null;
@@ -156,6 +158,7 @@ const createCompany = async (
 			message: "Company created successfully",
 			data: companyProfile,
 		});
+		mqManager.sendToQueue(QUEUES.COMPANY, { type: "ADD", id: companyProfile.company.companyId, name: companyProfile.company.name })
 	} catch (error) {
 		next(error);
 	}
@@ -369,13 +372,13 @@ const updateCompany = async (
 				message: "Company updated successfully",
 				// data: companyProfile,
 			});
+			mqManager.sendToQueue(QUEUES.COMPANY, { type: "UPDATE", id: companyId, name: data.name })
 		} catch (error) {
 			await transaction.rollback();
 			throw error;
 		} finally {
 			await session.close();
 		}
-
 		return;
 	} catch (error) {
 		next(error);
@@ -495,6 +498,7 @@ const deleteCompany = async (
 				message: "Company deleted successfully",
 			},
 		});
+		mqManager.sendToQueue(QUEUES.COMPANY, { type: "DELETE", id: companyId })
 	} catch (error) {
 		next(error);
 	}

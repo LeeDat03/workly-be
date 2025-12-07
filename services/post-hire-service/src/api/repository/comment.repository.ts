@@ -102,13 +102,11 @@ export class CommentRepository implements ICommentRepository {
             .aggregate(pipeline)
             .toArray();
 
-        // Convert thành object: { postId: count }
         const countMap: Record<string, number> = {};
         results.forEach((item) => {
             countMap[item._id] = item.count;
         });
 
-        // Đảm bảo tất cả postIds đều có giá trị (0 nếu không có comment)
         postIds.forEach((id) => {
             if (!(id in countMap)) {
                 countMap[id] = 0;
@@ -117,69 +115,4 @@ export class CommentRepository implements ICommentRepository {
 
         return countMap;
     }
-
-    // public getPagingRootComment = async (input: IPaginationInput, postId: ObjectId): Promise<PagingList<CommentResponse>> => {
-    //     const page = input.page ?? 1;
-    //     const size = input.size ?? 10;
-    //     const skip = (page - 1) * size;
-    //     let query: any = { postId: postId };
-
-    //     const [result, total] = await Promise.all([
-    //         this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
-    //         this.commentCollection.comment.countDocuments(),
-    //     ]);
-    //     const data = await Promise.all(
-    //         result.map(async (item) => {
-    //             const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
-    //             return {
-    //                 authorId: item.content,
-    //                 content: item.content,
-    //                 mediaFile: item.mediaFile,
-    //                 replyCount: countSubComment,
-    //             };
-    //         })
-    //     );
-    //     return {
-    //         data,
-    //         pagination: {
-    //             page,
-    //             size,
-    //             total,
-    //             totalPages: Math.ceil(total / size),
-    //         },
-    //     };
-    // }
-    // public getPagingComment = async (input: IPaginationInput, parentId: ObjectId): Promise<PagingList<CommentResponse>> => {
-    //     const page = input.page ?? 1;
-    //     const size = input.size ?? 10;
-    //     const skip = (page - 1) * size;
-    //     let query: any = { parentId: parentId };
-
-    //     const [result, total] = await Promise.all([
-    //         this.commentCollection.comment.find(query).skip(skip).limit(size).toArray(),
-    //         this.commentCollection.comment.countDocuments(),
-    //     ]);
-
-    //     const data = await Promise.all(
-    //         result.map(async (item) => {
-    //             const countSubComment = await this.commentCollection.comment.countDocuments({ parentId: item._id });
-    //             return {
-    //                 authorId: item.content,
-    //                 content: item.content,
-    //                 mediaFile: item.mediaFile,
-    //                 replyCount: countSubComment,
-    //             };
-    //         })
-    //     )
-
-    //     return {
-    //         data,
-    //         pagination: {
-    //             page,
-    //             size,
-    //             total,
-    //             totalPages: Math.ceil(total / size),
-    //         },
-    //     };
-    // }
 }

@@ -39,6 +39,11 @@ export interface IPostRepository {
 		input: IPaginationInput,
 		authorIds: string[]
 	): Promise<PagingList<WithId<Document>>>;
+	getPagingPostSearch(
+		keyword: string,
+		page: number,
+		size: number
+	): Promise<PagingList<any>>
 }
 
 export class PostRepository implements IPostRepository {
@@ -116,6 +121,7 @@ export class PostRepository implements IPostRepository {
 					{ session }
 				);
 			}
+			return result
 		});
 	}
 
@@ -129,6 +135,41 @@ export class PostRepository implements IPostRepository {
 			.sort({ createdAt: -1 })
 			.toArray();
 		return result;
+	}
+	public async getPagingPostSearch(
+		keyword: string,
+		page: number,
+		size: number
+	): Promise<PagingList<any>> {
+
+		const skip = (page - 1) * size;
+
+		const filter: any = {};
+
+		if (keyword && keyword.trim() !== "") {
+			filter.content = { $regex: keyword, $options: "i" };
+		}
+
+		const [data, total] = await Promise.all([
+			this.postCollection.post
+				.find(filter)
+				.sort({ created_at: -1 })
+				.skip(skip)
+				.limit(size)
+				.toArray(),
+
+			this.postCollection.post.countDocuments(filter),
+		]);
+
+		return {
+			data,
+			pagination: {
+				page,
+				size,
+				total,
+				totalPages: Math.ceil(total / size),
+			},
+		};
 	}
 
 	public async getPagingPostByUserId(
@@ -202,7 +243,6 @@ export class PostRepository implements IPostRepository {
 		const size = Number(input.size) ?? 10;
 		const skip = (page - 1) * size;
 
-		console.log("repo: ", page, size, skip, authorIds);
 		const [data, total] = await Promise.all([
 			this.postCollection.post
 				.find({

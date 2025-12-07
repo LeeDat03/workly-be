@@ -34,7 +34,7 @@ import { RedisAdapter } from "@/common/infrastructure/redis.adapter";
 import { ICommentRepository } from "../repository/comment.repository";
 import { ILikeRepository } from "../repository/like.repository";
 import mqManager from "@/common/infrastructure/mq.adapter";
-import { QUEUES, sendEventAddPost } from "./mq.service";
+import { sendEventPost } from "./mq.service";
 
 export interface IPostService {
 	createPost(post: CreatePostDTO): Promise<InsertOneResult>;
@@ -76,6 +76,7 @@ export class PostService implements IPostService {
 		if (!result) {
 			throw new APIError({ message: "post.notfound", status: StatusCode.REQUEST_NOT_FOUND });
 		}
+		sendEventPost({ type: "DELETE", id: post.postId })
 		return result;
 	};
 
@@ -84,7 +85,7 @@ export class PostService implements IPostService {
 	): Promise<InsertOneResult> => {
 		const result = await this.postRepository.createPost(post);
 		if (result.acknowledged && result.insertedId) {
-			sendEventAddPost({ type: "ADD", postId: result.insertedId })
+			sendEventPost({ type: "ADD", id: result.insertedId })
 		}
 		return result;
 	};
@@ -118,7 +119,9 @@ export class PostService implements IPostService {
 				FileUtil.deleteFilePath(fullPath);
 			});
 		}
-
+		if (result.acknowledged && result.modifiedCount != 0) {
+			sendEventPost({ type: "UPDATE", id: updatePost.postId })
+		}
 		return result;
 	};
 

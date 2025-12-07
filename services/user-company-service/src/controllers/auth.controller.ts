@@ -9,6 +9,8 @@ import {
 import { config } from "../config";
 import { LoggedInUserRequest } from "../types";
 import { OAuthSchema } from "../validators/oauth.validator";
+import mqManager from "../infrastructure/queue/mq.adapter";
+import { QUEUES } from "../infrastructure/queue/type";
 
 export const setCookie = (res: Response, token: string) => {
 	res.cookie(config.cookie.name, token, {
@@ -40,6 +42,7 @@ const signup = async (
 			message: "User created successfully",
 			data: { user, token },
 		});
+		mqManager.sendToQueue(QUEUES.USER, { type: "ADD", id: user.userId, name: user.name })
 	} catch (error) {
 		next(error);
 	}

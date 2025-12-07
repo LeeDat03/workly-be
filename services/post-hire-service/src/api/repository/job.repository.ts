@@ -35,11 +35,12 @@ export class JobRepository implements IJobRepository {
                 updateFields[key] = value;
             }
         }
+        updateFields.endDate = TimeHelper.parseStartOfDayDate(input.endDate);
 
         if (Object.keys(updateFields).length === 0) {
             return false;
         }
-
+        endDate: TimeHelper.parseStartOfDayDate(input.endDate)
         const result = await this.jobCollection.job.updateOne(
             { _id: new ObjectId(jobId as string), companyId: companyId },
             { $set: updateFields }
@@ -129,7 +130,6 @@ export class JobRepository implements IJobRepository {
         const page = input.page || 1;
         const size = input.size || 10;
         const skip = (page - 1) * size;
-
         // 2. Build filter object
         const filter: any = {};
 
@@ -141,18 +141,12 @@ export class JobRepository implements IJobRepository {
                 filter.location = { $regex: input.search, $options: 'i' };
             }
         }
-
-        // Filter theo skills (case insensitive - lowercase)
+        console.log(input.skills);
         if (input.skills) {
-            const skillsArray = input.skills.split(',')
-                .filter(s => s.trim())
-                .map(s => s.trim().toLowerCase());
-            if (skillsArray.length > 0) {
-                filter.skills = { $in: skillsArray };
+            if (input.skills.length > 0) {
+                filter.skills = { $in: input.skills };
             }
         }
-
-        // Filter theo industries
         if (input.industries) {
             const industriesArray = input.industries.split(',')
                 .filter(i => i.trim())

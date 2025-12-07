@@ -35,6 +35,7 @@ routes:
           - /api/v1/posts
           - /api/v1/jobs
           - /api/v1/feed
+          - /api/v1/search
       strip_path: false
 
     # Chat service routes - Đặt TRƯỚC để ưu tiên (more specific paths first)

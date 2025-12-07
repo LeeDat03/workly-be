@@ -6,6 +6,7 @@ import { APIError } from "@/common/error/api.error";
 import { ICandidateRepository } from "../repository/candidate.repository";
 import { ErrorCode, StatusCode } from "@/common/errors";
 import { Candidate } from "../model/candidate.model";
+import { sendEventJob } from "./mq.service";
 
 export interface IJobService {
     getAllJob(userId: string | undefined, input: JobSearch): Promise<PagingList<Job>>
@@ -52,18 +53,24 @@ export class JobService implements IJobService {
         if (!result) {
             throw new APIError({ message: "updateJob.fail" })
         }
+        sendEventJob({ type: "UPDATE", id: input.jobId })
         return result
     }
     async createJob(input: any): Promise<InsertOneResult> {
         const result = await this.jobRepository.createJob(input);
+        if (result.acknowledged && result.insertedId) {
+            sendEventJob({ type: "ADD", id: result.insertedId })
+        }
         return result;
     }
     async getAllJob(userId: string | undefined, input: JobSearch): Promise<PagingList<Job>> {
         let result = await this.jobRepository.getPagingJobsByCompanyId(input)
-        
+        console.log("result", userId);
+
         if (userId) {
             const jobIds = result.data.map(job => job._id.toString())
             const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
+
             result = {
                 ...result,
                 data: result.data.map(job => ({
@@ -87,6 +94,7 @@ export class JobService implements IJobService {
         if (!result) {
             throw new APIError({ message: "deletePost.Fail" })
         }
+        sendEventJob({ type: "DELETE", id: input.jobId })
         return result;
     }
     async getPostJobDetail(input: GetPostJobDetailInput): Promise<Job> {
@@ -115,16 +123,16 @@ export class JobService implements IJobService {
             }))
         }
     }
-    async getJobsByIds( userId: string, jobIds: string[]): Promise<Job[]> {
+    async getJobsByIds(userId: string, jobIds: string[]): Promise<Job[]> {
         const jobData = await this.jobRepository.getJobsByIds(jobIds)
 
         const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
 
         return jobData.map(job => {
             return {
-            ...job,
+                ...job,
                 isApplied: candidateData.some(candidate => candidate.jobId === job._id.toString())
             }
         });
-	}
+    }
 }

@@ -1,34 +1,34 @@
-import { Client, ClientOptions } from '@elastic/elasticsearch';
+import { Client } from '@elastic/elasticsearch';
 
 class ElasticsearchAdapter {
-    private static instance: ElasticsearchAdapter;
     private static client: Client;
 
-    private constructor(options: ClientOptions) {
-        ElasticsearchAdapter.client = new Client(options);
-    }
-
-    public static connect(): ElasticsearchAdapter {
-        if (!ElasticsearchAdapter.instance) {
-            ElasticsearchAdapter.instance = new ElasticsearchAdapter({
-                node: 'http://localhost:9200',
+    constructor() {
+        if (!ElasticsearchAdapter.client) {
+            ElasticsearchAdapter.client = new Client({
+                cloud: {
+                    id: "test:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRlNWZhNDU4YTg4ZWE0OGMyOGI5MzkzMjc1ZmU0YWUzNiRmMGUyOTc0ZGI3MzA0ZWFlOWVmNjU0NWViOGEzYWNlOA=="
+                },
+                auth: {
+                    username: "elastic",
+                    password: "TPGg7pCfcAsu1zaC2FCdml7v"
+                }
             });
         }
-        return ElasticsearchAdapter.instance;
     }
 
     public getClient(): Client {
         return ElasticsearchAdapter.client;
     }
-
-    public static async testConnection(): Promise<void> {
+    public async testConnection(): Promise<void> {
         try {
-            const health = await this.client.cluster.health();
-            console.log('Cluster health:', health);
+            const info = await ElasticsearchAdapter.client.info();
+            console.log('Connected:', info);
         } catch (error) {
             console.error('Elasticsearch connection error:', error);
         }
     }
 }
 
-export default ElasticsearchAdapter;
+const elasticManage = new ElasticsearchAdapter();
+export default elasticManage;
