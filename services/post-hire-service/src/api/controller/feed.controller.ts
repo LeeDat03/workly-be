@@ -151,7 +151,13 @@ export class FeedController {
 			.then((res) => res.data.data);
 
 		const companyMap = new Map(
-			companyData.map((item: any) => [item.companyId, item])
+			companyData.map((item: any) => [
+				item.companyId,
+				{
+					...item,
+					id: item.companyId,
+				},
+			])
 		);
 
 		const jobsWithCompany = data.data.map((job) => ({

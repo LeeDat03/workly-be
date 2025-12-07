@@ -5,6 +5,7 @@ import { SkillProperties } from "../models/skill.model";
 import { BadRequestError, NotFoundError } from "../utils/appError";
 import { UNLISTED_COMPANY } from "../utils/constants";
 import { toUserProfileDTO } from "../validators";
+import { countUserFollowers, countUserFollowing } from "./follow.service";
 
 /**
  * Get the relationships of a user
@@ -56,25 +57,40 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		promises.push(Promise.resolve([]));
 	}
 
-	const [industryRels, skillRels, educationRels, locationRels, workExpRels] =
-		await Promise.all(promises);
+	if (isInclude("follow")) {
+		promises.push(countUserFollowers(userId));
+		promises.push(countUserFollowing(userId));
+	} else {
+		promises.push(Promise.resolve(0));
+		promises.push(Promise.resolve(0));
+	}
+
+	const [
+		industryRels,
+		skillRels,
+		educationRels,
+		locationRels,
+		workExpRels,
+		followersCount,
+		followingCount,
+	] = await Promise.all(promises);
 
 	const industryData =
 		industryRels.length > 0
 			? (industryRels.map(
-					(rel) => rel.target.dataValues,
+					(rel: any) => rel.target.dataValues,
 				) as IndustryProperties[])
 			: [];
 	const skillData =
 		skillRels.length > 0
 			? (skillRels.map(
-					(rel) => rel.target.dataValues,
+					(rel: any) => rel.target.dataValues,
 				) as SkillProperties[])
 			: [];
 	const educationData =
 		educationRels.length > 0
 			? educationRels
-					.map((rel) => {
+					.map((rel: any) => {
 						return {
 							...rel.target.dataValues,
 							...rel.relationship,
@@ -92,7 +108,7 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 	const workExperienceData =
 		workExpRels.length > 0
 			? workExpRels
-					.map((rel) => {
+					.map((rel: any) => {
 						return {
 							...rel.target.dataValues,
 							...rel.relationship,
@@ -106,7 +122,7 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 					})
 			: [];
 
-	return toUserProfileDTO(
+	const userProfile = toUserProfileDTO(
 		user.dataValues,
 		industryData,
 		skillData,
@@ -114,6 +130,19 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		locationData,
 		workExperienceData,
 	);
+
+	if (isInclude("follow")) {
+		return {
+			...userProfile,
+			relationships: {
+				...userProfile.relationships,
+				followersCount,
+				followingCount,
+			},
+		};
+	}
+
+	return userProfile;
 };
 
 /**
