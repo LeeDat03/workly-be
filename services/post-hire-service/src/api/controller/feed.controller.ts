@@ -137,7 +137,32 @@ export class FeedController {
 	private getPublicJobFeed = async (input: IPaginationInput) => {
 		const data = await this.jobService.getPublicJobFeed(input);
 
-		return data;
+		const mapPagination = {
+			page: data.pagination.page,
+			size: data.pagination.size,
+			hasNextPage: data.pagination.page < data.pagination.totalPages,
+		};
+
+		const companyIds = data.data.map((job) => job.companyId);
+		const companyData = await axios
+			.post(`${USER_SERVICE_URL}/internals/companies/get-batch`, {
+				companyIds: companyIds,
+			})
+			.then((res) => res.data.data);
+
+		const companyMap = new Map(
+			companyData.map((item: any) => [item.companyId, item])
+		);
+
+		const jobsWithCompany = data.data.map((job) => ({
+			...job,
+			company: companyMap.get(job.companyId) || null,
+		}));
+
+		return {
+			data: jobsWithCompany,
+			pagination: mapPagination,
+		};
 	};
 
 	private getUserJobFeed = async (
@@ -182,7 +207,7 @@ export class FeedController {
 
 		const jobIds = response.data.map((item) => item.jobId);
 
-		const data = await this.jobService.getJobsByIds(jobIds);
+		const data = await this.jobService.getJobsByIds(userId, jobIds);
 
 		const jobsWithCompany = data.map((job) => ({
 			...job,

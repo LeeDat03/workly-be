@@ -16,8 +16,10 @@ export class ChatSocket {
 	private conversationService: ConversationService;
 
 	// Map để track users online và rooms họ đang ở
-	private onlineUsers: Map<string, { socketId: string; userType: string }> =
-		new Map(); // userId -> {socketId, userType}
+	private onlineUsers: Map<
+		string,
+		{ socketIds: Set<string>; userType: string }
+	> = new Map(); // userId -> {socketIds, userType}
 	private userRooms: Map<string, Set<string>> = new Map(); // socketId -> Set of conversationIds
 
 	constructor(io: Server) {
@@ -69,8 +71,6 @@ export class ChatSocket {
 	 * Xác thực socket connection
 	 */
 	private handleAuthentication(socket: Socket): void {
-		console.log("socket.handshake", socket.handshake);
-
 		const {
 			token,
 			userId: overrideUserId,
@@ -79,10 +79,12 @@ export class ChatSocket {
 			userId?: string;
 			userType?: string;
 		};
-		
+
 		try {
-			const decoded = jwt.verify(token, config.jwt.secret) as jwt.JwtPayload;
-			console.log("decoded", decoded);
+			const decoded = jwt.verify(
+				token,
+				config.jwt.secret
+			) as jwt.JwtPayload;
 
 			if (!decoded || !decoded.id) {
 				logger.warn(`Invalid JWT token: ${socket.id}`);
@@ -97,35 +99,28 @@ export class ChatSocket {
 			const actualUserId = overrideUserId || decoded.id;
 			const actualUserType = overrideUserType || jwtUserType;
 
-			if (overrideUserId && overrideUserType) {
-				console.log("🔄 Socket using identity override:", {
-					jwtUserId: decoded.id,
-					jwtUserType,
-					overrideUserId,
-					overrideUserType,
-				});
-			} else {
-				console.log("✅ Socket using JWT identity:", {
-					userId: decoded.id,
-					userType: jwtUserType,
-				});
-			}
-
 			// Store user info in socket data
 			socket.data.userId = actualUserId;
 			socket.data.userType = actualUserType;
 
 			// Track online user
+			const existing = this.onlineUsers.get(actualUserId);
+			const socketIds = existing?.socketIds ?? new Set<string>();
+			const wasOnline = socketIds.size > 0;
+			socketIds.add(socket.id);
+
 			this.onlineUsers.set(actualUserId, {
-				socketId: socket.id,
+				socketIds,
 				userType: actualUserType,
 			});
 
-			// Emit user online status to all connections
-			socket.broadcast.emit("user_online", {
-				userId: actualUserId,
-				userType: actualUserType,
-			});
+			// Emit user online status to all connections only when first socket connects
+			if (!wasOnline) {
+				socket.broadcast.emit("user_online", {
+					userId: actualUserId,
+					userType: actualUserType,
+				});
+			}
 
 			// Send updated online users list to all clients
 			this.io.emit("online_users_list", {
@@ -347,17 +342,27 @@ export class ChatSocket {
 
 		// Remove from online users
 		if (userId) {
-			this.onlineUsers.delete(userId);
+			const entry = this.onlineUsers.get(userId);
+			if (entry) {
+				entry.socketIds.delete(socket.id);
+				const isOffline = entry.socketIds.size === 0;
+				if (isOffline) {
+					this.onlineUsers.delete(userId);
 
-			// Notify all about user offline
-			socket.broadcast.emit("user_offline", { userId });
+					// Notify all about user offline
+					socket.broadcast.emit("user_offline", { userId });
 
-			// Send updated online users list to all clients
-			this.io.emit("online_users_list", {
-				users: this.getOnlineUsersWithDetails(),
-			});
+					// Send updated online users list to all clients
+					this.io.emit("online_users_list", {
+						users: this.getOnlineUsersWithDetails(),
+					});
 
-			logger.info(`User ${userId} disconnected`);
+					logger.info(`User ${userId} disconnected`);
+				} else {
+					// still online on other sockets, keep entry
+					this.onlineUsers.set(userId, entry);
+				}
+			}
 		}
 
 		// Clean up rooms

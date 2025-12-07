@@ -9,7 +9,7 @@ import { Candidate } from "../model/candidate.model";
 import { sendEventJob } from "./mq.service";
 
 export interface IJobService {
-    getAllJob(input: JobSearch): Promise<PagingList<Job>>
+    getAllJob(userId: string | undefined, input: JobSearch): Promise<PagingList<Job>>
     createJob(input: any): Promise<InsertOneResult>
     deleteJobPost(input: any): Promise<Boolean>
     getPostJobDetail(input: GetPostJobDetailInput): Promise<Job>
@@ -19,7 +19,7 @@ export interface IJobService {
     getCandidateByStatus(status: string, jobId: string, page: number, size: number): Promise<PagingList<Candidate>>
     feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean>
     getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>>
-    getJobsByIds(jobIds: string[]): Promise<Job[]>
+    getJobsByIds(userId: string, jobIds: string[]): Promise<Job[]>
 }
 
 export class JobService implements IJobService {
@@ -63,8 +63,28 @@ export class JobService implements IJobService {
         }
         return result;
     }
-    async getAllJob(input: JobSearch): Promise<PagingList<Job>> {
-        const result = await this.jobRepository.getPagingJobsByCompanyId(input)
+    async getAllJob(userId: string | undefined, input: JobSearch): Promise<PagingList<Job>> {
+        let result = await this.jobRepository.getPagingJobsByCompanyId(input)
+        
+        if (userId) {
+            const jobIds = result.data.map(job => job._id.toString())
+            const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
+            result = {
+                ...result,
+                data: result.data.map(job => ({
+                    ...job,
+                    isApplied: candidateData.some(candidate => candidate.jobId === job._id.toString())
+                }))
+            }
+        } else {
+            result = {
+                ...result,
+                data: result.data.map(job => ({
+                    ...job,
+                    isApplied: false
+                }))
+            }
+        }
         return result;
     }
     async deleteJobPost(input: any): Promise<Boolean> {
@@ -88,10 +108,29 @@ export class JobService implements IJobService {
     async getCandidateByStatus(status: string, jobId: string, page: number, size: number): Promise<PagingList<Candidate>> {
         return await this.candidateRepository.getCandidateByStatus(status, jobId, page, size)
     }
+
+    // public feed -> always return isApplied = false
     async getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>> {
-        return await this.jobRepository.getPublicJobFeed(input)
+        const jobData = await this.jobRepository.getPublicJobFeed(input)
+
+        return {
+            ...jobData,
+            data: jobData.data.map((job) => ({
+                ...job,
+                isApplied: false
+            }))
+        }
     }
-    async getJobsByIds(jobIds: string[]): Promise<Job[]> {
-        return await this.jobRepository.getJobsByIds(jobIds)
-    }
+    async getJobsByIds( userId: string, jobIds: string[]): Promise<Job[]> {
+        const jobData = await this.jobRepository.getJobsByIds(jobIds)
+
+        const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
+
+        return jobData.map(job => {
+            return {
+            ...job,
+                isApplied: candidateData.some(candidate => candidate.jobId === job._id.toString())
+            }
+        });
+	}
 }

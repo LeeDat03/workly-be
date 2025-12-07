@@ -19,7 +19,6 @@ const sendErrorProd = (err: AppError, res: Response) => {
 		});
 	}
 
-	console.error("ERROR 💥:", err);
 	res.status(500).json({
 		status: "error",
 		message: "Something went very wrong!",

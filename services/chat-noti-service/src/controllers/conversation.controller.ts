@@ -1,120 +1,116 @@
-import { Response, NextFunction } from 'express';
-import { ConversationService } from '../services';
-import { IAuthRequest, ParticipantType } from '../types';
-import asyncHandler from 'express-async-handler';
+import { Response, NextFunction } from "express";
+import { ConversationService } from "../services";
+import { IAuthRequest, ParticipantType } from "../types";
+import asyncHandler from "express-async-handler";
 
 export class ConversationController {
-  private conversationService: ConversationService;
+	private conversationService: ConversationService;
 
-  constructor() {
-    this.conversationService = new ConversationService();
-  }
+	constructor() {
+		this.conversationService = new ConversationService();
+	}
 
-  /**
-   * @route POST /api/conversations
-   * @desc Tạo hoặc lấy conversation với một participant khác
-   */
-  createConversation = asyncHandler(
-    async (req: IAuthRequest, res: Response, next: NextFunction) => {
-      const { participantId, participantType } = req.body;
-      const currentUser = req.user!;
+	/**
+	 * @route POST /api/conversations
+	 * @desc Tạo hoặc lấy conversation với một participant khác
+	 */
+	createConversation = asyncHandler(
+		async (req: IAuthRequest, res: Response, next: NextFunction) => {
+		const { participantId, participantType } = req.body;
+		const currentUser = req.user!;
 
-      console.log('🔵 Creating/Getting conversation:', {
-        currentUser: { id: currentUser.id, type: currentUser.type },
-        otherParticipant: { id: participantId, type: participantType },
-        headers: {
-          'x-user-id': req.headers['x-user-id'],
-          'x-user-type': req.headers['x-user-type'],
-        }
-      });
+		const conversation =
+			await this.conversationService.createOrGetConversation(
+				{ id: currentUser.id, type: currentUser.type },
+				{
+					id: participantId,
+					type: participantType as ParticipantType,
+				}
+			);
 
-      const conversation = await this.conversationService.createOrGetConversation(
-        { id: currentUser.id, type: currentUser.type },
-        { id: participantId, type: participantType as ParticipantType }
-      );
+			res.status(201).json({
+				success: true,
+				message: "Conversation created successfully",
+				data: conversation,
+			});
+		}
+	);
 
-      console.log('✅ Conversation created/found:', {
-        conversationId: conversation._id,
-        participants: conversation.participants,
-      });
+	/**
+	 * @route GET /api/conversations
+	 * @desc Lấy tất cả conversations của user
+	 */
+	getConversations = asyncHandler(
+		async (req: IAuthRequest, res: Response, next: NextFunction) => {
+			const currentUser = req.user!;
+			const page = parseInt(req.query.page as string) || 1;
+			const limit = parseInt(req.query.limit as string) || 20;
 
-      res.status(201).json({
-        success: true,
-        message: 'Conversation created successfully',
-        data: conversation,
-      });
-    }
-  );
+			const result =
+				await this.conversationService.getConversationsByParticipant(
+					currentUser.id,
+					currentUser.type,
+					page,
+					limit
+				);
 
-  /**
-   * @route GET /api/conversations
-   * @desc Lấy tất cả conversations của user
-   */
-  getConversations = asyncHandler(
-    async (req: IAuthRequest, res: Response, next: NextFunction) => {
-      const currentUser = req.user!;
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+			res.status(200).json({
+				success: true,
+				message: "Conversations retrieved successfully",
+				data: result.conversations,
+				pagination: {
+					total: result.total,
+					page: result.page,
+					limit: result.limit,
+					totalPages: Math.ceil(result.total / result.limit),
+				},
+			});
+		}
+	);
 
-      const result = await this.conversationService.getConversationsByParticipant(
-        currentUser.id,
-        currentUser.type,
-        page,
-        limit
-      );
+	/**
+	 * @route GET /api/conversations/:id
+	 * @desc Lấy conversation theo ID
+	 */
+	getConversationById = asyncHandler(
+		async (req: IAuthRequest, res: Response, next: NextFunction) => {
+			const { id } = req.params;
+			const currentUser = req.user!;
 
-      res.status(200).json({
-        success: true,
-        message: 'Conversations retrieved successfully',
-        data: result.conversations,
-        pagination: {
-          total: result.total,
-          page: result.page,
-          limit: result.limit,
-          totalPages: Math.ceil(result.total / result.limit),
-        },
-      });
-    }
-  );
+			const conversation =
+				await this.conversationService.getConversationById(
+					id,
+					currentUser.id
+				);
 
-  /**
-   * @route GET /api/conversations/:id
-   * @desc Lấy conversation theo ID
-   */
-  getConversationById = asyncHandler(
-    async (req: IAuthRequest, res: Response, next: NextFunction) => {
-      const { id } = req.params;
-      const currentUser = req.user!;
+			res.status(200).json({
+				success: true,
+				message: "Conversation retrieved successfully",
+				data: conversation,
+			});
+		}
+	);
 
-      const conversation = await this.conversationService.getConversationById(
-        id,
-        currentUser.id
-      );
+	/**
+	 * @route DELETE /api/conversations/:id
+	 * @desc Xóa conversation
+	 */
+	deleteConversation = asyncHandler(
+		async (req: IAuthRequest, res: Response, next: NextFunction) => {
+			const { id } = req.params;
+			const currentUser = req.user!;
+			const { hasDeletedParticipant } = req.body || {};
 
-      res.status(200).json({
-        success: true,
-        message: 'Conversation retrieved successfully',
-        data: conversation,
-      });
-    }
-  );
+			await this.conversationService.deleteConversation(
+				id,
+				currentUser.id,
+				hasDeletedParticipant
+			);
 
-  /**
-   * @route DELETE /api/conversations/:id
-   * @desc Xóa conversation
-   */
-  deleteConversation = asyncHandler(
-    async (req: IAuthRequest, res: Response, next: NextFunction) => {
-      const { id } = req.params;
-      const currentUser = req.user!;
-
-      await this.conversationService.deleteConversation(id, currentUser.id);
-
-      res.status(200).json({
-        success: true,
-        message: 'Conversation deleted successfully',
-      });
-    }
-  );
+			res.status(200).json({
+				success: true,
+				message: "Conversation deleted successfully",
+			});
+		}
+	);
 }
-
