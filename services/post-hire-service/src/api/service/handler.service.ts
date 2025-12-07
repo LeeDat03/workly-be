@@ -36,35 +36,7 @@ export const handlePost = async (data: BaseEvent): Promise<void> => {
     const exists = await client.indices.exists({ index });
     if (!exists) {
         await client.indices.create({
-            index: index,
-            settings: {
-                analysis: {
-                    analyzer: {
-                        ngram_analyzer: {
-                            type: "custom",
-                            tokenizer: "ngram_tokenizer",
-                            filter: ["lowercase"]
-                        }
-                    },
-                    tokenizer: {
-                        ngram_tokenizer: {
-                            type: "ngram",
-                            min_gram: 1,
-                            max_gram: 2,
-                            token_chars: ["letter", "digit"]
-                        }
-                    }
-                }
-            },
-            mappings: {
-                properties: {
-                    content: {
-                        type: "text",
-                        analyzer: "ngram_analyzer",
-                        search_analyzer: "standard"
-                    },
-                }
-            }
+            index: index
         });
     }
     try {
@@ -115,54 +87,15 @@ export const handleJob = async (data: BaseEvent): Promise<void> => {
         if (!exists) {
             await client.indices.create({
                 index: "job",
-                settings: {
-                    analysis: {
-                        analyzer: {
-                            ngram_analyzer: {
-                                type: "custom",
-                                tokenizer: "ngram_tokenizer",
-                                filter: ["lowercase"]
-                            }
-                        },
-                        tokenizer: {
-                            ngram_tokenizer: {
-                                type: "ngram",
-                                min_gram: 1,
-                                max_gram: 2,
-                                token_chars: ["letter", "digit"]
-                            }
-                        }
-                    }
-                },
-                mappings: {
-                    properties: {
-                        title: {
-                            type: "text",
-                            analyzer: "ngram_analyzer",
-                            search_analyzer: "standard"
-                        },
-                        content: {
-                            type: "text",
-                            analyzer: "ngram_analyzer",
-                            search_analyzer: "standard"
-                        },
-                        skill: {
-                            type: "text",
-                            analyzer: "ngram_analyzer",
-                            search_analyzer: "standard"
-                        },
-                        endDate: { type: "date" }
-                    }
-                }
             });
         }
         if (data.type === "ADD") {
             const jobData = await DatabaseAdapter.getInstance().job.findOne({ _id: new ObjectId(data.id.toString()) })
-            const { _id, title, content, endDate, skill } = jobData as any;
+            const { _id, title, content, endDate, skills, level } = jobData as any;
             await client.create({
                 index,
                 id: _id,
-                document: { title: title, content: content, endDate: endDate, skill: skill },
+                document: { title: title, content: content, endDate: endDate, skills: skills, level },
                 refresh: 'wait_for',
             });
             console.log(`job ${data.id} add from Elasticsearch`);
@@ -202,34 +135,6 @@ export const handleUser = async (data: any): Promise<void> => {
         if (!exists) {
             await client.indices.create({
                 index: index,
-                settings: {
-                    analysis: {
-                        analyzer: {
-                            ngram_analyzer: {
-                                type: "custom",
-                                tokenizer: "ngram_tokenizer",
-                                filter: ["lowercase"]
-                            }
-                        },
-                        tokenizer: {
-                            ngram_tokenizer: {
-                                type: "ngram",
-                                min_gram: 1,
-                                max_gram: 2,
-                                token_chars: ["letter", "digit"]
-                            }
-                        }
-                    }
-                },
-                mappings: {
-                    properties: {
-                        name: {
-                            type: "text",
-                            analyzer: "ngram_analyzer",
-                            search_analyzer: "standard"
-                        },
-                    }
-                }
             });
         }
         if (data.type === "ADD") {
@@ -275,35 +180,7 @@ export const handleCompany = async (data: any): Promise<void> => {
         const exists = await client.indices.exists({ index });
         if (!exists) {
             await client.indices.create({
-                index: index,
-                settings: {
-                    analysis: {
-                        analyzer: {
-                            ngram_analyzer: {
-                                type: "custom",
-                                tokenizer: "ngram_tokenizer",
-                                filter: ["lowercase"]
-                            }
-                        },
-                        tokenizer: {
-                            ngram_tokenizer: {
-                                type: "ngram",
-                                min_gram: 1,
-                                max_gram: 2,
-                                token_chars: ["letter", "digit"]
-                            }
-                        }
-                    }
-                },
-                mappings: {
-                    properties: {
-                        name: {
-                            type: "text",
-                            analyzer: "ngram_analyzer",
-                            search_analyzer: "standard"
-                        },
-                    }
-                }
+                index: index
             });
         }
         if (data.type === "ADD") {

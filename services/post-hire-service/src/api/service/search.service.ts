@@ -6,37 +6,215 @@ import { ICommentRepository } from "../repository/comment.repository";
 import { ILikeRepository } from "../repository/like.repository";
 import { mapToPostResponse } from "../model/post.model";
 import { USER_SERVICE_URL } from "@/common/enviroment";
+import { IPostRepository } from "../repository/post.repository";
+import { ICandidateRepository } from "../repository/candidate.repository";
 
 export interface ISearchService {
-    getGlobalSearch(keyword: string, cookie: string, authorization: string): Promise<any>
+    getUserSearch(keyword: string, page: number, size: number, cookie: string, authorization: string): Promise<any>
+    getGlobalSearch(keyword: string, cookie: string, authorization: string, userId: string | undefined,
+    ): Promise<any>
+    getPostSearch(keyword: string, page: number, size: number): Promise<any>
+    getJobSearch(
+        userId: string | undefined,
+        keyword: string,
+        skills: string[],
+        level: string,
+        startDate: string,
+        endDate: string,
+        page: number,
+        size: number
+    ): Promise<any>
+    getCompanySearch(keyword: string, page: number, size: number, cookie: string, authorization: string): Promise<any>
 }
 export class SearchService implements ISearchService {
 
     private commentRepository: ICommentRepository;
     private likeRepository: ILikeRepository;
+    private postRepository: IPostRepository
+    private candidateRepository: ICandidateRepository;
 
-    constructor(commentRepository: ICommentRepository, likeRepository: ILikeRepository) {
+    constructor(commentRepository: ICommentRepository, likeRepository: ILikeRepository, postRepository: IPostRepository, candidateRepository: ICandidateRepository,
+    ) {
         this.commentRepository = commentRepository;
-        this.likeRepository = likeRepository
-    }
-    private static client = elasticManage.getClient();
-    public getGlobalSearch = async (keyword: string, cookie: string, authorization: string): Promise<any> => {
-        console.log(keyword);
-        if (!keyword || keyword.trim().length === 0) {
-            return {
-                posts: [],
-                jobs: [],
-                users: [],
-                companies: [],
-                totalResults: {
-                    posts: 0,
-                    jobs: 0,
-                    users: 0,
-                    companies: 0
-                }
-            };
-        }
+        this.likeRepository = likeRepository;
+        this.postRepository = postRepository;
+        this.candidateRepository = candidateRepository;
 
+    }
+    async getPostSearch(keyword: string, page: number, size: number): Promise<any> {
+        const data = await this.postRepository.getPagingPostSearch(keyword, page, size);
+        const postIds = data.data.map((post) => post._id.toString());
+        const commentCounts = await this.commentRepository.countCommentsByPostIds(postIds);
+        const likePosts = await this.likeRepository.getAllLikeByListPost(postIds)
+        const mappedData = data.data.map((item) => {
+            const postResponse = mapToPostResponse(item);
+            return {
+                ...postResponse,
+                totalComments: commentCounts[item._id.toString()] || 0,
+                totalLikes: likePosts[item._id.toString()] || [],
+            };
+        });
+
+        const authorIds = mappedData.map((post) => {
+            return {
+                id: post.author_id,
+                type: post.author_type,
+            };
+        });
+
+        const authorData = await axios
+            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
+                ids: authorIds,
+            })
+            .then((res) => res.data.data);
+
+        const authorMap = new Map(
+            authorData.map((item: any) => [item.id, item.data])
+        );
+
+        const postsWithAuthor = mappedData.map((post) => ({
+            ...post,
+            author: authorMap.get(post.author_id) || null,
+        }));
+        return {
+            data: postsWithAuthor,
+            pagination: data.pagination,
+        };
+    }
+
+    public getUserSearch = async (keyword: string, page: number, size: number, cookie: string, authorization: string) => {
+        const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
+        const from = (page - 1) * size;
+        const query = {
+            index: "user",
+            from,
+            size,
+            query: {
+                bool: {
+                    must: keyword
+                        ? [
+                            {
+                                wildcard: {
+                                    name: {
+                                        value: `*${keyword.toLowerCase()}*`,
+                                    },
+                                },
+                            }
+                        ]
+                        : [
+                            { match_all: {} }
+                        ],
+                },
+            },
+        };
+        const result = await SearchService.client.search(query);
+
+        const total = (typeof result.hits.total === 'object'
+            ? result.hits.total.value
+            : 0);
+
+        const userIds = result.hits.hits.map((hit: any) => hit._id);
+
+        const userPromise = userIds.length > 0
+            ? await axios.post(
+                `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+                { userIds: userIds },
+                {
+                    headers: {
+                        Cookie: cookie,
+                        Authorization: authorization,
+                    },
+                    withCredentials: true,
+                }
+            ).catch(error => {
+                console.error('Error fetching companies:', error.message);
+                return [];
+            }).then((data: any) => data.data.data)
+            : [];
+        const userMap = new Map(userPromise.map((user: any) => [user.userId, user]));
+        const orderedUsers = userIds
+            .map(id => userMap.get(id))
+            .filter(Boolean);
+        const finalResults = {
+            users: orderedUsers,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
+        return finalResults
+    }
+
+    async getCompanySearch(keyword: string, page: number, size: number, cookie: string, authorization: string): Promise<any> {
+        const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
+        const from = (page - 1) * size;
+        const query = {
+            index: "company",
+            from,
+            size,
+            query: {
+                bool: {
+                    must: keyword
+                        ? [
+                            {
+                                wildcard: {
+                                    name: {
+                                        value: `*${keyword.toLowerCase()}*`,
+                                    },
+                                },
+                            }
+                        ]
+                        : [
+                            { match_all: {} }
+                        ],
+                },
+            },
+        };
+        const result = await SearchService.client.search(query);
+
+        const total = (typeof result.hits.total === 'object'
+            ? result.hits.total.value
+            : 0);
+
+        const companyIds = result.hits.hits.map((hit: any) => hit._id);
+        console.log("companyIds", companyIds);
+
+        const companyPromise = companyIds.length > 0
+            ? await axios.post(
+                `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+                { companyIds: companyIds },
+                {
+                    headers: {
+                        Cookie: cookie,
+                        Authorization: authorization,
+                    },
+                    withCredentials: true,
+                }
+            ).catch(error => {
+                console.error('Error fetching companies:', error.message);
+                return [];
+            }).then((data: any) => data.data.data)
+            : [];
+        const companyMap = new Map(companyPromise.map((company: any) => [company.companyId, company]));
+        const orderedCompanies = companyIds
+            .map(id => companyMap.get(id))
+            .filter(Boolean);
+        const finalResults = {
+            companies: orderedCompanies,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
+        return finalResults
+    }
+
+    private static client = elasticManage.getClient();
+    public getGlobalSearch = async (keyword: string, cookie: string, authorization: string, userId: string | undefined): Promise<any> => {
         const pageSize = 5;
         const from = 0;
 
@@ -49,9 +227,11 @@ export class SearchService implements ISearchService {
                     size: pageSize,
                     track_total_hits: true,
                     query: {
-                        multi_match: {
-                            query: keyword,
-                            fields: ["title^2", "content"]
+                        bool: {
+                            should: [
+                                { wildcard: { title: `*${keyword}*` } },
+                                { wildcard: { content: `*${keyword}*` } }
+                            ]
                         }
                     }
                 },
@@ -61,9 +241,10 @@ export class SearchService implements ISearchService {
                     size: pageSize,
                     track_total_hits: true,
                     query: {
-                        multi_match: {
-                            query: keyword,
-                            fields: ["content"]
+                        bool: {
+                            should: [
+                                { wildcard: { content: `*${keyword}*` } }
+                            ]
                         }
                     }
                 },
@@ -73,9 +254,10 @@ export class SearchService implements ISearchService {
                     size: pageSize,
                     track_total_hits: true,
                     query: {
-                        multi_match: {
-                            query: keyword,
-                            fields: ["name"]
+                        bool: {
+                            should: [
+                                { wildcard: { name: `*${keyword}*` } }
+                            ]
                         }
                     }
                 },
@@ -85,9 +267,10 @@ export class SearchService implements ISearchService {
                     size: pageSize,
                     track_total_hits: true,
                     query: {
-                        multi_match: {
-                            query: keyword,
-                            fields: ["name"]
+                        bool: {
+                            should: [
+                                { wildcard: { name: `*${keyword}*` } }
+                            ]
                         }
                     }
                 }
@@ -151,11 +334,11 @@ export class SearchService implements ISearchService {
             };
         });
 
-        const authorData = await axios
+        const authorData = postResults.length > 0 ? await axios
             .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
                 ids: authorIds,
             })
-            .then((res) => res.data.data);
+            .then((res) => res.data.data) : [];
 
         const authorMap = new Map(
             authorData.map((item: any) => [item.id, item.data])
@@ -174,12 +357,11 @@ export class SearchService implements ISearchService {
             };
         });
 
-        const companyData = await axios
+        const companyData = jobResults.length > 0 ? await axios
             .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
                 ids: companyIds,
             })
-            .then((res) => res.data.data);
-        console.log(companyData);
+            .then((res) => res.data.data) : [];
 
         const companiesMap = new Map(
             companyData.map((item: any) => [item.id, item.data])
@@ -243,7 +425,7 @@ export class SearchService implements ISearchService {
             .map(id => postMap.get(id))
             .filter(Boolean);
 
-        const orderedJobs = (searchMap.get("job") || [])
+        let orderedJobs = (searchMap.get("job") || [])
             .map(id => jobMap.get(id))
             .filter(Boolean);
 
@@ -254,7 +436,20 @@ export class SearchService implements ISearchService {
         const orderedCompanies = (searchMap.get("company") || [])
             .map(id => companyMap.get(id))
             .filter(Boolean);
+        if (userId) {
+            const jobIds = orderedJobs.map((job: any) => job._id.toString())
+            const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
 
+            orderedJobs = orderedJobs.map((job: any) => ({
+                ...job,
+                isApplied: candidateData.some(candidate => candidate.jobId === job._id.toString())
+            }))
+        } else {
+            orderedJobs = orderedJobs.map((job: any) => ({
+                ...job,
+                isApplied: false
+            }))
+        }
         const finalResults = {
             posts: orderedPosts,
             jobs: orderedJobs,
@@ -269,4 +464,144 @@ export class SearchService implements ISearchService {
         };
         return finalResults
     }
+    public getJobSearch = async (
+        userId: string | undefined,
+        keyword: string,
+        skills: string[],
+        level: string,
+        startDate: string,
+        endDate: string,
+        page: number,
+        size: number
+    ): Promise<any> => {
+        console.log("check", keyword, skills, level, startDate, endDate, page, size);
+
+        const must: any[] = [];
+        const filter: any[] = [];
+
+        // Keyword search using wildcard
+        if (keyword) {
+            const lower = keyword.toLowerCase();
+
+            must.push({
+                bool: {
+                    should: [
+                        {
+                            wildcard: {
+                                "title": `*${lower}*`
+                            }
+                        },
+                        {
+                            wildcard: {
+                                "content": `*${lower}*`
+                            }
+                        }
+                    ],
+                    minimum_should_match: 1
+                }
+            });
+        }
+
+        if (skills && skills.length > 0) {
+            filter.push({
+                terms: {
+                    "skills.keyword": skills
+                }
+            });
+        }
+
+        if (level) {
+            filter.push({
+                term: {
+                    level: level
+                }
+            });
+        }
+
+        if (startDate || endDate) {
+            filter.push({
+                range: {
+                    endDate: {
+                        gte: startDate || undefined,
+                        lte: endDate || undefined
+                    }
+                }
+            });
+        }
+
+        const queryBody = {
+            from: (page - 1) * size,
+            size: size,
+            query: {
+                bool: {
+                    must,
+                    filter
+                }
+            }
+        };
+
+        const item = await SearchService.client.search({
+            index: "job",
+            body: queryBody
+        } as any);
+
+        const total = (typeof item.hits.total === 'object'
+            ? item.hits.total.value
+            : 0);
+        const jobIds = item.hits.hits.map((hit: any) => hit._id);
+        const jobResults = jobIds.length > 0
+            ? await DatabaseAdapter.getInstance().job.find({ _id: { $in: jobIds.map(jobId => new ObjectId(jobId as string)) } }).toArray()
+            : []
+
+
+        const companyIds = jobResults.map((job) => {
+            return {
+                id: job.companyId,
+                type: "COMPANY",
+            };
+        });
+        const companyData = jobResults.length > 0 ? await axios
+            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
+                ids: companyIds,
+            })
+            .then((res) => res.data.data) : [];
+        const companiesMap = new Map(
+            companyData.map((item: any) => [item.id, item.data])
+        );
+
+        const jobsWithAuthor = jobResults.map((job) => ({
+            ...job,
+            company: companiesMap.get(job.companyId) || null,
+        }));
+        const jobMap = new Map(jobsWithAuthor.map(doc => [doc._id.toString(), doc]));
+
+        let orderedJobs = jobIds
+            .map(id => jobMap.get(id))
+            .filter(Boolean);
+        if (userId) {
+            const jobIds = orderedJobs.map((job: any) => job._id.toString())
+            const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
+
+            orderedJobs = orderedJobs.map((job: any) => ({
+                ...job,
+                isApplied: candidateData.some(candidate => candidate.jobId === job._id.toString())
+            }))
+        } else {
+            orderedJobs = orderedJobs.map((job: any) => ({
+                ...job,
+                isApplied: false
+            }))
+        }
+        const finalResults = {
+            jobs: orderedJobs,
+            pagination: {
+                page,
+                size,
+                total,
+                totalPages: Math.ceil(total / size),
+            },
+        };
+        return finalResults
+    }
+
 }

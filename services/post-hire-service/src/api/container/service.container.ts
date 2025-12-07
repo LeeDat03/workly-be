@@ -40,7 +40,9 @@ export class ServiceContainer {
         )
         this.searchService = new SearchService(
             RepositoryContainer.getCommentRepository(),
-            RepositoryContainer.getLikeRepository()
+            RepositoryContainer.getLikeRepository(),
+            RepositoryContainer.getPostRepository(),
+            RepositoryContainer.getCandidateRepository()
         );
         this.isInitialized = true;
 
@@ -51,7 +53,9 @@ export class ServiceContainer {
         if (!this.searchService) {
             this.searchService = new SearchService(
                 RepositoryContainer.getCommentRepository(),
-                RepositoryContainer.getLikeRepository()
+                RepositoryContainer.getLikeRepository(),
+                RepositoryContainer.getPostRepository(),
+                RepositoryContainer.getCandidateRepository()
             )
         }
         return this.searchService;

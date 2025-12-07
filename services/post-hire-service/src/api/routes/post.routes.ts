@@ -6,20 +6,14 @@ import { UploadMiddleware } from "@/api/middlewares/upload.middleware";
 import {
 	createComment,
 } from "@/api/validation/comment.validator";
-import { isAuthenticated } from "../middlewares/authentication.middleware";
-import mqManager from "@/common/infrastructure/mq.adapter";
-import { QUEUES } from "../service/mq.service";
+import { isAuthenticated, optionalAuth } from "../middlewares/authentication.middleware";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
-
-	router.get("/test", (req, res) => {
-		console.log("hehe");
-		mqManager.sendToQueue(QUEUES.EMAIL, { hehe: "dang test" })
-		res.send({ a: "abc" });
-	});
-	router.use(isAuthenticated)
 	const postController = ControllerContainer.getPostController();
+	router.get("/myPost", optionalAuth, postController.getPostByUserId);
+
+	router.use(isAuthenticated)
 
 
 	router.post(
@@ -45,7 +39,6 @@ export function createPostRoutes(): Router {
 
 	router.get("/read/:id", postController.getPostDetail);
 
-	router.get("/myPost", postController.getPostByUserId);
 
 	router.get("/video/:filename", postController.getStreamVideo);
 

@@ -6,12 +6,12 @@ class ElasticsearchAdapter {
     constructor() {
         if (!ElasticsearchAdapter.client) {
             ElasticsearchAdapter.client = new Client({
-                node: "https://my-elasticsearch-project-a6caab.es.us-central1.gcp.elastic.cloud:443",
-                auth: {
-                    apiKey: "RE1xaTdwb0JVU0pBenBMcjhRMFQ6OGJGaTNUOTJhRGl5UElLUGREaUdidw==",
+                cloud: {
+                    id: "test:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRlNWZhNDU4YTg4ZWE0OGMyOGI5MzkzMjc1ZmU0YWUzNiRmMGUyOTc0ZGI3MzA0ZWFlOWVmNjU0NWViOGEzYWNlOA=="
                 },
-                tls: {
-                    rejectUnauthorized: false
+                auth: {
+                    username: "elastic",
+                    password: "TPGg7pCfcAsu1zaC2FCdml7v"
                 }
             });
         }

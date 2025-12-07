@@ -7,9 +7,13 @@ export function createJobRoutes(): Router {
 
     const router = express.Router();
     const jobController = ControllerContainer.getJobController();
-
     router.get("/myJob", optionalAuth, jobController.getJobsByCompanyId);
+
     router.use(isAuthenticated)
+
+    router.get("/test", (req, res) => {
+        res.send({ a: "abc" });
+    });
 
     router.post("/create", jobController.createJobPost);
     router.delete("/delete", jobController.deleteJobPost);
