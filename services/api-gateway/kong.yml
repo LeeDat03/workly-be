@@ -38,15 +38,22 @@ routes:
           - /api/v1/search
       strip_path: false
 
-    # Chat service routes - Đặt TRƯỚC để ưu tiên (more specific paths first)
+    # Chat service routes - REST API routes
     - name: route-for-chat-notification
       service: chat-notification-service
       paths:
           - /api/v1/conversations
           - /api/v1/messages
           - /api/v1/users
-      strip_path:
-          false
+      strip_path: false
+
+    # WebSocket route for Socket.io - Đặt SAU các REST routes để tránh conflict
+    # Do NOT strip path - backend needs to handle /api/v1/socket.io path
+    - name: route-for-chat-websocket
+      service: chat-notification-service
+      paths:
+          - /api/v1/socket.io
+      strip_path: false
 
           #   TODO: JWT, CORS, RATE LIMIT
 # consumers:
@@ -73,6 +80,8 @@ plugins:
               - "Content-Type"
               - "X-User-Id"
               - "X-User-Type"
+              - "Upgrade"
+              - "Connection"
           exposed_headers:
               - "X-Custom-Header"
           credentials: true
