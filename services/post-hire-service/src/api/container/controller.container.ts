@@ -6,6 +6,7 @@ import { FeedController } from "../controller/feed.controller";
 import { RepositoryContainer } from "@/api/container/repository.container";
 import { JobController } from "../controller/job.controller";
 import { SearchController } from "../controller/search.controller";
+import { BookmarkController } from "../controller/bookmark.controller";
 
 export class ControllerContainer {
 	private static postController: PostController;
@@ -14,6 +15,7 @@ export class ControllerContainer {
 	private static jobController: JobController;
 	private static feedController: FeedController;
 	private static searchController: SearchController;
+	private static bookmarkController: BookmarkController;
 	private static isInitialized = false;
 
 	static async initialize(): Promise<void> {
@@ -43,6 +45,9 @@ export class ControllerContainer {
 		this.searchController = new SearchController(
 			ServiceContainer.getSearchService()
 		)
+		this.bookmarkController = new BookmarkController(
+			ServiceContainer.getBookmarkService()
+		);
 		this.isInitialized = true;
 
 		console.log("✅ ControllerContainer initialized successfully");
@@ -100,5 +105,14 @@ export class ControllerContainer {
 			);
 		}
 		return this.feedController;
+	}
+
+	static getBookmarkController(): BookmarkController {
+		if (!this.bookmarkController) {
+			this.bookmarkController = new BookmarkController(
+				ServiceContainer.getBookmarkService()
+			);
+		}
+		return this.bookmarkController;
 	}
 }

@@ -73,56 +73,62 @@ export class PostRepository implements IPostRepository {
 	public async updatePost(
 		post: UpdatePostDTO,
 	): Promise<UpdateResult> {
-		return await this.postCollection.withTransaction(async (session) => {
-			let result;
-			const updatePushQuery: Record<string, any> = {
-				$push: {
-					media_url: { $each: [...(post.media_url_add || [])] },
-				},
-			};
-			const updatePullQuery: Record<string, any> = {
-				$pull: {
-					media_url: {
-						url: {
-							$in:
-								post.media_url_delete.map((i) => i.originalUrl) ?? [],
-						},
+		// Build update query with all changes
+		const updateQuery: Record<string, any> = {};
+		const filter = { 
+			_id: new ObjectId(post.postId), 
+			author_id: post.author_id, 
+			author_type: post.author_type 
+		};
+
+		// Xóa media
+		if (post.media_url_delete && post.media_url_delete.length > 0) {
+			updateQuery.$pull = {
+				media_url: {
+					url: {
+						$in: post.media_url_delete.map((i) => i.originalUrl) ?? [],
 					},
 				},
 			};
+		}
 
-			// Xóa media
-			if (post.media_url_delete.length) {
-				result = await this.postCollection.post.updateOne(
-					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
-					updatePullQuery,
-					{ session }
-				);
+		// Thêm media
+		if (post.media_url_add && post.media_url_add.length > 0) {
+			if (updateQuery.$pull) {
+				// Nếu đã có $pull, cần combine với $push
+				updateQuery.$push = {
+					media_url: { $each: [...(post.media_url_add || [])] },
+				};
+			} else {
+				// Nếu chỉ có $push
+				updateQuery.$push = {
+					media_url: { $each: [...(post.media_url_add || [])] },
+				};
 			}
+		}
 
-			// Thêm media
-			if (post.media_url_add.length) {
-				result = await this.postCollection.post.updateOne(
-					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
-					updatePushQuery,
-					{ session }
-				);
-			}
+		// Update nội dung khác (content, visibility, v.v.)
+		const updateFields: any = {};
+		if (post.content) updateFields.content = post.content;
+		if (post.visibility) updateFields.visibility = post.visibility;
 
-			// Update nội dung khác (content, visibility, v.v.)
-			const updateFields: any = {};
-			if (post.content) updateFields.content = post.content;
-			if (post.visibility) updateFields.visibility = post.visibility;
+		if (Object.keys(updateFields).length > 0) {
+			updateQuery.$set = updateFields;
+		}
 
-			if (Object.keys(updateFields).length > 0) {
-				result = await this.postCollection.post.updateOne(
-					{ _id: new ObjectId(post.postId), author_id: post.author_id, author_type: post.author_type },
-					{ $set: updateFields },
-					{ session }
-				);
-			}
-			return result
-		});
+		// Thực hiện update trong một query duy nhất
+		if (Object.keys(updateQuery).length > 0) {
+			return await this.postCollection.post.updateOne(filter, updateQuery);
+		}
+
+		// Nếu không có gì để update, trả về result rỗng
+		return {
+			acknowledged: true,
+			matchedCount: 0,
+			modifiedCount: 0,
+			upsertedCount: 0,
+			upsertedId: null,
+		} as UpdateResult;
 	}
 
 	public async getPostDetail(id: ObjectId): Promise<WithId<Document> | null> {

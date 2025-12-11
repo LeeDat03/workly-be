@@ -13,6 +13,7 @@ import cookieParser from "cookie-parser";
 import { createJobRoutes } from "./routes/job.routes";
 import { createFeedRoutes } from "./routes/feed.routes";
 import { createSearchRoutes } from "./routes/search.route";
+import { createBookmarkRoutes } from "./routes/bookmark.routes";
 
 export class ExpressServer {
 	private server?: Express;
@@ -104,11 +105,13 @@ export class ExpressServer {
 		const jobRoutes = createJobRoutes();
 		const feedRoutes = createFeedRoutes();
 		const searchRoutes = createSearchRoutes();
+		const bookmarkRoutes = createBookmarkRoutes();
 
 		server.use("/api/v1/posts", postRoutes);
 		server.use("/api/v1/jobs", jobRoutes);
 		server.use("/api/v1/feed", feedRoutes);
 		server.use("/api/v1/search", searchRoutes);
+		server.use("/api/v1/bookmarks", bookmarkRoutes);
 	}
 	private setupErrorHandlers(server: Express) {
 		server.use(ResponseMiddleware.handler);

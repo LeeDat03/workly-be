@@ -4,6 +4,7 @@ import { CommentRepository, ICommentRepository } from "@/api/repository/comment.
 import { ILikeRepository, likeRepository } from "../repository/like.repository";
 import { IJobRepository, JobRepository } from "../repository/job.repository";
 import { candidateRepository, ICandidateRepository } from "../repository/candidate.repository";
+import { BookmarkRepository, IBookmarkRepository } from "../repository/bookmark.repository";
 
 export class RepositoryContainer {
     private static postRepository: IPostRepository;
@@ -11,6 +12,7 @@ export class RepositoryContainer {
     private static likeRepository: ILikeRepository;
     private static jobRepository: IJobRepository
     private static candidateRepository: ICandidateRepository;
+    private static bookmarkRepository: IBookmarkRepository;
 
 
     private static isInitialized = false;
@@ -33,6 +35,7 @@ export class RepositoryContainer {
         this.likeRepository = new likeRepository(dbAdapter)
         this.jobRepository = new JobRepository(dbAdapter)
         this.candidateRepository = new candidateRepository(dbAdapter)
+        this.bookmarkRepository = new BookmarkRepository(dbAdapter)
         this.isInitialized = true;
 
         console.log('✅ RepositoryContainer initialized successfully');
@@ -68,5 +71,11 @@ export class RepositoryContainer {
             throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
         }
         return this.jobRepository;
+    }
+    static getBookmarkRepository(): IBookmarkRepository {
+        if (!this.isInitialized) {
+            throw new Error('❌ RepositoryContainer not initialized. Call initialize() first.');
+        }
+        return this.bookmarkRepository;
     }
 }
