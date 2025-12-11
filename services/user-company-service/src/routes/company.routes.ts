@@ -81,7 +81,7 @@ router.use("/:id", adminOrSelfRoutes);
 const ownerRoutes = Router({ mergeParams: true });
 ownerRoutes.use(isAuthenticated, isCompanyOwner);
 
-ownerRoutes.delete("/:id", companyController.deleteCompany);
+ownerRoutes.delete("/", companyController.deleteCompany);
 
 router.use("/:id", ownerRoutes);
 
