@@ -23,6 +23,7 @@ export function createJobRoutes(): Router {
     router.post("/apply", jobController.applyJob);
     router.get("/candidates", jobController.getCandidateByStatus);
     router.post("/feedback", jobController.feedbackCandidate);
+    router.get("/applications", jobController.getAppliedJobs);
 
     return router;
 }

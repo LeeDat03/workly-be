@@ -20,6 +20,7 @@ export interface ICandidateRepository {
         userId: string
     ): Promise<Boolean>
     checkCandidateByUserIdAndJobIds(userId: string, jobIds: string[]): Promise<any[]>
+    getAppliedJobs(userId: string): Promise<Candidate[]>
 }
 
 export class candidateRepository implements ICandidateRepository {
@@ -43,6 +44,30 @@ export class candidateRepository implements ICandidateRepository {
             ...input,
             createdAt: new Date()
         });
+    }
+
+    getAppliedJobs = async (userId: string): Promise<Candidate[]> => {
+        return await this.candidateCollection.candidate.aggregate<Candidate>([
+            {
+                $match: { userId }
+            },
+            {
+                $addFields: {
+                    jobIdObj: { $toObjectId: "$jobId" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "job",
+                    localField: "jobIdObj",
+                    foreignField: "_id",
+                    as: "jobInfo"
+                }
+            },
+            {
+                $unwind: "$jobInfo"
+            }
+        ]).toArray();
     }
 
     getCandidateByStatus = async (
