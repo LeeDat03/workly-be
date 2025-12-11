@@ -112,7 +112,6 @@ export class PostController {
 		const fileSize = fs.statSync(videoPath).size;
 		const range = req.headers.range;
 		if (!range) {
-			// Không có range => gửi toàn bộ video
 			res.writeHead(200, {
 				"Content-Length": fileSize,
 				"Content-Type": "video/mp4",

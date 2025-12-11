@@ -20,6 +20,7 @@ export interface IJobService {
     feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean>
     getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>>
     getJobsByIds(userId: string, jobIds: string[]): Promise<Job[]>
+    getAppliedJobs(userId: string): Promise<Candidate[]>
 }
 
 export class JobService implements IJobService {
@@ -31,6 +32,10 @@ export class JobService implements IJobService {
     ) {
         this.jobRepository = jobRepository
         this.candidateRepository = candidateRepository
+    }
+    getAppliedJobs(userId: string): Promise<Candidate[]> {
+        const result = this.candidateRepository.getAppliedJobs(userId);
+        return result;
     }
     async feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean> {
         const result = this.candidateRepository.feedbackCandidate(status, jobId, userId);

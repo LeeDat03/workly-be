@@ -4,6 +4,9 @@ import { IJobService } from "../service/job.service";
 import { JobSearch } from "../model/common.model";
 import { GetPostJobDetailInput } from "../model/job.model";
 import { sendJobToUCQueue } from "../service/mq.service";
+import { APIError } from "@/common/error/api.error";
+import axios from "axios";
+import { Company } from "../model/post.model";
 
 export class JobController {
     private jobService: IJobService;
@@ -159,6 +162,55 @@ export class JobController {
             res.sendJson(data)
         } catch (error) {
             logger.error(`applyJob.create: `, error);
+            next(error);
+        }
+    }
+    public getAppliedJobs = async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
+            const userId = req.user?.userId
+            if (userId === undefined) {
+                throw new APIError({ message: "login is required" })
+            }
+            const data = await this.jobService.getAppliedJobs(userId);
+
+            const companyIds = data
+                .map((item) => {
+                    console.log(item);
+                    return item.jobInfo.companyId
+                })
+
+            const companyPromise = companyIds.length > 0
+                ? await axios.post(
+                    `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+                    { companyIds: companyIds },
+                    {
+                        headers: {
+                            Cookie: req.headers.cookie,
+                            Authorization: req.headers.authorization,
+                        },
+                        withCredentials: true,
+                    }
+                ).catch(error => {
+                    console.error('Error fetching companies:', error.message);
+                    return [];
+                }).then((data: any) => data.data.data)
+                : [];
+            const companyMap = new Map(companyPromise.map((company: any) => [company.companyId, company]));
+
+
+
+            const dataAfterMapping = data.map((item) => ({
+                ...item,
+                jobInfo: item.jobInfo
+                    ? {
+                        companyInfo: companyMap.get(item.jobInfo.companyId) ?? null, ...item.jobInfo,
+                    }
+                    : null,
+            }));
+            res.sendJson(dataAfterMapping)
+        } catch (error) {
+            logger.error(`getAppliedJobs.get: `, error);
             next(error);
         }
     }

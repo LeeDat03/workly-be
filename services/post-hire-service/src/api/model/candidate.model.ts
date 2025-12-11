@@ -1,6 +1,7 @@
 export interface Candidate {
     _id: string;
     jobId: string;
+    jobInfo?: any;
     userId: string;
     name: string;
     email: string;
