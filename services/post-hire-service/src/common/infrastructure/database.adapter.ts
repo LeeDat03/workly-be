@@ -84,6 +84,9 @@ export class DatabaseAdapter {
 	get candidate() {
 		return this.collection("candidate");
 	}
+	get bookmark() {
+		return this.collection("bookmark");
+	}
 
 	// Transaction support
 	async withTransaction(

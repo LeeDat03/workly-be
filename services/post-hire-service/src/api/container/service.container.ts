@@ -4,6 +4,7 @@ import { CommentService, ICommentService } from "@/api/service/comment.service";
 import { ILikeService, LikeService } from "../service/like.service";
 import { IJobService, JobService } from "../service/job.service";
 import { ISearchService, SearchService } from "../service/search.service";
+import { BookmarkService, IBookmarkService } from "../service/bookmark.service";
 
 export class ServiceContainer {
     private static postService: IPostService;
@@ -11,6 +12,7 @@ export class ServiceContainer {
     private static likeService: ILikeService;
     private static jobService: IJobService;
     private static searchService: ISearchService;
+    private static bookmarkService: IBookmarkService;
     private static isInitialized = false;
 
     static async initialize(): Promise<void> {
@@ -43,6 +45,9 @@ export class ServiceContainer {
             RepositoryContainer.getLikeRepository(),
             RepositoryContainer.getPostRepository(),
             RepositoryContainer.getCandidateRepository()
+        );
+        this.bookmarkService = new BookmarkService(
+            RepositoryContainer.getBookmarkRepository()
         );
         this.isInitialized = true;
 
@@ -86,5 +91,11 @@ export class ServiceContainer {
             this.jobService = new JobService(RepositoryContainer.getJobRepository(), RepositoryContainer.getCandidateRepository());
         }
         return this.jobService;
+    }
+    static getBookmarkService(): IBookmarkService {
+        if (!this.bookmarkService) {
+            this.bookmarkService = new BookmarkService(RepositoryContainer.getBookmarkRepository());
+        }
+        return this.bookmarkService;
     }
 }
