@@ -154,6 +154,7 @@ export const getUserProfile = async (userId: string, include: string[]) => {
  * @param targetIdField        – property that holds the business ID (e.g. "roleId")
  * @param newIds               – desired target IDs (undefined = no-op)
  * @param relationshipProps   – optional static props to set on every new rel
+ * @param autoCreateMissing    – if true, creates missing nodes instead of throwing error
  */
 export const updateRelationsWithQuery = async (
 	userId: string,
@@ -167,6 +168,7 @@ export const updateRelationsWithQuery = async (
 		| "locationId",
 	newIds?: string[],
 	relationshipProps?: Array<Record<string, unknown>>,
+	autoCreateMissing: boolean = false,
 ): Promise<void> => {
 	if (newIds === undefined || newIds === null) return;
 
@@ -186,7 +188,7 @@ export const updateRelationsWithQuery = async (
 
 	try {
 		await session.executeWrite(async (tx) => {
-			// 1. Validate that each newId exists
+			// 1. Validate that each newId exists (or create if autoCreateMissing is true)
 			if (newIds.length > 0) {
 				const idsToValidate = supportsUnlisted
 					? newIds.filter((id) => id !== UNLISTED_COMPANY.companyId)
@@ -206,12 +208,41 @@ export const updateRelationsWithQuery = async (
 					const missing = idsToValidate.filter(
 						(id) => !existing.includes(id),
 					);
+
 					if (missing.length > 0) {
-						throw new BadRequestError(
-							`${targetLabel}(s) with ${targetIdField}(s) [${missing.join(
-								", ",
-							)}] do not exist`,
-						);
+						if (autoCreateMissing) {
+							// Auto-create missing nodes (for Skills)
+							// Convert skillId format (e.g., "javascript") to readable name (e.g., "JavaScript")
+							const nodesToCreate = missing.map((id) => {
+								// Convert underscore-separated to space-separated and capitalize
+								const name = id
+									.split("_")
+									.map(
+										(word) =>
+											word.charAt(0).toUpperCase() +
+											word.slice(1),
+									)
+									.join(" ");
+								return {
+									id,
+									name,
+								};
+							});
+
+							await tx.run(
+								`
+								UNWIND $nodes AS node
+								CREATE (t:${targetLabel} {${targetIdField}: node.id, name: node.name})
+								`,
+								{ nodes: nodesToCreate },
+							);
+						} else {
+							throw new BadRequestError(
+								`${targetLabel}(s) with ${targetIdField}(s) [${missing.join(
+									", ",
+								)}] do not exist`,
+							);
+						}
 					}
 				}
 			}
