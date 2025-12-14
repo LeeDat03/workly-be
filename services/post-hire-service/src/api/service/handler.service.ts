@@ -158,11 +158,27 @@ export const handleUser = async (data: any): Promise<void> => {
             console.log(`user ${data.id} update from Elasticsearch`);
         }
         if (data.type === "DELETE") {
-            await client.delete({
-                index,
-                id: data.id,
-                refresh: 'wait_for',
-            });
+            await Promise.allSettled([
+                DatabaseAdapter.getInstance().post.deleteMany({
+                    author_id: data.id,
+                    author_type: "USER"
+                }),
+                DatabaseAdapter.getInstance().comment.deleteMany({
+                    authorId: data.id
+                }),
+                DatabaseAdapter.getInstance().candidate.deleteMany({
+                    userId: data.id
+                }),
+                DatabaseAdapter.getInstance().like.deleteMany({
+                    authorId: data.id
+                }),
+                client.delete({
+                    index,
+                    id: data.id,
+                    refresh: 'wait_for',
+                }),
+
+            ]);
             console.log(`job ${data.id} deleted from Elasticsearch`);
         }
     } catch (error) {
@@ -204,11 +220,16 @@ export const handleCompany = async (data: any): Promise<void> => {
             console.log(`user ${data.id} update from Elasticsearch`);
         }
         if (data.type === "DELETE") {
-            await client.delete({
-                index,
-                id: data.id,
-                refresh: 'wait_for',
-            });
+            await Promise.allSettled([
+                await DatabaseAdapter.getInstance().post.deleteMany({ author_id: data.id, author_type: "COMPANY" }),
+                await DatabaseAdapter.getInstance().job.deleteMany({ companyId: data.id }),
+                await client.delete({
+                    index,
+                    id: data.id,
+                    refresh: 'wait_for',
+                })
+            ]);
+
             console.log(`job ${data.id} deleted from Elasticsearch`);
         }
     } catch (error) {

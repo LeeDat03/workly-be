@@ -152,10 +152,12 @@ export class PostController {
 			if (userIds.length === 0) {
 				return res.sendJson(data);
 			}
+			const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
 
 			if (input.author_type === "USER") {
+
 				const response = await axios.post(
-					`http://localhost:8003/api/v1/internals/users/get-batch`,
+					`${apiBaseUrl}/api/v1/internals/users/get-batch`,
 					{ userIds },
 					{
 						headers: {
@@ -178,7 +180,7 @@ export class PostController {
 			if (input.author_type === "COMPANY") {
 
 				const response = await axios.post(
-					`http://localhost:8003/api/v1/internals/companies/get-batch`,
+					`${apiBaseUrl}/api/v1/internals/companies/get-batch`,
 					{ companyIds: userIds },
 					{
 						headers: {

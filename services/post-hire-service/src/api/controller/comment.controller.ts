@@ -44,9 +44,10 @@ export class CommentController {
             const postId = req.params.postId
             const result = await this.commentService.getAllComment(postId);
             const userIds = result.map(comment => comment.authorId);
+            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `http://localhost:8003/api/v1/internals/users/get-batch`,
+                    `${apiBaseUrl}/api/v1/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {
@@ -78,9 +79,11 @@ export class CommentController {
             const commentId = req.params.commentId
             const result = await this.commentService.getCommentById(commentId);
             const userIds = [result.authorId];
+            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
+
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `http://localhost:8003/api/v1/internals/users/get-batch`,
+                    `${apiBaseUrl}/api/v1/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {

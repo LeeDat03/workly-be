@@ -25,28 +25,33 @@ export const isAuthenticated = async (
 		if (!token) {
 			throw new APIError({ message: "Token is required" });
 		}
-
-		const response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
-			headers: {
-				Cookie: req.headers.cookie,
-				Authorization: req.headers.authorization,
-			},
-			withCredentials: true,
-		});
-		const { data } = response.data;
-
 		const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
-		if (decoded.id != data.userId) {
+
+		let response
+		try {
+			response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
+				headers: {
+					Cookie: req.headers.cookie,
+					Authorization: req.headers.authorization,
+				},
+				withCredentials: true,
+			});
+		} catch (error) {
+			console.log(error);
+			response = null;
+		}
+		const data = response?.data?.data || null;
+
+		if (decoded.id != data?.userId && data) {
 			throw new APIError({ message: "userid invalid" });
 		}
 
 		req.user = {
-			userId: data.userId,
-			email: data.email,
-			name: data.name,
-			role: data.role,
+			userId: data?.userId ?? decoded.id,
+			email: data?.email,
+			name: data?.name,
+			role: data?.role,
 		};
-
 		next();
 	} catch (error) {
 		logger.error("isAuthenticated error", error);
@@ -74,28 +79,32 @@ export const optionalAuth = async (
 		if (!token) {
 			return next();
 		}
-
-		const response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
-			headers: {
-				Cookie: req.headers.cookie,
-				Authorization: req.headers.authorization,
-			},
-			withCredentials: true,
-		});
-		const { data } = response.data;
-
 		const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
-		if (decoded.id != data.userId) {
+
+		let response
+		try {
+			response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
+				headers: {
+					Cookie: req.headers.cookie,
+					Authorization: req.headers.authorization,
+				},
+				withCredentials: true,
+			});
+		} catch (error) {
+			response = null;
+		}
+		const data = response?.data?.data || null;
+
+		if (decoded.id != data?.userId && data) {
 			throw new APIError({ message: "userid invalid" });
 		}
 
 		req.user = {
-			userId: data.userId,
-			email: data.email,
-			name: data.name,
-			role: data.role,
+			userId: data?.userId ?? decoded.id,
+			email: data?.email,
+			name: data?.name,
+			role: data?.role,
 		};
-
 		next();
 	} catch (error) {
 		logger.error("isAuthenticated error", error);
