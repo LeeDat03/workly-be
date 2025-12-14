@@ -20,7 +20,7 @@ export interface IJobService {
     feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean>
     getPublicJobFeed(input: IPaginationInput): Promise<PagingList<Job>>
     getJobsByIds(userId: string, jobIds: string[]): Promise<Job[]>
-    getAppliedJobs(userId: string): Promise<Candidate[]>
+    getAppliedJobs(userId: string, status?: string, sortOrder?: 'asc' | 'desc'): Promise<Candidate[]>
 }
 
 export class JobService implements IJobService {
@@ -33,8 +33,8 @@ export class JobService implements IJobService {
         this.jobRepository = jobRepository
         this.candidateRepository = candidateRepository
     }
-    getAppliedJobs(userId: string): Promise<Candidate[]> {
-        const result = this.candidateRepository.getAppliedJobs(userId);
+    getAppliedJobs(userId: string, status?: string, sortOrder?: 'asc' | 'desc'): Promise<Candidate[]> {
+        const result = this.candidateRepository.getAppliedJobs(userId, status, sortOrder);
         return result;
     }
     async feedbackCandidate(status: string, jobId: string, userId: string): Promise<Boolean> {

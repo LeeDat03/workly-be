@@ -167,22 +167,24 @@ export class JobController {
     }
     public getAppliedJobs = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
+            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003/api/v1';
             const userId = req.user?.userId
             if (userId === undefined) {
                 throw new APIError({ message: "login is required" })
             }
-            const data = await this.jobService.getAppliedJobs(userId);
+
+            const { status, sortOrder } = req.query as { status?: string, sortOrder?: 'asc' | 'desc' };
+            const data = await this.jobService.getAppliedJobs(userId, status, sortOrder);
 
             const companyIds = data
                 .map((item) => {
-                    console.log(item);
+                    // console.log(item);
                     return item.jobInfo.companyId
                 })
 
             const companyPromise = companyIds.length > 0
                 ? await axios.post(
-                    `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+                    `${apiBaseUrl}/internals/companies/get-batch`,
                     { companyIds: companyIds },
                     {
                         headers: {
@@ -197,8 +199,6 @@ export class JobController {
                 }).then((data: any) => data.data.data)
                 : [];
             const companyMap = new Map(companyPromise.map((company: any) => [company.companyId, company]));
-
-
 
             const dataAfterMapping = data.map((item) => ({
                 ...item,

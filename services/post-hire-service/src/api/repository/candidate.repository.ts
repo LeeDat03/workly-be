@@ -20,7 +20,7 @@ export interface ICandidateRepository {
         userId: string
     ): Promise<Boolean>
     checkCandidateByUserIdAndJobIds(userId: string, jobIds: string[]): Promise<any[]>
-    getAppliedJobs(userId: string): Promise<Candidate[]>
+    getAppliedJobs(userId: string, status?: string, sortOrder?: 'asc' | 'desc'): Promise<Candidate[]>
 }
 
 export class candidateRepository implements ICandidateRepository {
@@ -46,10 +46,15 @@ export class candidateRepository implements ICandidateRepository {
         });
     }
 
-    getAppliedJobs = async (userId: string): Promise<Candidate[]> => {
+    getAppliedJobs = async (userId: string, status?: string, sortOrder: 'asc' | 'desc' = 'desc'): Promise<Candidate[]> => {
+        const matchCondition: any = { userId };
+        if (status) {
+            matchCondition.status = status;
+        }
+        const sortDirection = sortOrder === 'asc' ? 1 : -1;
         return await this.candidateCollection.candidate.aggregate<Candidate>([
             {
-                $match: { userId }
+                $match: matchCondition
             },
             {
                 $addFields: {
@@ -66,6 +71,9 @@ export class candidateRepository implements ICandidateRepository {
             },
             {
                 $unwind: "$jobInfo"
+            },
+            {
+                $sort: { createdAt: sortDirection }
             }
         ]).toArray();
     }
