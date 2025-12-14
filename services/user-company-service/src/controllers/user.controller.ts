@@ -187,7 +187,11 @@ export const updateBasicProfile = async (
 			message: "Profile updated successfully",
 			// data: userProfile,
 		});
-		mqManager.sendToQueue(QUEUES.USER, { type: "UPDATE", id: userId, name: data.name })
+		mqManager.sendToQueue(QUEUES.USER, {
+			type: "UPDATE",
+			id: userId,
+			name: data.name,
+		});
 	} catch (error) {
 		next(error);
 	}
@@ -211,6 +215,8 @@ export const updateUserSkills = async (
 			"Skill",
 			"skillId",
 			skillIds,
+			undefined, // no relationshipProps
+			true, // autoCreateMissing - create new skill nodes if they don't exist
 		);
 
 		// const userProfile = await getFullUserProfile(userId);
@@ -331,6 +337,7 @@ export const updateUserEducations = async (
 				const { schoolId, ...rest } = e;
 				return rest;
 			}),
+			true, // autoCreateMissing - create new school nodes if they don't exist
 		);
 
 		res.status(200).json({
@@ -604,7 +611,7 @@ export const deleteMe = async (
 			message: "User deleted successfully",
 			data: null,
 		});
-		mqManager.sendToQueue(QUEUES.USER, { type: "DELETE", id: userId })
+		mqManager.sendToQueue(QUEUES.USER, { type: "DELETE", id: userId });
 	} catch (error) {
 		next(error);
 	}
