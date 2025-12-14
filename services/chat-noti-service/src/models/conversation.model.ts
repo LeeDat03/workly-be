@@ -8,6 +8,7 @@ interface IParticipant {
 
 export interface IConversation extends Document {
 	participants: IParticipant[];
+	participantKey: string; // Sorted unique key for uniqueness constraint
 	lastMessage?: mongoose.Types.ObjectId;
 	lastMessageAt?: Date;
 	unreadCount: Map<string, number>; // participantId -> count
@@ -42,6 +43,11 @@ const ConversationSchema = new Schema<IConversation>(
 				},
 				message: "Conversation must have exactly 2 participants",
 			},
+		},
+		participantKey: {
+			type: String,
+			required: true,
+			unique: true, // Unique constraint to prevent duplicates
 		},
 		lastMessage: {
 			type: Schema.Types.ObjectId,
@@ -85,29 +91,39 @@ const ConversationSchema = new Schema<IConversation>(
 ConversationSchema.index({ "participants.id": 1 });
 ConversationSchema.index({ lastMessageAt: -1 });
 
+// Compound index to prevent duplicate conversations between same participants
+// This ensures that only ONE conversation can exist between two specific participants
+// Note: MongoDB doesn't support unique index on array elements directly,
+// so we'll handle uniqueness in application logic with proper error handling
+ConversationSchema.index({ participants: 1 });
+
 // Kiểm tra xem conversation giữa 2 participants đã tồn tại chưa
 ConversationSchema.statics.findByParticipants = async function (
 	participant1: IParticipant,
 	participant2: IParticipant
 ): Promise<IConversation | null> {
+	// Use $all to find conversation containing both participants
+	// This works regardless of participant order in the array
 	return this.findOne({
-		participants: {
-			$all: [
-				{
+		$and: [
+			{
+				participants: {
 					$elemMatch: {
 						id: participant1.id,
 						type: participant1.type,
 					},
 				},
-				{
+			},
+			{
+				participants: {
 					$elemMatch: {
 						id: participant2.id,
 						type: participant2.type,
 					},
 				},
-			],
-		},
-	});
+			},
+		],
+	}).sort({ lastMessageAt: -1 }); // Return most recent if somehow duplicates exist
 };
 
 // Lấy tất cả conversations của một participant

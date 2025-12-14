@@ -5,29 +5,77 @@ import { ParticipantType, IParticipant } from "../types";
 export class ConversationService {
 	/**
 	 * Tạo hoặc lấy conversation giữa 2 participants
+	 * Uses retry logic to handle race conditions when both users create conversation simultaneously
 	 */
 	async createOrGetConversation(
 		participant1: IParticipant,
 		participant2: IParticipant
 	): Promise<IConversation> {
-		// Kiểm tra xem conversation đã tồn tại chưa
-		let conversation = await Conversation.findByParticipants(
-			participant1,
-			participant2
-		);
+		// Normalize participants order to ensure consistent querying
+		// Sort by id to always check in same order
+		const [p1, p2] =
+			participant1.id < participant2.id
+				? [participant1, participant2]
+				: [participant2, participant1];
 
-		if (!conversation) {
-			// Tạo conversation mới
-			conversation = await Conversation.create({
-				participants: [participant1, participant2],
-				unreadCount: new Map([
-					[participant1.id, 0],
-					[participant2.id, 0],
-				]),
-			});
+		// Create unique participant key (sorted to ensure uniqueness)
+		const participantKey = `${p1.id}_${p1.type}_${p2.id}_${p2.type}`;
+
+		// Retry logic to handle race conditions
+		const maxRetries = 3;
+		for (let attempt = 0; attempt < maxRetries; attempt++) {
+			// Kiểm tra xem conversation đã tồn tại chưa
+			let conversation = await Conversation.findByParticipants(p1, p2);
+
+			if (conversation) {
+				return conversation;
+			}
+
+			try {
+				// Tạo conversation mới
+				conversation = await Conversation.create({
+					participants: [p1, p2],
+					participantKey, // Add unique key
+					unreadCount: new Map([
+						[p1.id, 0],
+						[p2.id, 0],
+					]),
+				});
+				return conversation;
+			} catch (error: any) {
+				// Handle duplicate key error (code 11000) - conversation was created by parallel request
+				if (error.code === 11000 || error.message?.includes("duplicate key")) {
+					// Another request created it, fetch and return
+					conversation = await Conversation.findByParticipants(p1, p2);
+					if (conversation) {
+						return conversation;
+					}
+				}
+
+				// If creation failed for other reasons and we have retries left
+				if (attempt < maxRetries - 1) {
+					// Wait a bit and retry
+					await new Promise((resolve) => setTimeout(resolve, 50 * (attempt + 1)));
+					
+					// Check one more time before retrying create
+					conversation = await Conversation.findByParticipants(p1, p2);
+					if (conversation) {
+						return conversation;
+					}
+				} else {
+					// Last attempt failed, throw error
+					throw error;
+				}
+			}
 		}
 
-		return conversation;
+		// Should never reach here, but if it does, try one final check
+		const conversation = await Conversation.findByParticipants(p1, p2);
+		if (conversation) {
+			return conversation;
+		}
+
+		throw new Error("Failed to create or get conversation after retries");
 	}
 
 	/**

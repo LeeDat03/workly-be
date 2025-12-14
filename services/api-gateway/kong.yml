@@ -11,6 +11,15 @@ services:
       url: http://host.docker.internal:8005
 
 routes:
+    - name: route-for-chat-websocket
+      service: chat-notification-service
+      paths:
+          - /socket.io
+      protocols:
+          - http
+          - https
+      strip_path: false
+
     # User-company service routes
     - name: route-for-user-company
       service: user-company-service
@@ -46,15 +55,8 @@ routes:
           - /api/v1/conversations
           - /api/v1/messages
           - /api/v1/users
-      strip_path: false
-
-    # WebSocket route for Socket.io - Đặt SAU các REST routes để tránh conflict
-    # Do NOT strip path - backend needs to handle /api/v1/socket.io path
-    - name: route-for-chat-websocket
-      service: chat-notification-service
-      paths:
-          - /api/v1/socket.io
-      strip_path: false
+      strip_path:
+          false
 
           #   TODO: JWT, CORS, RATE LIMIT
 # consumers:
@@ -83,6 +85,10 @@ plugins:
               - "X-User-Type"
               - "Upgrade"
               - "Connection"
+              - "Sec-WebSocket-Key"
+              - "Sec-WebSocket-Version"
+              - "Sec-WebSocket-Extensions"
+              - "Sec-WebSocket-Protocol"
           exposed_headers:
               - "X-Custom-Header"
           credentials: true
@@ -90,8 +96,8 @@ plugins:
 
     - name: rate-limiting
       config:
-          minute: 100 # Max requests per minute
-          hour: 2000 # Max requests per hour
+          minute: 1000 # Max requests per minute (increased for dev)
+          hour: 50000 # Max requests per hour (increased for dev)
           policy: local # Can be 'local', 'cluster', or 'redis'
           limit_by: consumer # Limit per authenticated consumer
           hide_client_headers: true
