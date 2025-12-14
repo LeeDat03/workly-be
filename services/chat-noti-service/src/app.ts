@@ -17,7 +17,6 @@ export class App {
 		this.app = express();
 		this.httpServer = createServer(this.app);
 		this.io = new Server(this.httpServer, {
-			path: '/api/v1/socket.io/',
 			cors: {
 				origin: (origin, callback) => {
 					// Allow requests with no origin
