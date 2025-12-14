@@ -26,6 +26,7 @@ export interface ISearchService {
     ): Promise<any>
     getCompanySearch(keyword: string, page: number, size: number, cookie: string, authorization: string): Promise<any>
 }
+
 export class SearchService implements ISearchService {
 
     private commentRepository: ICommentRepository;
@@ -39,8 +40,28 @@ export class SearchService implements ISearchService {
         this.likeRepository = likeRepository;
         this.postRepository = postRepository;
         this.candidateRepository = candidateRepository;
-
     }
+
+    /**
+     * Safe axios call - returns empty array on error
+     */
+    private async safeAxiosPost<T>(
+        url: string,
+        data: any,
+        headers?: any
+    ): Promise<T[]> {
+        try {
+            const response = await axios.post(url, data, {
+                headers,
+                withCredentials: true,
+            });
+            return response.data?.data || [];
+        } catch (error: any) {
+            console.warn(`Failed to fetch from ${url}: ${error.message}. Returning empty array.`);
+            return [];
+        }
+    }
+
     async getPostSearch(keyword: string, page: number, size: number): Promise<any> {
         const data = await this.postRepository.getPagingPostSearch(keyword, page, size);
         const postIds = data.data.map((post) => post._id.toString());
@@ -62,11 +83,10 @@ export class SearchService implements ISearchService {
             };
         });
 
-        const authorData = await axios
-            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
-                ids: authorIds,
-            })
-            .then((res) => res.data.data);
+        const authorData = await this.safeAxiosPost<any>(
+            `${USER_SERVICE_URL}/internals/get-batch-ids`,
+            { ids: authorIds }
+        );
 
         const authorMap = new Map(
             authorData.map((item: any) => [item.id, item.data])
@@ -115,23 +135,16 @@ export class SearchService implements ISearchService {
 
         const userIds = result.hits.hits.map((hit: any) => hit._id);
 
-        const userPromise = userIds.length > 0
-            ? await axios.post(
-                `${apiBaseUrl}/api/v1/internals/users/get-batch`,
-                { userIds: userIds },
-                {
-                    headers: {
-                        Cookie: cookie,
-                        Authorization: authorization,
-                    },
-                    withCredentials: true,
-                }
-            ).catch(error => {
-                console.error('Error fetching companies:', error.message);
-                return [];
-            }).then((data: any) => data.data.data)
-            : [];
-        const userMap = new Map(userPromise.map((user: any) => [user.userId, user]));
+        const userResult = await this.safeAxiosPost<any>(
+            `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+            { userIds },
+            {
+                Cookie: cookie,
+                Authorization: authorization,
+            }
+        );
+
+        const userMap = new Map(userResult.map((user: any) => [user.userId, user]));
         const orderedUsers = userIds
             .map(id => userMap.get(id))
             .filter(Boolean);
@@ -181,22 +194,15 @@ export class SearchService implements ISearchService {
         const companyIds = result.hits.hits.map((hit: any) => hit._id);
         console.log("companyIds", companyIds);
 
-        const companyPromise = companyIds.length > 0
-            ? await axios.post(
-                `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
-                { companyIds: companyIds },
-                {
-                    headers: {
-                        Cookie: cookie,
-                        Authorization: authorization,
-                    },
-                    withCredentials: true,
-                }
-            ).catch(error => {
-                console.error('Error fetching companies:', error.message);
-                return [];
-            }).then((data: any) => data.data.data)
-            : [];
+        const companyPromise = await this.safeAxiosPost<any>(
+            `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+            { companyIds: companyIds },
+            {
+                Cookie: cookie,
+                Authorization: authorization,
+            }
+        );
+
         const companyMap = new Map(companyPromise.map((company: any) => [company.companyId, company]));
         const orderedCompanies = companyIds
             .map(id => companyMap.get(id))
@@ -292,10 +298,7 @@ export class SearchService implements ISearchService {
                     : item.hits.total;
                 totalMap.set(indexNames[index], total || 0);
             }
-
-
         });
-
 
         // Get IDs for each entity type
         const postIds = (searchMap.get("post") || []).map((id: string) => new ObjectId(id));
@@ -334,11 +337,10 @@ export class SearchService implements ISearchService {
             };
         });
 
-        const authorData = postResults.length > 0 ? await axios
-            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
-                ids: authorIds,
-            })
-            .then((res) => res.data.data) : [];
+        const authorData = await this.safeAxiosPost<any>(
+            `${USER_SERVICE_URL}/internals/get-batch-ids`,
+            { ids: authorIds }
+        );
 
         const authorMap = new Map(
             authorData.map((item: any) => [item.id, item.data])
@@ -357,11 +359,10 @@ export class SearchService implements ISearchService {
             };
         });
 
-        const companyData = jobResults.length > 0 ? await axios
-            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
-                ids: companyIds,
-            })
-            .then((res) => res.data.data) : [];
+        const companyData = await this.safeAxiosPost<any>(
+            `${USER_SERVICE_URL}/internals/get-batch-ids`,
+            { ids: companyIds }
+        );
 
         const companiesMap = new Map(
             companyData.map((item: any) => [item.id, item.data])
@@ -377,49 +378,29 @@ export class SearchService implements ISearchService {
         const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
         console.log(userPayload, companyPayload);
 
-        const userPromise = userPayload.length > 0
-            ? axios.post(
-                `${apiBaseUrl}/api/v1/internals/users/get-batch`,
-                { userIds: userPayload },
-                {
-                    headers: {
-                        Cookie: cookie,
-                        Authorization: authorization,
-                    },
-                    withCredentials: true,
-                }
-            ).catch(error => {
-                console.error('Error fetching users:', error.message);
-                return { data: { data: [] } };
-            })
-            : Promise.resolve({ data: { data: [] } });
+        const userResults = await this.safeAxiosPost<any>(
+            `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+            { userIds: userPayload },
+            {
+                Cookie: cookie,
+                Authorization: authorization,
+            }
+        );
 
-        const companyPromise = companyPayload.length > 0
-            ? axios.post(
-                `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
-                { companyIds: companyPayload },
-                {
-                    headers: {
-                        Cookie: cookie,
-                        Authorization: authorization,
-                    },
-                    withCredentials: true,
-                }
-            ).catch(error => {
-                console.error('Error fetching companies:', error.message);
-                return { data: { data: [] } };
-            })
-            : Promise.resolve({ data: { data: [] } });
+        const companyResults = await this.safeAxiosPost<any>(
+            `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+            { companyIds: companyPayload },
+            {
+                Cookie: cookie,
+                Authorization: authorization,
+            }
+        );
 
-        const [userResults, companyResults] = await Promise.all([
-            userPromise,
-            companyPromise
-        ]);
         // Create maps for quick lookup
         const postMap = new Map(postsWithAuthor.map(doc => [doc._id.toString(), doc]));
         const jobMap = new Map(jobsWithAuthor.map(doc => [doc._id.toString(), doc]));
-        const userMap = new Map(userResults.data.data.map((user: any) => [user.userId, user]));
-        const companyMap = new Map(companyResults.data.data.map((company: any) => [company.companyId, company]));
+        const userMap = new Map(userResults.map((user: any) => [user.userId, user]));
+        const companyMap = new Map(companyResults.map((company: any) => [company.companyId, company]));
 
         const orderedPosts = (searchMap.get("post") || [])
             .map(id => postMap.get(id))
@@ -436,6 +417,7 @@ export class SearchService implements ISearchService {
         const orderedCompanies = (searchMap.get("company") || [])
             .map(id => companyMap.get(id))
             .filter(Boolean);
+
         if (userId) {
             const jobIds = orderedJobs.map((job: any) => job._id.toString())
             const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
@@ -450,6 +432,7 @@ export class SearchService implements ISearchService {
                 isApplied: false
             }))
         }
+
         const finalResults = {
             posts: orderedPosts,
             jobs: orderedJobs,
@@ -464,6 +447,7 @@ export class SearchService implements ISearchService {
         };
         return finalResults
     }
+
     public getJobSearch = async (
         userId: string | undefined,
         keyword: string,
@@ -474,12 +458,9 @@ export class SearchService implements ISearchService {
         page: number,
         size: number
     ): Promise<any> => {
-        console.log("check", keyword, skills, level, startDate, endDate, page, size);
-
         const must: any[] = [];
         const filter: any[] = [];
 
-        // Keyword search using wildcard
         if (keyword) {
             const lower = keyword.toLowerCase();
 
@@ -553,18 +534,18 @@ export class SearchService implements ISearchService {
             ? await DatabaseAdapter.getInstance().job.find({ _id: { $in: jobIds.map(jobId => new ObjectId(jobId as string)) } }).toArray()
             : []
 
-
         const companyIds = jobResults.map((job) => {
             return {
                 id: job.companyId,
                 type: "COMPANY",
             };
         });
-        const companyData = jobResults.length > 0 ? await axios
-            .post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
-                ids: companyIds,
-            })
-            .then((res) => res.data.data) : [];
+
+        const companyData = await this.safeAxiosPost<any>(
+            `${USER_SERVICE_URL}/internals/get-batch-ids`,
+            { ids: companyIds }
+        );
+
         const companiesMap = new Map(
             companyData.map((item: any) => [item.id, item.data])
         );
@@ -578,6 +559,7 @@ export class SearchService implements ISearchService {
         let orderedJobs = jobIds
             .map(id => jobMap.get(id))
             .filter(Boolean);
+
         if (userId) {
             const jobIds = orderedJobs.map((job: any) => job._id.toString())
             const candidateData = await this.candidateRepository.checkCandidateByUserIdAndJobIds(userId, jobIds)
@@ -592,6 +574,7 @@ export class SearchService implements ISearchService {
                 isApplied: false
             }))
         }
+
         const finalResults = {
             jobs: orderedJobs,
             pagination: {
@@ -603,5 +586,4 @@ export class SearchService implements ISearchService {
         };
         return finalResults
     }
-
 }
