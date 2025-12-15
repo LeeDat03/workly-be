@@ -158,7 +158,11 @@ const createCompany = async (
 			message: "Company created successfully",
 			data: companyProfile,
 		});
-		mqManager.sendToQueue(QUEUES.COMPANY, { type: "ADD", id: companyProfile.company.companyId, name: companyProfile.company.name })
+		mqManager.sendToQueue(QUEUES.COMPANY, {
+			type: "ADD",
+			id: companyProfile.company.companyId,
+			name: companyProfile.company.name,
+		});
 	} catch (error) {
 		next(error);
 	}
@@ -372,7 +376,11 @@ const updateCompany = async (
 				message: "Company updated successfully",
 				// data: companyProfile,
 			});
-			mqManager.sendToQueue(QUEUES.COMPANY, { type: "UPDATE", id: companyId, name: data.name })
+			mqManager.sendToQueue(QUEUES.COMPANY, {
+				type: "UPDATE",
+				id: companyId,
+				name: data.name,
+			});
 		} catch (error) {
 			await transaction.rollback();
 			throw error;
@@ -498,7 +506,10 @@ const deleteCompany = async (
 				message: "Company deleted successfully",
 			},
 		});
-		mqManager.sendToQueue(QUEUES.COMPANY, { type: "DELETE", id: companyId })
+		mqManager.sendToQueue(QUEUES.COMPANY, {
+			type: "DELETE",
+			id: companyId,
+		});
 	} catch (error) {
 		next(error);
 	}
@@ -722,8 +733,6 @@ const getMyCompanies = async (
 
 		const allRecords = [...ownedResult.records, ...adminResult.records];
 
-		console.log("📊 Total records found:", allRecords.length);
-
 		const companies = allRecords.map((record) => {
 			const company = record.get("company").properties;
 			const industry = record.get("industry")
@@ -739,8 +748,6 @@ const getMyCompanies = async (
 				followersCount,
 			};
 		});
-
-		console.log("📦 Companies formatted:", companies.length);
 
 		companies.sort((a, b) => a.name.localeCompare(b.name));
 

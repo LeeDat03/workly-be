@@ -49,7 +49,6 @@ export class LikeController {
         try {
             const postId = req.body.postId;
             const userId = req.user!!.userId;
-            console.log(postId, userId);
             const result = await this.likeService.unlikePost(postId, userId);
             res.sendJson(result)
         } catch (error) {

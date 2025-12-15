@@ -6,6 +6,7 @@ import { CreateCommentDTO, UpdateCommentDTO } from "@/api/model/comment.model";
 import { ObjectId } from "mongodb";
 import axios from "axios";
 import { User } from "../model/post.model";
+import { USER_SERVICE_URL } from "@/common/enviroment";
 
 
 export class CommentController {
@@ -44,10 +45,9 @@ export class CommentController {
             const postId = req.params.postId
             const result = await this.commentService.getAllComment(postId);
             const userIds = result.map(comment => comment.authorId);
-            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+                    `${USER_SERVICE_URL}/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {
@@ -62,7 +62,6 @@ export class CommentController {
                     ...post,
                     author: usersMap.get(post.authorId) || null
                 }));
-                console.log(commentsWithAuthor);
 
                 res.sendJson(commentsWithAuthor)
             } else {
@@ -79,11 +78,10 @@ export class CommentController {
             const commentId = req.params.commentId
             const result = await this.commentService.getCommentById(commentId);
             const userIds = [result.authorId];
-            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
 
             if (userIds.length > 0) {
                 const response = await axios.post(
-                    `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+                    `${USER_SERVICE_URL}/internals/users/get-batch`,
                     { userIds },
                     {
                         headers: {
@@ -93,7 +91,6 @@ export class CommentController {
                         withCredentials: true,
                     }
                 );
-                console.log("response", response);
 
                 const usersMap = new Map(response.data.data.map((user: User) => [user.userId, user]));
                 result.author = usersMap.get(result.authorId) || null

@@ -8,6 +8,7 @@ import { IPaginationInput, PagingList, PostSearch } from "../model/common.model"
 import path from "path";
 import fs from "fs";
 import axios from "axios";
+import { USER_SERVICE_URL } from "@/common/enviroment";
 
 export class PostController {
 	private postService: IPostService;
@@ -37,7 +38,6 @@ export class PostController {
 	) => {
 		try {
 			const body = req.body as DeletePost;
-			console.log(req.body);
 
 			const result = await this.postService.deletePost(body);
 			res.sendJson(result);
@@ -97,7 +97,6 @@ export class PostController {
 		res: Response,
 		next: NextFunction
 	) => {
-		console.log("streaming....");
 
 		const videoPath = path.join(
 			__dirname,
@@ -146,18 +145,16 @@ export class PostController {
 				input,
 				req.query.userId as string
 			);
-			console.log(input.author_type);
 
 			const userIds = data.data.map(post => post.author_id);
 			if (userIds.length === 0) {
 				return res.sendJson(data);
 			}
-			const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
 
 			if (input.author_type === "USER") {
 
 				const response = await axios.post(
-					`${apiBaseUrl}/api/v1/internals/users/get-batch`,
+					`${USER_SERVICE_URL}/internals/users/get-batch`,
 					{ userIds },
 					{
 						headers: {
@@ -180,7 +177,7 @@ export class PostController {
 			if (input.author_type === "COMPANY") {
 
 				const response = await axios.post(
-					`${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+					`${USER_SERVICE_URL}/internals/companies/get-batch`,
 					{ companyIds: userIds },
 					{
 						headers: {

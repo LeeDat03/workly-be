@@ -7,6 +7,7 @@ import { sendJobToUCQueue } from "../service/mq.service";
 import { APIError } from "@/common/error/api.error";
 import axios from "axios";
 import { Company } from "../model/post.model";
+import { USER_SERVICE_URL } from "@/common/enviroment";
 
 export class JobController {
     private jobService: IJobService;
@@ -167,7 +168,6 @@ export class JobController {
     }
     public getAppliedJobs = async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003/api/v1';
             const userId = req.user?.userId
             if (userId === undefined) {
                 throw new APIError({ message: "login is required" })
@@ -178,13 +178,12 @@ export class JobController {
 
             const companyIds = data
                 .map((item) => {
-                    // console.log(item);
                     return item.jobInfo.companyId
                 })
 
             const companyPromise = companyIds.length > 0
                 ? await axios.post(
-                    `${apiBaseUrl}/internals/companies/get-batch`,
+                    `${USER_SERVICE_URL}/internals/companies/get-batch`,
                     { companyIds: companyIds },
                     {
                         headers: {

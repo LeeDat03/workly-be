@@ -1,4 +1,5 @@
 import { Client } from '@elastic/elasticsearch';
+import { ELASTICSEARCH_CLOUD_ID, ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD } from '../enviroment';
 
 class ElasticsearchAdapter {
     private static client: Client;
@@ -7,11 +8,11 @@ class ElasticsearchAdapter {
         if (!ElasticsearchAdapter.client) {
             ElasticsearchAdapter.client = new Client({
                 cloud: {
-                    id: "test:dXMtY2VudHJhbDEuZ2NwLmNsb3VkLmVzLmlvOjQ0MyRlNWZhNDU4YTg4ZWE0OGMyOGI5MzkzMjc1ZmU0YWUzNiRmMGUyOTc0ZGI3MzA0ZWFlOWVmNjU0NWViOGEzYWNlOA=="
+                    id: ELASTICSEARCH_CLOUD_ID
                 },
                 auth: {
-                    username: "elastic",
-                    password: "TPGg7pCfcAsu1zaC2FCdml7v"
+                    username: ELASTICSEARCH_USERNAME,
+                    password: ELASTICSEARCH_PASSWORD
                 }
             });
         }

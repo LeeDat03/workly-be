@@ -70,7 +70,6 @@ export class JobService implements IJobService {
     }
     async getAllJob(userId: string | undefined, input: JobSearch): Promise<PagingList<Job>> {
         let result = await this.jobRepository.getPagingJobsByCompanyId(input)
-        console.log("result", userId);
 
         if (userId) {
             const jobIds = result.data.map(job => job._id.toString())

@@ -97,7 +97,7 @@ plugins:
     - name: rate-limiting
       config:
           minute: 1000 # Max requests per minute (increased for dev)
-          hour: 50000 # Max requests per hour (increased for dev)
+          hour: 20000 # Max requests per hour (increased for dev)
           policy: local # Can be 'local', 'cluster', or 'redis'
           limit_by: consumer # Limit per authenticated consumer
           hide_client_headers: true

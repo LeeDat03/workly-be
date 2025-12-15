@@ -103,7 +103,6 @@ export class SearchService implements ISearchService {
     }
 
     public getUserSearch = async (keyword: string, page: number, size: number, cookie: string, authorization: string) => {
-        const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
         const from = (page - 1) * size;
         const query = {
             index: "user",
@@ -136,7 +135,7 @@ export class SearchService implements ISearchService {
         const userIds = result.hits.hits.map((hit: any) => hit._id);
 
         const userResult = await this.safeAxiosPost<any>(
-            `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+            `${USER_SERVICE_URL}/internals/users/get-batch`,
             { userIds },
             {
                 Cookie: cookie,
@@ -161,7 +160,6 @@ export class SearchService implements ISearchService {
     }
 
     async getCompanySearch(keyword: string, page: number, size: number, cookie: string, authorization: string): Promise<any> {
-        const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
         const from = (page - 1) * size;
         const query = {
             index: "company",
@@ -192,10 +190,9 @@ export class SearchService implements ISearchService {
             : 0);
 
         const companyIds = result.hits.hits.map((hit: any) => hit._id);
-        console.log("companyIds", companyIds);
 
         const companyPromise = await this.safeAxiosPost<any>(
-            `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+            `${USER_SERVICE_URL}/internals/companies/get-batch`,
             { companyIds: companyIds },
             {
                 Cookie: cookie,
@@ -367,19 +364,14 @@ export class SearchService implements ISearchService {
         const companiesMap = new Map(
             companyData.map((item: any) => [item.id, item.data])
         );
-        console.log(companiesMap);
 
         const jobsWithAuthor = jobResults.map((job) => ({
             ...job,
             company: companiesMap.get(job.companyId) || null,
         }));
 
-        // Fetch user and company data from external API
-        const apiBaseUrl = process.env.USER_SERVICE_URL || 'http://localhost:8003';
-        console.log(userPayload, companyPayload);
-
         const userResults = await this.safeAxiosPost<any>(
-            `${apiBaseUrl}/api/v1/internals/users/get-batch`,
+            `${USER_SERVICE_URL}/internals/users/get-batch`,
             { userIds: userPayload },
             {
                 Cookie: cookie,
@@ -388,7 +380,7 @@ export class SearchService implements ISearchService {
         );
 
         const companyResults = await this.safeAxiosPost<any>(
-            `${apiBaseUrl}/api/v1/internals/companies/get-batch`,
+            `${USER_SERVICE_URL}/internals/companies/get-batch`,
             { companyIds: companyPayload },
             {
                 Cookie: cookie,

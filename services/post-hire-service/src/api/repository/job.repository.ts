@@ -49,7 +49,6 @@ export class JobRepository implements IJobRepository {
         return result.modifiedCount > 0;
     }
     async deleteJob(input: any): Promise<Boolean> {
-        console.log(input);
 
         const result = await this.jobCollection.job.deleteOne({ companyId: input.companyId, _id: new ObjectId(input.jobId as string) })
         return result.deletedCount > 0;
@@ -141,7 +140,6 @@ export class JobRepository implements IJobRepository {
                 filter.location = { $regex: input.search, $options: 'i' };
             }
         }
-        console.log(input.skills);
         if (input.skills) {
             if (input.skills.length > 0) {
                 filter.skills = { $in: input.skills };

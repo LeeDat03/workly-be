@@ -182,7 +182,6 @@ export class PostRepository implements IPostRepository {
 		input: PostSearch,
 		userId: string
 	): Promise<PagingList<WithId<Document>>> {
-		console.log(input);
 
 		const page = Number(input.page) || 1;
 		const size = Number(input.size) || 10;

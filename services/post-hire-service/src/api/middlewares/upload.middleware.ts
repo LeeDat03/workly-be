@@ -31,7 +31,6 @@ export class UploadMiddleware {
          * @returns {Function} Express middleware function
          */
         return (req: Request, res: Response, next: NextFunction): any => {
-            console.log(req.files);
 
             const folderPath = path.join(__dirname, `../../../uploads`);
 

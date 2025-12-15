@@ -70,7 +70,6 @@ export class CommentRepository implements ICommentRepository {
     }
     public getAllComment = async (postId: string): Promise<CommentResponse[]> => {
         let query: any = { postId: postId };
-        console.log(query);
 
         const result = await this.commentCollection.comment.find(query).sort({ createdAt: -1 }).toArray();
 

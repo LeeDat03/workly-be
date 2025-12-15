@@ -10,6 +10,8 @@ import {
 import { UserModel, SkillModel, SchoolModel, IndustryModel } from "../models";
 import { Op } from "neogma";
 import { LoggedInUserRequest } from "../types";
+import { database } from "../config/database";
+import { int } from "neo4j-driver";
 import {
 	BadRequestError,
 	NotFoundError,
@@ -20,6 +22,7 @@ import {
 	updateRelationsWithQuery,
 } from "../services/user.service";
 import {
+	toUserBasicDTO,
 	toUserFollowDTO,
 	UpdateEducationSchema,
 	UpdateWorkExperienceSchema,
@@ -77,23 +80,47 @@ export const getAllUsers = async (
 		const limit = Math.min(Number(req.query.limit) || 20, 20);
 		const offset = (page - 1) * limit;
 		const search = String(req.query.search || "");
+		const neogma = database.getNeogma();
 
-		const users = await UserModel.findMany({
-			where: {
-				name: {
-					[Op.contains]: search,
-				},
-			},
-			limit: limit,
-			skip: offset,
+		// Get extra record to check if there is more data
+		const queryLimit = limit + 1;
+
+		const query = search
+			? `
+				MATCH (u:User)
+				WHERE toLower(u.name) CONTAINS toLower($search) OR toLower(u.email) CONTAINS toLower($search)
+				RETURN u
+				SKIP $offset
+				LIMIT $queryLimit
+			`
+			: `
+				MATCH (u:User)
+				RETURN u
+				SKIP $offset
+				LIMIT $queryLimit
+			`;
+
+		const result = await neogma.queryRunner.run(query, {
+			...(search && { search }),
+			offset: int(offset),
+			queryLimit: int(queryLimit),
 		});
+
+		const users = result.records.map((record) => {
+			const node = record.get("u");
+			return toUserBasicDTO(node.properties);
+		});
+
+		const hasNextPage = users.length > limit;
+		const paginatedUsers = users.slice(0, limit);
 
 		res.status(200).json({
 			success: true,
-			data: users,
+			data: paginatedUsers,
 			pagination: {
 				page,
 				limit,
+				hasNextPage,
 			},
 		});
 	} catch (error) {
@@ -370,7 +397,6 @@ export const updateUserWorkExperiences = async (
 			(e) => !e.companyName || e.companyName.trim() === "",
 		);
 
-		console.log(unlistedCompanies, missingCompanyName);
 		if (missingCompanyName) {
 			throw new BadRequestError(
 				"Company name is required for unlisted companies",
