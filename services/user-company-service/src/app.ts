@@ -50,11 +50,21 @@ class App {
 		this.app.use(express.urlencoded({ extended: true }));
 		this.app.use(cookieParser());
 
-		if (config.env === "development") {
-			this.app.use(morgan("dev"));
-		} else {
-			this.app.use(morgan("combined"));
-		}
+		// Custom Morgan format to match Winston logger style
+		const morganFormat =
+			config.env === "development"
+				? "dev"
+				: ":method :url :status - :response-time ms";
+
+		this.app.use(
+			morgan(morganFormat, {
+				stream: {
+					write: (message: string) => {
+						logger.info(message.trim());
+					},
+				},
+			}),
+		);
 	}
 
 	private initializeRoutes(): void {

@@ -6,7 +6,7 @@ class ElasticsearchAdapter {
 
     constructor() {
         if (!ElasticsearchAdapter.client) {
-            if(NODE_ENV === "DEV") {
+            // if(NODE_ENV === "DEV") {
                 ElasticsearchAdapter.client = new Client({
                     cloud: {
                         id: ELASTICSEARCH_CLOUD_ID
@@ -16,12 +16,12 @@ class ElasticsearchAdapter {
                         password: ELASTICSEARCH_PASSWORD
                     }
                 });
-            }else{
-                console.log("Elatic prod")
-                ElasticsearchAdapter.client = new Client({
-                    node: ELASTICSEARCH_URL
-                });
-            }
+            // }else{
+            //     console.log("Elatic prod")
+            //     ElasticsearchAdapter.client = new Client({
+            //         node: ELASTICSEARCH_URL
+            //     });
+            // }
         }
     }
 

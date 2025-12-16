@@ -52,8 +52,10 @@ services:
             - RABBITMQ_URL=${RABBITMQ_URL}
             - JWT_SECRET=${JWT_SECRET}
             - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-90d}
-            - USER_SERVICE_URL=http://user-company-service:8003
-            - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+            - USER_SERVICE_URL=http://user-company-service:8003/api/v1
+            - ELASTICSEARCH_CLOUD_ID=${ELASTICSEARCH_CLOUD_ID}
+            - ELASTICSEARCH_USERNAME=${ELASTICSEARCH_USERNAME}
+            - ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
         networks:
             - workly-network
 
