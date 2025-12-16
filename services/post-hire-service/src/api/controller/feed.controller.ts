@@ -46,11 +46,17 @@ export class FeedController {
 			};
 		});
 
-		const authorData = await axios
-			.post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
-				ids: authorIds,
-			})
-			.then((res) => res.data.data);
+		let authorData;
+		try {
+			authorData = await axios
+				.post(`${USER_SERVICE_URL}/internals/get-batch-ids`, {
+					ids: authorIds,
+				})
+				.then((res) => res.data.data);
+		} catch (error) {
+			console.log("error get author data", error);
+			authorData = [];
+		}
 
 		const authorMap = new Map(
 			authorData.map((item: any) => [item.id, item.data])
@@ -73,7 +79,7 @@ export class FeedController {
 	) => {
 		const targetMap = new Map<string, any>();
 
-		const response: {
+		let response: {
 			data: {
 				target: {
 					id: string;
@@ -84,27 +90,48 @@ export class FeedController {
 				type: string;
 				score: number;
 			}[];
-		} = await axios
-			.get(`${USER_SERVICE_URL}/internals/users/${userId}/feed-context`, {
-				headers: {
-					Cookie: req.headers.cookie,
-					Authorization: req.headers.authorization,
-				},
-			})
-			.then((res) => res.data);
+		};
+		try {
+			response = await axios
+				.get(
+					`${USER_SERVICE_URL}/internals/users/${userId}/feed-context`,
+					{
+						headers: {
+							Cookie: req.headers.cookie,
+							Authorization: req.headers.authorization,
+						},
+					}
+				)
+				.then((res) => res.data);
+		} catch (error) {
+			console.log("error get feed context", error);
+			response = { data: [] };
+		}
 
 		response.data.forEach((item) => {
 			targetMap.set(item.target.id, item.target);
 		});
+
+		// If user doesn't have any target users to follow, return public feed
+		if (targetMap.size === 0) {
+			return await this.getPublicFeed(input);
+		}
+
 		const data = await this.postService.getPostsByAuthorIds(
 			input,
 			Array.from(targetMap.keys())
 		);
 
+		// If no posts found from followed users, fallback to public feed
+		if (data.data.length === 0) {
+			return await this.getPublicFeed(input);
+		}
+
 		const postsWithAuthor = data.data.map((post) => ({
 			...post,
 			author: targetMap.get(post.author_id) || null,
 		}));
+
 		return {
 			data: postsWithAuthor,
 			pagination: data.pagination,
@@ -144,11 +171,17 @@ export class FeedController {
 		};
 
 		const companyIds = data.data.map((job) => job.companyId);
-		const companyData = await axios
-			.post(`${USER_SERVICE_URL}/internals/companies/get-batch`, {
-				companyIds: companyIds,
-			})
-			.then((res) => res.data.data);
+		let companyData;
+		try {
+			companyData = await axios
+				.post(`${USER_SERVICE_URL}/internals/companies/get-batch`, {
+					companyIds: companyIds,
+				})
+				.then((res) => res.data.data);
+		} catch (error) {
+			console.log("error get company data", error);
+			companyData = [];
+		}
 
 		const companyMap = new Map(
 			companyData.map((item: any) => [
@@ -179,7 +212,7 @@ export class FeedController {
 		const page = Number(input.page) || 1;
 		const size = Number(input.size) || 10;
 
-		const response: {
+		let response: {
 			data: {
 				jobId: string;
 				company: {
@@ -194,17 +227,31 @@ export class FeedController {
 				size: number;
 				hasNextPage: boolean;
 			};
-		} = await axios
-			.get(
-				`${USER_SERVICE_URL}/internals/users/${userId}/job-context?page=${page}&size=${size}`,
-				{
-					headers: {
-						Cookie: req.headers.cookie,
-						Authorization: req.headers.authorization,
-					},
-				}
-			)
-			.then((res) => res.data);
+		};
+
+		try {
+			response = await axios
+				.get(
+					`${USER_SERVICE_URL}/internals/users/${userId}/job-context?page=${page}&size=${size}`,
+					{
+						headers: {
+							Cookie: req.headers.cookie,
+							Authorization: req.headers.authorization,
+						},
+					}
+				)
+				.then((res) => res.data);
+		} catch (error) {
+			console.log("error get job context", error);
+			response = {
+				data: [],
+				pagination: { page: 1, size: 10, hasNextPage: false },
+			};
+		}
+
+		if (!response.data || response.data.length === 0) {
+			return await this.getPublicJobFeed(input);
+		}
 
 		const targetMap = new Map<string, any>();
 		response.data.forEach((item) => {
@@ -213,7 +260,17 @@ export class FeedController {
 
 		const jobIds = response.data.map((item) => item.jobId);
 
+		// If user doesn't have any recommended jobs, return public feed
+		if (jobIds.length === 0) {
+			return await this.getPublicJobFeed(input);
+		}
+
 		const data = await this.jobService.getJobsByIds(userId, jobIds);
+
+		// If no jobs found from recommendations, fallback to public feed
+		if (data.length === 0) {
+			return await this.getPublicJobFeed(input);
+		}
 
 		const jobsWithCompany = data.map((job) => ({
 			...job,

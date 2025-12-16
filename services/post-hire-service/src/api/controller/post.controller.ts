@@ -153,17 +153,22 @@ export class PostController {
 
 			if (input.author_type === "USER") {
 
-				const response = await axios.post(
-					`${USER_SERVICE_URL}/internals/users/get-batch`,
-					{ userIds },
-					{
-						headers: {
-							Cookie: req.headers.cookie,
-							Authorization: req.headers.authorization,
+				let response;
+				try {
+					response = await axios.post(
+						`${USER_SERVICE_URL}/internals/users/get-batch`,
+						{ userIds },
+						{
+							headers: {
+								Cookie: req.headers.cookie,
+								Authorization: req.headers.authorization,
 						},
 						withCredentials: true,
-					}
-				);
+					});
+				} catch (error) {
+					console.log("error get users", error);
+					response = { data: { data: [] } };
+				}
 
 				const usersMap = new Map(response.data.data.map((user: any) => [user.userId, { id: user.userId, name: user.name, imageUrl: user.avatarUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
@@ -175,18 +180,22 @@ export class PostController {
 
 			}
 			if (input.author_type === "COMPANY") {
-
-				const response = await axios.post(
-					`${USER_SERVICE_URL}/internals/companies/get-batch`,
-					{ companyIds: userIds },
-					{
-						headers: {
-							Cookie: req.headers.cookie,
-							Authorization: req.headers.authorization,
-						},
+				let response
+				try {
+					response = await axios.post(
+						`${USER_SERVICE_URL}/internals/companies/get-batch`,
+						{ companyIds: userIds },
+						{
+							headers: {
+								Cookie: req.headers.cookie,
+								Authorization: req.headers.authorization,
+							},
 						withCredentials: true,
-					}
-				);
+					});
+				}catch(error) {
+					console.log("error get companies", error);
+					response = { data: { data: [] } };
+				}
 
 				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, { id: company.companyId, name: company.name, imageUrl: company.logoUrl }]));
 				const postsWithAuthor = data.data.map(post => ({
