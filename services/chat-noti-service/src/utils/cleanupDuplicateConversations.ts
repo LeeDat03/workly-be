@@ -110,7 +110,7 @@ export async function cleanupDuplicateConversations(): Promise<{
 						(!keepConversation.lastMessageAt ||
 							latestMessage.createdAt > keepConversation.lastMessageAt)
 					) {
-						keepConversation.lastMessage = latestMessage._id;
+						(keepConversation as unknown as any).lastMessage = latestMessage._id;
 						keepConversation.lastMessageAt = latestMessage.createdAt;
 						await keepConversation.save();
 					}

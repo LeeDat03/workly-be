@@ -18,7 +18,7 @@ export class Application {
 
     public static async createApplication(): Promise<ExpressServer> {
         await this.databaseInstance.connect();
-        await RedisAdapter.connect();
+        // await RedisAdapter.connect();
         await RabbitMQConnection.connect();
         await ContainerManager.initializeAll();
         elasticManage.testConnection();
@@ -27,19 +27,19 @@ export class Application {
         await initializeIndexModel();
         const expressServer = new ExpressServer();
         await expressServer.setup(Number(PORT));
-        const workerServer = new WorkerServer();
-        await workerServer.setup();
-        Application.handleExit(expressServer, workerServer);
+        // const workerServer = new WorkerServer();
+        // await workerServer.setup();
+        Application.handleExit(expressServer);
 
         return expressServer;
     }
 
-    private static handleExit(expressServer: ExpressServer, workerServer: WorkerServer) {
+    private static handleExit(expressServer: ExpressServer) {
         const shutdown = async (exitCode: number) => {
             logger.info('Starting graceful shutdown...');
             try {
                 await expressServer.kill();
-                await workerServer.kill();
+                // await workerServer.kill();
 
                 logger.info('Shutdown complete, bye bye!');
                 process.exit(exitCode);

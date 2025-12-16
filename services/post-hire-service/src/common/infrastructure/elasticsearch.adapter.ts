@@ -1,20 +1,27 @@
 import { Client } from '@elastic/elasticsearch';
-import { ELASTICSEARCH_CLOUD_ID, ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD } from '../enviroment';
+import { ELASTICSEARCH_CLOUD_ID, ELASTICSEARCH_USERNAME, ELASTICSEARCH_PASSWORD, NODE_ENV, ELASTICSEARCH_URL } from '../enviroment';
 
 class ElasticsearchAdapter {
     private static client: Client;
 
     constructor() {
         if (!ElasticsearchAdapter.client) {
-            ElasticsearchAdapter.client = new Client({
-                cloud: {
-                    id: ELASTICSEARCH_CLOUD_ID
-                },
-                auth: {
-                    username: ELASTICSEARCH_USERNAME,
-                    password: ELASTICSEARCH_PASSWORD
-                }
-            });
+            if(NODE_ENV === "DEV") {
+                ElasticsearchAdapter.client = new Client({
+                    cloud: {
+                        id: ELASTICSEARCH_CLOUD_ID
+                    },
+                    auth: {
+                        username: ELASTICSEARCH_USERNAME,
+                        password: ELASTICSEARCH_PASSWORD
+                    }
+                });
+            }else{
+                console.log("Elatic prod")
+                ElasticsearchAdapter.client = new Client({
+                    node: ELASTICSEARCH_URL
+                });
+            }
         }
     }
 

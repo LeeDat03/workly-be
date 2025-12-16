@@ -1,0 +1,98 @@
+version: "3.9"
+
+networks:
+    workly-network:
+        driver: bridge
+
+services:
+    # =============== USER-COMPANY SERVICE ===============
+    user-company-service:
+        build:
+            context: ./services/user-company-service
+            dockerfile: Dockerfile
+        container_name: workly-user-company-service
+        restart: on-failure:3
+        ports:
+            - "8003:8003"
+        environment:
+            - PORT=8003
+            - NODE_ENV=${NODE_ENV:-production}
+            - NEO4J_URI=${NEO4J_URI}
+            - NEO4J_USER=${NEO4J_USER}
+            - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+            - RABBITMQ_URL=${RABBITMQ_URL}
+            - JWT_SECRET=${JWT_SECRET}
+            - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+            - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}
+            - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}
+            - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}
+            - SMTP_HOST=${SMTP_HOST}
+            - SMTP_PORT=${SMTP_PORT}
+            - SMTP_USER=${SMTP_USER}
+            - SMTP_PASSWORD=${SMTP_PASSWORD}
+            - SMTP_FROM=${SMTP_FROM}
+        networks:
+            - workly-network
+
+    # =============== POST-HIRE SERVICE ===============
+    post-hire-service:
+        build:
+            context: ./services/post-hire-service
+            dockerfile: Dockerfile
+        container_name: workly-post-hire-service
+        restart: on-failure:3
+        ports:
+            - "8004:8004"
+        environment:
+            - PORT=8004
+            - NODE_ENV=${NODE_ENV:-production}
+            - MONGODB_URL=${MONGODB_URI}
+            - MONGODB_DB_NAME=${MONGODB_DB_NAME:-workly-be}
+            - REDIS_URI=${REDIS_URI}
+            - RABBITMQ_URL=${RABBITMQ_URL}
+            - JWT_SECRET=${JWT_SECRET}
+            - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-90d}
+            - USER_SERVICE_URL=http://user-company-service:8003
+            - ELASTICSEARCH_URL=${ELASTICSEARCH_URL}
+        networks:
+            - workly-network
+
+    # =============== CHAT-NOTIFICATION SERVICE ===============
+    chat-noti-service:
+        build:
+            context: ./services/chat-noti-service
+            dockerfile: Dockerfile
+        container_name: workly-chat-noti-service
+        restart: on-failure:3
+        ports:
+            - "8005:8005"
+        environment:
+            - PORT=8005
+            - NODE_ENV=${NODE_ENV:-production}
+            - MONGODB_URI=${MONGODB_URI}
+            - JWT_SECRET=${JWT_SECRET}
+            - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+        networks:
+            - workly-network
+
+    # =============== KONG API GATEWAY ===============
+    kong:
+        image: kong:latest
+        container_name: workly-kong
+        restart: unless-stopped
+        networks:
+            - workly-network
+        volumes:
+            - ./services/api-gateway/kong.prod.yml:/usr/local/kong/declarative/kong.yml:ro
+        environment:
+            - KONG_DATABASE=off
+            - KONG_DECLARATIVE_CONFIG=/usr/local/kong/declarative/kong.yml
+            - KONG_PROXY_ACCESS_LOG=/dev/stdout
+            - KONG_ADMIN_ACCESS_LOG=/dev/stdout
+            - KONG_PROXY_ERROR_LOG=/dev/stderr
+            - KONG_ADMIN_ERROR_LOG=/dev/stderr
+            - KONG_ADMIN_LISTEN=0.0.0.0:8001
+            - KONG_PROXY_LISTEN=0.0.0.0:8000
+        ports:
+            - "8000:8000"
+            - "8001:8001"

@@ -66,7 +66,6 @@ export const connectDatabase = async (): Promise<void> => {
 	try {
 		// Connect to MongoDB
 		const connection = await mongoose.connect(config.mongodb.uri);
-
 		logger.info(`MongoDB Connected: ${connection.connection.host}`);
 
 		// Khởi tạo database (tạo collections và indexes)

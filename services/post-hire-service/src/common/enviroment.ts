@@ -1,10 +1,8 @@
 import path from "path";
-import dotenv from "dotenv-safe";
+import dotenv from "dotenv";
 
 dotenv.config({
 	path: path.join(__dirname, "../../.env"),
-	sample: path.join(__dirname, "../../.env.example"),
-	allowEmptyValues: true,
 });
 
 export const LOG_LEVEL = process.env.LOG_LEVEL || "debug";
@@ -30,3 +28,6 @@ export const ELASTICSEARCH_USERNAME =
 	process.env.ELASTICSEARCH_USERNAME || "elastic";
 export const ELASTICSEARCH_PASSWORD =
 	process.env.ELASTICSEARCH_PASSWORD || "TPGg7pCfcAsu1zaC2FCdml7v";
+
+export const ELASTICSEARCH_URL =
+	process.env.ELASTICSEARCH_URL || "http://localhost:9200";
