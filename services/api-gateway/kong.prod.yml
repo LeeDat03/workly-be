@@ -60,7 +60,7 @@ plugins:
       config:
           origins:
               - "http://localhost:3000"
-              - "https://your-production-domain.com"
+              - "https://workly-frontend.vercel.app"
           methods:
               - GET
               - POST

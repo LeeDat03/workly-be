@@ -53,7 +53,9 @@ export class ExpressServer {
 
 	private setupSecurityMiddlewares(server: Express) {
 		server.use(helmet({ frameguard: false }));
-		server.use(helmet.crossOriginResourcePolicy({ policy: "cross-origin" }));
+		server.use(
+			helmet.crossOriginResourcePolicy({ policy: "cross-origin" })
+		);
 		server.use(
 			helmet.contentSecurityPolicy({
 				directives: {
@@ -71,18 +73,18 @@ export class ExpressServer {
 			"http://localhost:8000",
 		];
 
-		server.use(
-			cors({
-				origin: (origin, callback) => {
-					if (!origin || allowedOrigins.includes(origin)) {
-						callback(null, true);
-					} else {
-						callback(new Error("Not allowed by CORS"));
-					}
-				},
-				credentials: true,
-			})
-		);
+		// server.use(
+		// 	cors({
+		// 		origin: (origin, callback) => {
+		// 			if (!origin || allowedOrigins.includes(origin)) {
+		// 				callback(null, true);
+		// 			} else {
+		// 				callback(new Error("Not allowed by CORS"));
+		// 			}
+		// 		},
+		// 		credentials: true,
+		// 	})
+		// );
 		server.set("trust proxy", true);
 		server.use(RateLimiterMiddleware.createGlobalLimiter());
 	}
