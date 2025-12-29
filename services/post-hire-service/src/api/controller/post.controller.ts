@@ -1,9 +1,21 @@
 import { NextFunction, Request, Response } from "express";
 import { IPostService } from "@/api/service/post.service";
 import logger from "@/common/logger";
-import { AuthorType, Company, CreatePostDTO, DeletePost, PostResponse, UpdatePostDTO, User } from "@/api/model/post.model";
+import {
+	AuthorType,
+	Company,
+	CreatePostDTO,
+	DeletePost,
+	PostResponse,
+	UpdatePostDTO,
+	User,
+} from "@/api/model/post.model";
 import { ObjectId } from "mongodb";
-import { IPaginationInput, PagingList, PostSearch } from "../model/common.model";
+import {
+	IPaginationInput,
+	PagingList,
+	PostSearch,
+} from "../model/common.model";
 
 import path from "path";
 import fs from "fs";
@@ -46,7 +58,6 @@ export class PostController {
 			next(error);
 		}
 	};
-
 
 	public uploadFile = async (
 		req: Request,
@@ -97,6 +108,7 @@ export class PostController {
 		res: Response,
 		next: NextFunction
 	) => {
+		console.log("checkbuild");
 
 		const videoPath = path.join(
 			__dirname,
@@ -138,7 +150,11 @@ export class PostController {
 		fileStream.pipe(res);
 	};
 
-	public getPostByUserId = async (req: Request, res: Response, next: NextFunction) => {
+	public getPostByUserId = async (
+		req: Request,
+		res: Response,
+		next: NextFunction
+	) => {
 		try {
 			const input = req.query as PostSearch;
 			const data = await this.postService.getAllPost(
@@ -146,13 +162,12 @@ export class PostController {
 				req.query.userId as string
 			);
 
-			const userIds = data.data.map(post => post.author_id);
+			const userIds = data.data.map((post) => post.author_id);
 			if (userIds.length === 0) {
 				return res.sendJson(data);
 			}
 
 			if (input.author_type === "USER") {
-
 				let response;
 				try {
 					response = await axios.post(
@@ -162,25 +177,37 @@ export class PostController {
 							headers: {
 								Cookie: req.headers.cookie,
 								Authorization: req.headers.authorization,
-						},
-						withCredentials: true,
-					});
+							},
+							withCredentials: true,
+						}
+					);
 				} catch (error) {
 					console.log("error get users", error);
 					response = { data: { data: [] } };
 				}
 
-				const usersMap = new Map(response.data.data.map((user: any) => [user.userId, { id: user.userId, name: user.name, imageUrl: user.avatarUrl }]));
-				const postsWithAuthor = data.data.map(post => ({
+				const usersMap = new Map(
+					response.data.data.map((user: any) => [
+						user.userId,
+						{
+							id: user.userId,
+							name: user.name,
+							imageUrl: user.avatarUrl,
+						},
+					])
+				);
+				const postsWithAuthor = data.data.map((post) => ({
 					...post,
-					author: usersMap.get(post.author_id) || null
+					author: usersMap.get(post.author_id) || null,
 				}));
 
-				res.sendJson({ data: postsWithAuthor, pagination: data.pagination });
-
+				res.sendJson({
+					data: postsWithAuthor,
+					pagination: data.pagination,
+				});
 			}
 			if (input.author_type === "COMPANY") {
-				let response
+				let response;
 				try {
 					response = await axios.post(
 						`${USER_SERVICE_URL}/internals/companies/get-batch`,
@@ -190,21 +217,33 @@ export class PostController {
 								Cookie: req.headers.cookie,
 								Authorization: req.headers.authorization,
 							},
-						withCredentials: true,
-					});
-				}catch(error) {
+							withCredentials: true,
+						}
+					);
+				} catch (error) {
 					console.log("error get companies", error);
 					response = { data: { data: [] } };
 				}
 
-				const companiesMap = new Map(response.data.data.map((company: Company) => [company.companyId, { id: company.companyId, name: company.name, imageUrl: company.logoUrl }]));
-				const postsWithAuthor = data.data.map(post => ({
+				const companiesMap = new Map(
+					response.data.data.map((company: Company) => [
+						company.companyId,
+						{
+							id: company.companyId,
+							name: company.name,
+							imageUrl: company.logoUrl,
+						},
+					])
+				);
+				const postsWithAuthor = data.data.map((post) => ({
 					...post,
-					author: companiesMap.get(post.author_id) || null
+					author: companiesMap.get(post.author_id) || null,
 				}));
 
-				res.sendJson({ data: postsWithAuthor, pagination: data.pagination });
-
+				res.sendJson({
+					data: postsWithAuthor,
+					pagination: data.pagination,
+				});
 			}
 		} catch (error) {
 			logger.error(`PostController.getAll: `, error);
