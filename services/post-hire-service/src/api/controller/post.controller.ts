@@ -108,8 +108,6 @@ export class PostController {
 		res: Response,
 		next: NextFunction
 	) => {
-		console.log("checkbuild");
-
 		const videoPath = path.join(
 			__dirname,
 			"../../../uploads/videos",

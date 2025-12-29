@@ -12,6 +12,7 @@ export const isAuthenticated = async (
 ) => {
 	try {
 		let token;
+		console.log("checkbuild");
 
 		if (req.cookies?.workly_token) {
 			token = req.cookies?.workly_token.trim();
@@ -27,7 +28,7 @@ export const isAuthenticated = async (
 		}
 		const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
-		let response
+		let response;
 		try {
 			response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
 				headers: {
@@ -81,7 +82,7 @@ export const optionalAuth = async (
 		}
 		const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
-		let response
+		let response;
 		try {
 			response = await axios.get(`${USER_SERVICE_URL}/auth/me`, {
 				headers: {
