@@ -3,33 +3,28 @@ import { createPost } from "@/api/validation/post.validatior";
 import { validateRequest } from "@/api/middlewares/validate.middleware";
 import { ControllerContainer } from "@/api/container/controller.container";
 import { UploadMiddleware } from "@/api/middlewares/upload.middleware";
+import { createComment } from "@/api/validation/comment.validator";
 import {
-	createComment,
-} from "@/api/validation/comment.validator";
-import { isAuthenticated, optionalAuth } from "../middlewares/authentication.middleware";
+	isAuthenticated,
+	optionalAuth,
+} from "../middlewares/authentication.middleware";
 
 export function createPostRoutes(): Router {
 	const router = express.Router();
 	const postController = ControllerContainer.getPostController();
 	router.get("/myPost", optionalAuth, postController.getPostByUserId);
+	router.get("/video/:filename", postController.getStreamVideo);
 
-	router.use(isAuthenticated)
+	router.use(isAuthenticated);
 
-
-	router.post(
-		"/delete",
-		postController.deletePost
-	);
+	router.post("/delete", postController.deletePost);
 	router.post(
 		"/create",
 		validateRequest(createPost),
 		postController.createPost
 	);
 
-	router.post(
-		"/update",
-		postController.updatePost
-	);
+	router.post("/update", postController.updatePost);
 
 	router.post(
 		"/uploads",
@@ -39,9 +34,6 @@ export function createPostRoutes(): Router {
 
 	router.get("/read/:id", postController.getPostDetail);
 
-
-	router.get("/video/:filename", postController.getStreamVideo);
-
 	const commentController = ControllerContainer.getCommentController();
 
 	router.post(
@@ -50,35 +42,20 @@ export function createPostRoutes(): Router {
 		commentController.createComment
 	);
 
-	router.put(
-		"/comment/update",
-		commentController.updateComment
-	);
+	router.put("/comment/update", commentController.updateComment);
 
-	router.get(
-		"/comment/list/:postId",
-		commentController.getAllComment
-	)
+	router.get("/comment/list/:postId", commentController.getAllComment);
 
-	router.get(
-		"/comment/:commentId",
-		commentController.getCommentById
-	)
+	router.get("/comment/:commentId", commentController.getCommentById);
 
 	//like
 	const likeController = ControllerContainer.getLikeController();
 
-	router.post(
-		"/like", likeController.likePost
-	)
+	router.post("/like", likeController.likePost);
 
-	router.post(
-		"/unlike", likeController.unlikePost
-	)
+	router.post("/unlike", likeController.unlikePost);
 
-	router.get(
-		"/like/list", likeController.getAllLikePost
-	)
+	router.get("/like/list", likeController.getAllLikePost);
 
 	return router;
 }

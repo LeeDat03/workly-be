@@ -16,7 +16,7 @@ export const setCookie = (res: Response, token: string) => {
 	res.cookie(config.cookie.name, token, {
 		httpOnly: true,
 		secure: config.env === "production",
-		sameSite: "strict",
+		sameSite: "none",
 		maxAge: config.cookie.maxAge,
 	});
 };
@@ -24,7 +24,7 @@ export const setCookie = (res: Response, token: string) => {
 export const clearCookie = (res: Response) => {
 	res.clearCookie(config.cookie.name, {
 		httpOnly: true,
-		sameSite: "lax",
+		sameSite: "none",
 		secure: config.env === "production",
 	});
 };
@@ -42,7 +42,11 @@ const signup = async (
 			message: "User created successfully",
 			data: { user, token },
 		});
-		mqManager.sendToQueue(QUEUES.USER, { type: "ADD", id: user.userId, name: user.name })
+		mqManager.sendToQueue(QUEUES.USER, {
+			type: "ADD",
+			id: user.userId,
+			name: user.name,
+		});
 	} catch (error) {
 		next(error);
 	}
