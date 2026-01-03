@@ -109,9 +109,21 @@ export const getUserProfile = async (userId: string, include: string[]) => {
 		workExpRels.length > 0
 			? workExpRels
 					.map((rel: any) => {
+						const companyData = rel.target.dataValues;
+						const relationshipData = rel.relationship || {};
+						const {
+							description: companyDescription,
+							...companyDataWithoutDescription
+						} = companyData;
 						return {
-							...rel.target.dataValues,
-							...rel.relationship,
+							...companyDataWithoutDescription,
+							...relationshipData,
+							description:
+								relationshipData.description !== undefined &&
+								relationshipData.description !== "" &&
+								relationshipData.description !== null
+									? relationshipData.description
+									: undefined,
 						};
 					})
 					.sort((a: any, b: any) => {
@@ -229,47 +241,102 @@ export const updateRelationsWithQuery = async (
 					targetLabel !== "School" && targetLabel !== "Company";
 				const mergeClause = isMerge ? "MERGE" : "CREATE";
 
-				const items = newIds.map((id, idx) => ({
-					targetId: id,
-					props: relationshipProps?.[idx] ?? {},
-					isUnlisted:
-						supportsUnlisted && id === UNLISTED_COMPANY.companyId,
-				}));
+				const items = newIds.map((id, idx) => {
+					const props = relationshipProps?.[idx] ?? {};
+					const cleanedProps: Record<string, unknown> = {};
+					Object.entries(props).forEach(([key, value]) => {
+						if (
+							value !== "" &&
+							value !== null &&
+							value !== undefined
+						) {
+							cleanedProps[key] = value;
+						}
+					});
+					return {
+						targetId: id,
+						props: cleanedProps,
+						propsToRemove: Object.keys(props).filter(
+							(key) =>
+								props[key] === "" ||
+								props[key] === null ||
+								props[key] === undefined,
+						),
+						isUnlisted:
+							supportsUnlisted &&
+							id === UNLISTED_COMPANY.companyId,
+					};
+				});
 
 				const regularItems = items.filter((item) => !item.isUnlisted);
 				const unlistedItems = items.filter((item) => item.isUnlisted);
 
 				// Create regular relationships
 				if (regularItems.length > 0) {
-					await tx.run(
-						`
-					  MATCH (u:User {userId: $userId})
-					  UNWIND $items AS item
-					  MATCH (t:${targetLabel} {${targetIdField}: item.targetId})
-					  ${mergeClause} (u)-[r:${relationshipName}]->(t)
-					  SET r += item.props
-					  `,
-						{ userId, items: regularItems },
-					);
+					for (const item of regularItems) {
+						await tx.run(
+							`
+							MATCH (u:User {userId: $userId})
+							MATCH (t:${targetLabel} {${targetIdField}: $targetId})
+							${mergeClause} (u)-[r:${relationshipName}]->(t)
+							SET r += $props
+							`,
+							{
+								userId,
+								targetId: item.targetId,
+								props: item.props,
+							},
+						);
+
+						if (item.propsToRemove.length > 0) {
+							for (const propToRemove of item.propsToRemove) {
+								await tx.run(
+									`
+									MATCH (u:User {userId: $userId})-[r:${relationshipName}]->(t:${targetLabel} {${targetIdField}: $targetId})
+									WHERE r.${propToRemove} IS NOT NULL
+									REMOVE r.${propToRemove}
+									`,
+									{ userId, targetId: item.targetId },
+								);
+							}
+						}
+					}
 				}
 
 				// Create UNLISTED relationships with name stored on relationship
 				if (unlistedItems.length > 0) {
-					await tx.run(
-						`
-					  MATCH (u:User {userId: $userId})
-					  MERGE (unlisted:${targetLabel} {${targetIdField}: $unlistedId, name: 'Other'})
-					  WITH u, unlisted
-					  UNWIND $items AS item
-					  CREATE (u)-[r:${relationshipName}]->(unlisted)
-					  SET r += item.props
-					  `,
-						{
-							userId,
-							items: unlistedItems,
-							unlistedId: UNLISTED_COMPANY.companyId,
-						},
-					);
+					for (const item of unlistedItems) {
+						await tx.run(
+							`
+							MATCH (u:User {userId: $userId})
+							MERGE (unlisted:${targetLabel} {${targetIdField}: $unlistedId, name: 'Other'})
+							WITH u, unlisted
+							CREATE (u)-[r:${relationshipName}]->(unlisted)
+							SET r += $props
+							`,
+							{
+								userId,
+								props: item.props,
+								unlistedId: UNLISTED_COMPANY.companyId,
+							},
+						);
+
+						if (item.propsToRemove.length > 0) {
+							for (const propToRemove of item.propsToRemove) {
+								await tx.run(
+									`
+									MATCH (u:User {userId: $userId})-[r:${relationshipName}]->(unlisted:${targetLabel} {${targetIdField}: $unlistedId})
+									WHERE r.${propToRemove} IS NOT NULL
+									REMOVE r.${propToRemove}
+									`,
+									{
+										userId,
+										unlistedId: UNLISTED_COMPANY.companyId,
+									},
+								);
+							}
+						}
+					}
 				}
 			}
 		});
